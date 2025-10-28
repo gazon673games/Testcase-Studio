@@ -1,0 +1,21 @@
+{
+  "id": "27d4edf4-4bdd-42dd-ad41-ab3f4a90e3e9",
+  "name": "Test2",
+  "description": "",
+  "steps": [
+    {
+      "id": "6ea59ab9-2af2-463e-ae19-924bb0660405",
+      "text": "Step 1"
+    },
+    {
+      "id": "6cccd346-5f76-4857-8ec9-03eed3c9dd48",
+      "text": "Step 2"
+    }
+  ],
+  "attachments": [],
+  "links": [],
+  "updatedAt": "2025-10-27T12:07:50.763Z",
+  "meta": {
+    "tags": []
+  }
+}

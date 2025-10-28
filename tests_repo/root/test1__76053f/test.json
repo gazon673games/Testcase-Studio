@@ -1,0 +1,23 @@
+{
+  "id": "76053f9c-f685-4fc8-b588-4cdc89125316",
+  "name": "Test1",
+  "description": "dddddddddddddfsdsdfsdfsdfsd",
+  "steps": [
+    {
+      "id": "a37df781-5219-446a-ba20-a3dbd85a4ee5",
+      "text": "dsfsdfsd",
+      "action": "dsfsdfsd"
+    },
+    {
+      "id": "b9e76c30-4746-4c43-bf92-d778e30ac42e",
+      "text": "Step 2"
+    }
+  ],
+  "attachments": [],
+  "links": [],
+  "updatedAt": "2025-10-27T18:07:25.502Z",
+  "meta": {
+    "tags": [],
+    "objective": "sadsa"
+  }
+}
