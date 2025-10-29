@@ -1,0 +1,196 @@
+/* ────────────────────────────────
+   TestEditor.css — Zephyr-like
+   (под твой текущий TSX)
+──────────────────────────────── */
+
+.test-editor { padding: 12px; }
+
+/* поля/лейблы */
+.field { margin-bottom: 8px; }
+.label-sm { display:block; font-size:12px; color:#555; margin-bottom:4px; }
+.input {
+    width:100%;
+    padding:10px 12px;
+    font-size:14px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    box-sizing:border-box;
+    background:#fff;
+    outline: none;
+}
+.input:focus { border-color:#9bb7ff; box-shadow:0 0 0 3px rgba(77,107,220,.12); }
+
+.input.textarea {
+    /* базовый вид для обычных textarea (Details) */
+    min-height: 40px;
+}
+.input.textarea.textarea-grow {
+    /* для MdArea: автогроу, без полосы прокрутки и без ручки ресайза */
+    resize: none;           /* убираем «хвостик» */
+    overflow: hidden;       /* без прокрутки — растёт по содержимому */
+    scrollbar-width: none;  /* Firefox: скрыть полосу если вдруг появится */
+}
+.input.textarea.textarea-grow::-webkit-scrollbar { display: none; } /* Safari/Chrome */
+.input.textarea.textarea-grow::-webkit-resizer { display:none; }
+
+.muted { font-size:12px; color:#666; }
+.spacer { margin-left:auto; }
+
+/* кнопки */
+.btn-small {
+    padding:4px 8px;
+    font-size:12px;
+    border:1px solid #ccc;
+    border-radius:6px;
+    background:#f7f7f7;
+    cursor:pointer;
+}
+.btn-small:hover { background:#f0f3ff; border-color:#bfcfff; }
+.btn-icon {
+    border:1px solid #ddd;
+    background:#fff;
+    border-radius:6px;
+    padding:1px 5px;
+    cursor:pointer;
+    font-size:11px;
+}
+.btn-icon:hover { background:#f6f8ff; border-color:#cfd8ff; }
+
+/* секция */
+.section-header {
+    display:flex; align-items:center; gap:8px; width:100%;
+    padding:8px 10px; margin:12px 0 6px;
+    border-radius:8px; border:1px solid #e5e5e5; background:#fafafa;
+}
+.section-header-right { margin-left:auto; display:flex; align-items:center; gap:6px; }
+.section-header > button {
+    border:none; background:transparent; cursor:pointer; font-weight:600;
+    display:flex; align-items:center; gap:8px;
+}
+
+/* список шагов */
+.steps { display:grid; gap:10px; }
+
+/* карточка шага */
+.step-card {
+    border:1px solid #e7e7e7; border-radius:12px; background:#fff;
+    box-shadow:0 2px 6px rgba(0,0,0,.03);
+}
+.step-header {
+    display:flex; align-items:center; gap:8px;
+    padding:8px 10px; border-bottom:1px solid #f0f0f0;
+    background:#fafafa; border-radius:12px 12px 0 0;
+}
+.step-header .drag { cursor:grab; user-select:none; padding:0 6px; }
+.step-title { font-weight:700; color:#666; }
+
+/* сетка внутри шага: № | Action | Data | Expected */
+.step-grid { display:grid; grid-template-columns:68px 1fr 1fr 1fr; }
+.step-grid.stack { grid-template-columns:1fr; }
+@media (max-width: 980px) {
+    .step-grid { grid-template-columns:1fr; }
+}
+
+.step-num {
+    padding:10px; border-right:1px solid #f0f0f0;
+    display:flex; align-items:flex-start; justify-content:center;
+}
+.step-num-badge {
+    width:36px; height:36px; border-radius:9px; background:#eef4ff;
+    border:1px solid #d7e3ff; display:flex; align-items:center; justify-content:center;
+    font-weight:700; color:#4d6bdc;
+}
+
+.step-cell { padding:10px; border-right:1px solid #f0f0f0; }
+.step-cell:last-child { border-right:none; }
+.cell-head { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:6px; }
+.cell-title { font-size:12px; color:#666; font-weight:600; }
+
+.add-part-btn {
+    border:1px solid #ccc; background:#f7f7f7; border-radius:6px;
+    font-size:12px; padding:2px 6px; cursor:pointer;
+}
+.add-part-btn:hover { background:#f0f3ff; border-color:#bfcfff; }
+
+.parts { margin-top:8px; display:grid; gap:8px; }
+.part-row {
+    position: relative;
+    z-index: 2;
+}
+.part-remove {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    z-index: 5;
+    background: #fff;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,.1);
+}
+.part-remove:hover {
+    background: #fef5f5;
+    border-color: #f5a1a1;
+}
+
+/* общие карточки */
+.meta-card {
+    border:1px solid #e5e5e5; border-radius:10px; padding:12px; background:#fafafa;
+}
+.meta-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; }
+.tags-block { margin-top:10px; }
+.card-box { border:1px solid #eee; border-radius:10px; padding:10px; background:#fff; }
+.attachments { border:1px dashed #ddd; padding:12px; border-radius:8px; color:#666; }
+
+/* теги */
+.tags-box {
+    display:flex; flex-wrap:wrap; gap:6px; padding:6px;
+    border:1px dashed #cfcfcf; border-radius:8px; background:#fff;
+}
+.tag-chip {
+    display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px;
+    border:1px solid #d7e3ff; background:#eef4ff; font-size:12px;
+}
+.tag-x { border:none; background:transparent; cursor:pointer; font-size:12px; color:#555; }
+.tag-input { border:none !important; outline:none; min-width:120px; padding:6px 8px; }
+
+/* Markdown */
+.md-preview {
+    width:100%; padding:10px 12px; border-radius:8px;
+    border:1px solid #ddd; background:#fff;
+    white-space:pre-wrap; overflow-wrap:anywhere; box-sizing:border-box;
+}
+.code-inline { background:#f2f2f2; padding:0 3px; border-radius:4px; }
+
+.md-input-wrap { position:relative; }
+.md-toolbar {
+    display:flex; gap:4px; align-items:center; margin:6px 0;
+}
+.divider { width:1px; background:#e6e6e6; margin:0 2px; height:16px; }
+
+/* Autocomplete */
+.autocomplete {
+    position: fixed; z-index: 9999;
+    width: 380px; max-height: 260px; overflow: auto;
+    background: #fff; border: 1px solid #ddd; border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.15);
+}
+.autocomplete-empty { padding:8px; color:#888; }
+.autocomplete-item {
+    padding:6px 10px; cursor:pointer; white-space:nowrap;
+    text-overflow:ellipsis; overflow:hidden; user-select:none;
+}
+.autocomplete-item.active { background: rgba(22,119,255,.1); }
+
+.md-preview.overlay {
+    position:absolute;
+    top:0; left:0; right:0; bottom:0;
+    pointer-events:none;       /* чтобы можно было редактировать текст под ней */
+    opacity:1;
+}
+

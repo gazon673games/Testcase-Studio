@@ -1,10 +1,18 @@
-// src/ui/TestEditor.tsx
 import * as React from 'react'
+import './TestEditor.css'
 import type { TestCase, Step, PartItem, TestMeta } from '@core/domain'
+import { ParamsPanel } from './panels/MetaParamsPanel'
+import './panels/MetaParamsPanel.css'
+import { AttachmentsPanel } from './panels/AttachmentsPanel'
+import './panels/AttachmentsPanel.css'
 
 type Props = {
     test: TestCase
-    onChange: (patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta'>>) => void
+    onChange: (
+        patch: Partial<
+            Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments'>
+        >
+    ) => void
     focusStepId?: string | null
     allTests: TestCase[]
 }
@@ -20,11 +28,23 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     const [steps, setSteps] = React.useState<Step[]>(test.steps)
     const [meta, setMeta] = React.useState<TestMeta>(test.meta ?? { tags: [] })
 
-    // по умолчанию свёрнуто
-    const [showSteps, setShowSteps] = React.useState(false)
+    // секции
+    const [showSteps, setShowSteps] = React.useState(true) // открыт по умолчанию
     const [showAttachments, setShowAttachments] = React.useState(false)
     const [showDetails, setShowDetails] = React.useState(false)
     const [showMeta, setShowMeta] = React.useState(false)
+
+    // единый режим просмотра markdown по всем шагам
+    const [globalPreview, setGlobalPreview] = React.useState(false)
+
+    // адаптивный флаг для скрытия колонки номера
+    const [isNarrow, setIsNarrow] = React.useState(false)
+    React.useEffect(() => {
+        const calc = () => setIsNarrow(window.innerWidth < 980)
+        calc()
+        window.addEventListener('resize', calc)
+        return () => window.removeEventListener('resize', calc)
+    }, [])
 
     const stepRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -33,10 +53,11 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         setDesc(test.description ?? '')
         setSteps(test.steps)
         setMeta(test.meta ?? { tags: [] })
-        setShowSteps(false)
+        setShowSteps(true)
         setShowAttachments(false)
         setShowDetails(false)
         setShowMeta(false)
+        setGlobalPreview(false)
         stepRefs.current = {}
     }, [test.id])
 
@@ -54,11 +75,9 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     }, [focusStepId])
 
     function savePatch() { onChange({ name, description: desc, steps, meta }) }
-
-    // даём родителю возможность применить драфт перед глобальным Save
     React.useImperativeHandle(ref, () => ({ commit: savePatch }), [name, desc, steps, meta])
 
-    /* ───────────── wiki-refs для превью ───────────── */
+    /* ───────── wiki-refs для превью ───────── */
     const byName = React.useMemo(() => {
         const m = new Map<string, TestCase>()
         for (const t of allTests) m.set(t.name, t)
@@ -132,6 +151,22 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         const next = [...steps.slice(0, idx + 1), clone, ...steps.slice(idx + 1)]
         setSteps(next)
     }
+    function removeStep(idx: number) {
+        setSteps(steps.filter((_, i) => i !== idx))
+    }
+
+    // mock-attach
+    function attachMock(idx: number) {
+        const name = prompt('Attachment name (mock):', 'example.txt')
+        if (!name) return
+        const s = structuredClone(steps[idx])
+        if (!s.internal) s.internal = {}
+        if (!s.internal.meta) s.internal.meta = {}
+        const arr = Array.isArray((s.internal.meta as any).attachments)
+            ? (s.internal.meta as any).attachments as string[] : []
+        ;(s.internal.meta as any).attachments = [...arr, name]
+        updateStep(idx, s)
+    }
 
     function addPart(idx: number, kind: 'action'|'data'|'expected') {
         const s = structuredClone(steps[idx])
@@ -155,76 +190,64 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         updateStep(idx, s)
     }
 
-    // mock-attach
-    function attachMock(idx: number) {
-        const name = prompt('Attachment name (mock):', 'example.txt')
-        if (!name) return
-        const s = structuredClone(steps[idx])
-        if (!s.internal) s.internal = {}
-        if (!s.internal.meta) s.internal.meta = {}
-        const arr = Array.isArray((s.internal.meta as any).attachments) ? (s.internal.meta as any).attachments as string[] : []
-        ;(s.internal.meta as any).attachments = [...arr, name]
-        updateStep(idx, s)
+    // DnD
+    const dragIndex = React.useRef<number | null>(null)
+    function onDragStart(i: number) { dragIndex.current = i }
+    function onDragOver(e: React.DragEvent) { e.preventDefault() }
+    function onDrop(i: number) {
+        const from = dragIndex.current
+        dragIndex.current = null
+        if (from == null || from === i) return
+        const next = steps.slice()
+        const [moved] = next.splice(from, 1)
+        next.splice(i, 0, moved)
+        setSteps(next)
     }
-
-    function removeStep(idx: number) {
-        setSteps(steps.filter((_, i) => i !== idx))
-    }
-
-
-    const SectionHeader = (
-        { title, open, count, onToggle }:
-            { title: string; open: boolean; count?: number; onToggle(): void }
-    ) => (
-        <button
-            type="button"
-            onClick={onToggle}
-            data-spoiler
-            data-nopress
-            style={{
-                display:'flex', alignItems:'center', gap:8, width:'100%',
-                padding:'8px 10px', margin:'12px 0 6px',
-                borderRadius:8, border:'1px solid #e5e5e5', background:'#fafafa',
-                cursor:'pointer', fontWeight:600
-            }}
-        >
-            <span style={{ width:14, textAlign:'center' }}>{open ? '▾' : '▸'}</span>
-            <span>{title}{typeof count === 'number' ? ` (${count})` : ''}</span>
-        </button>
-    )
-
-    /* ───────────────────────── UI ───────────────────────── */
 
     return (
-        <div style={{ padding: 12 }}>
+        <div className="test-editor">
             {/* title */}
-            <div style={{ marginBottom: 8 }}>
-                <label style={{ display:'block', fontSize:12, color:'#555' }}>Name</label>
+            <div className="field">
+                <label className="label-sm">Name</label>
                 <input
                     value={name}
                     onChange={e=>setName(e.target.value)}
                     onBlur={savePatch}
-                    style={{ width:'100%', padding:'10px 12px', fontSize:14, borderRadius:8, boxSizing:'border-box' }}
+                    className="input"
                     placeholder="Enter test name…"
                 />
             </div>
 
-            {/* 1) STEPS — (по умолчанию скрыты) */}
-            <SectionHeader title="Steps (table view)" open={showSteps} count={steps.length} onToggle={() => setShowSteps(s=>!s)} />
-            {showSteps && (
-                <div style={{ border:'1px solid #eee', borderRadius:10, overflow:'hidden' }}>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', background:'#f6f7fb', fontWeight:600, fontSize:12, color:'#444' }}>
-                        <div style={thCell}>Action</div>
-                        <div style={thCell}>Data</div>
-                        <div style={thCell}>Expected</div>
+            {/* STEPS */}
+            <SectionHeader
+                title="Steps"
+                open={showSteps}
+                count={steps.length}
+                onToggle={() => setShowSteps(s=>!s)}
+                right={
+                    <div className="section-header-right">
+                        <span className="muted">View:</span>
+                        <button onClick={()=>setGlobalPreview(p=>!p)} className="btn-small">
+                            {globalPreview ? 'Raw' : 'Preview'}
+                        </button>
+                        <button onClick={() => addStepAfter(steps.length - 1)} className="btn-small">
+                            + Add step
+                        </button>
+                        <button onClick={savePatch} className="btn-small">Apply</button>
                     </div>
-
+                }
+            />
+            {showSteps && (
+                <div className="steps">
+                    {/* без steps-head */}
                     {steps.map((s, i) => (
                         <StepRow
                             key={s.id}
                             ref={(el) => { stepRefs.current[s.id] = el }}
                             index={i}
                             step={s}
+                            allTests={allTests}
+                            resolveRefs={resolveRefs}
                             onAttach={() => attachMock(i)}
                             onClone={() => cloneStep(i)}
                             onAddNext={() => addStepAfter(i)}
@@ -233,30 +256,29 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                             onAddPart={addPart}
                             onEditPart={editPart}
                             onRemovePart={removePart}
-                            resolveRefs={resolveRefs}
-                            allTests={allTests}
+                            draggable
+                            onDragStart={()=>onDragStart(i)}
+                            onDragOver={onDragOver}
+                            onDrop={()=>onDrop(i)}
+                            preview={globalPreview}
+                            isNarrow={isNarrow}
                         />
                     ))}
-
-                    <div style={{ padding:8, borderTop:'1px solid #eee' }}>
-                        <button onClick={() => addStepAfter(steps.length - 1)} style={btnSmall}>+ Add step</button>
-                        <button onClick={savePatch} style={{ ...btnSmall, marginLeft:6 }}>Apply</button>
-                    </div>
                 </div>
             )}
 
-            {/* 2) DETAILS SPOILER */}
+            {/* DETAILS */}
             <SectionHeader title="Details" open={showDetails} onToggle={() => setShowDetails(s=>!s)} />
             {showDetails && (
-                <div style={cardBox}>
-                    <div style={{ marginBottom: 10 }}>
-                        <label style={{ display:'block', fontSize:12, color:'#555' }}>Description</label>
+                <div className="card-box">
+                    <div className="field">
+                        <label className="label-sm">Description</label>
                         <textarea
                             value={desc}
                             onChange={e=>setDesc(e.target.value)}
                             onBlur={savePatch}
                             rows={4}
-                            style={{ width:'100%', padding:'10px 12px', fontSize:14, borderRadius:8, boxSizing:'border-box' }}
+                            className="input textarea"
                             placeholder="Optional general description…"
                         />
                     </div>
@@ -274,175 +296,88 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                 </div>
             )}
 
-            {/* 3) ATTACHMENTS */}
-            <SectionHeader title="Attachments (test level)" open={showAttachments} count={test.attachments.length} onToggle={() => setShowAttachments(s=>!s)} />
+            {/* ATTACHMENTS */}
+            <SectionHeader
+                title="Attachments"
+                open={showAttachments}
+                count={test.attachments.length}
+                onToggle={() => setShowAttachments(s => !s)}
+            />
             {showAttachments && (
-                <div style={{ border:'1px dashed #ddd', padding:12, borderRadius:8, color:'#666' }}>
-                    View-only for now: {test.attachments.length} file(s). (Adding UI later)
-                </div>
+                <AttachmentsPanel
+                    attachments={test.attachments}
+                    onChange={(next) => onChange({ attachments: next })}
+                />
             )}
 
-            {/* 4) PARAMETERS */}
+            {/* PARAMETERS */}
             <SectionHeader title="Parameters" open={showMeta} onToggle={() => setShowMeta(s=>!s)} />
             {showMeta && (
-                <MetaCard meta={meta} onChange={(m) => { setMeta(m); onChange({ meta: m }) }} />
+                <ParamsPanel
+                    meta={meta}
+                    onChange={(m) => { setMeta(m); onChange({ meta: m }) }}
+                />
             )}
         </div>
     )
 })
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/* Meta + Tags card (EN labels) */
 
-function MetaCard({ meta, onChange }: { meta: TestMeta; onChange(m: TestMeta): void }) {
-    const m = meta ?? { tags: [] }
-    const set = (k: keyof TestMeta, v: string) => onChange({ ...m, [k]: v })
-    const setTags = (tags: string[]) => onChange({ ...m, tags })
-
-    return (
-        <div style={metaCard}>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0, 1fr))', gap:10 }}>
-                <LabeledInput label="Status" value={m.status ?? ''} onChange={v=>set('status', v)} />
-                <LabeledInput label="Priority" value={m.priority ?? ''} onChange={v=>set('priority', v)} />
-                <LabeledInput label="Component" value={m.component ?? ''} onChange={v=>set('component', v)} />
-                <LabeledInput label="Owner" value={m.owner ?? ''} onChange={v=>set('owner', v)} />
-                <LabeledInput label="Folder" value={m.folder ?? ''} onChange={v=>set('folder', v)} />
-                <LabeledInput label="Estimated Time" value={m.estimated ?? ''} onChange={v=>set('estimated', v)} />
-                <LabeledInput label="Test Type" value={m.testType ?? ''} onChange={v=>set('testType', v)} />
-                <LabeledInput label="Automation" value={m.automation ?? ''} onChange={v=>set('automation', v)} />
-                <LabeledInput label="Assigned To" value={m.assignedTo ?? ''} onChange={v=>set('assignedTo', v)} />
-            </div>
-
-            <div style={{ marginTop: 10 }}>
-                <label style={labelSm}>Tags</label>
-                <TagsEditor value={m.tags ?? []} onChange={setTags} />
-            </div>
-        </div>
-    )
-}
-
-function LabeledInput({ label, value, onChange }: { label: string; value: string; onChange(v: string): void }) {
-    return (
-        <div>
-            <label style={labelSm}>{label}</label>
-            <input
-                value={value}
-                onChange={e=>onChange(e.target.value)}
-                style={input}
-                placeholder={label}
-            />
-        </div>
-    )
-}
-
-function TagsEditor({ value, onChange }: { value: string[]; onChange(v: string[]): void }) {
-    const [draft, setDraft] = React.useState('')
-    const add = (t: string) => {
-        const tag = t.trim()
-        if (!tag) return
-        if (value.includes(tag)) { setDraft(''); return }
-        onChange([...value, tag]); setDraft('')
-    }
-    const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault(); add(draft)
-        } else if (e.key === 'Backspace' && draft === '' && value.length) {
-            onChange(value.slice(0, -1))
-        }
-    }
-    const remove = (tag: string) => onChange(value.filter(t => t !== tag))
-
-    return (
-        <div style={tagsBox}>
-            {value.map(t => (
-                <span key={t} style={tagChip}>{t}<button onClick={()=>remove(t)} style={tagX} title="Remove">×</button></span>
-            ))}
-            <input
-                value={draft}
-                onChange={e=>setDraft(e.target.value)}
-                onKeyDown={onKey}
-                onBlur={() => add(draft)}
-                placeholder="Add tag…"
-                style={{ ...input, border:'none', outline:'none', minWidth: 120 }}
-            />
-        </div>
-    )
-}
-
+const SectionHeader = (
+    { title, open, count, onToggle, right }:
+        { title: string; open: boolean; count?: number; onToggle(): void; right?: React.ReactNode }
+) => (
+    <div className="section-header" data-spoiler data-nopress>
+        <button type="button" onClick={onToggle}>
+            <span style={{ width:14, textAlign:'center' }}>{open ? '▾' : '▸'}</span>
+            <span>{title}{typeof count === 'number' ? ` (${count})` : ''}</span>
+        </button>
+        <span className="spacer" />
+        {right}
+    </div>
+)
 /* ────────────────────────────────────────────────────────────────────────── */
-/* Markdown Block with toolbar + preview (без wiki-refs здесь) */
+/* Markdown Block (для Details) — оставляем прежнюю логику */
 function MdBlock({ label, value, onChange }: { label: string; value: string; onChange(v: string): void }) {
     const [preview, setPreview] = React.useState(false)
     const mdRef = React.useRef<MdApi | null>(null)
     const Btn: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = (bp) => (
-        <button {...bp} style={{ ...iconBtn, padding:'2px 6px', marginLeft: 4 }} />
+        <button {...bp} className="btn-icon" style={{ padding:'2px 6px', marginLeft:4 }} />
     )
 
     return (
-        <div style={{ marginTop: 10 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <label style={{ display:'block', fontSize:12, color:'#555' }}>{label}</label>
-                <div style={{ marginLeft: 'auto', display:'flex', alignItems:'center', gap:4 }}>
-                    <span style={{ fontSize:12, color:'#666' }}>View:</span>
+        <div className="md-block">
+            <div className="md-block-head">
+                <label className="label-sm">{label}</label>
+                <div className="md-view">
+                    <span className="muted">View:</span>
                     <Btn onClick={()=>setPreview(p=>!p)}>{preview ? 'Raw' : 'Preview'}</Btn>
                 </div>
             </div>
 
-            <div style={{ display:'flex', gap:4, margin:'6px 0' }}>
+            <div className="md-toolbar">
                 <Btn title="Bold" onClick={()=>mdRef.current?.wrap('**','**')}>B</Btn>
                 <Btn title="Italic" onClick={()=>mdRef.current?.wrap('*','*')}><i>I</i></Btn>
                 <Btn title="Underline" onClick={()=>mdRef.current?.wrap('__','__')}><u>U</u></Btn>
-                <div style={{ width:1, background:'#e6e6e6', margin:'0 2px' }} />
+                <div className="divider" />
                 <Btn title="Bulleted list" onClick={()=>mdRef.current?.insertPrefix('-')}>•</Btn>
                 <Btn title="Numbered list" onClick={()=>mdRef.current?.insertPrefix('1.')}>1.</Btn>
-                <div style={{ width:1, background:'#e6e6e6', margin:'0 2px' }} />
+                <div className="divider" />
                 <Btn title="Code" onClick={()=>mdRef.current?.wrap('`','`')}>{'</>'}</Btn>
                 <Btn title="Link" onClick={()=>mdRef.current?.wrap('[','](url)')}>🔗</Btn>
                 <Btn title="Image" onClick={()=>mdRef.current?.wrap('![','](image.png)')}>🖼️</Btn>
             </div>
 
-            <MdArea value={value} onChange={onChange} rows={4} preview={preview} apiRef={mdRef} placeholder={label} />
+            <MdArea value={value} onChange={onChange} rows={4} preview={preview} placeholder={label} />
         </div>
     )
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/* Styles */
-const thCell: React.CSSProperties = { padding:'8px 10px', borderRight:'1px solid #e9e9e9' }
-const btnSmall: React.CSSProperties = { padding:'4px 8px', fontSize:12, border:'1px solid #ccc', borderRadius:6, background:'#f7f7f7' }
-const iconBtn: React.CSSProperties = { border:'1px solid #ddd', background:'#fff', borderRadius:6, padding:'1px 5px', cursor:'pointer', fontSize:11 }
-
-const labelSm: React.CSSProperties = { display:'block', fontSize:12, color:'#555', marginBottom:4 }
-const input: React.CSSProperties = {
-    width:'100%', padding:'8px 10px', fontSize:13, borderRadius:8, border:'1px solid #ccc', boxSizing:'border-box'
-}
-const metaCard: React.CSSProperties = {
-    border: '1px solid #e5e5e5', borderRadius: 10, padding: 12, background:'#fafafa'
-}
-
-const cardBox: React.CSSProperties = {
-    border: '1px solid #eee', borderRadius: 10, padding: 10, background:'#fff'
-}
-
-const tagsBox: React.CSSProperties = {
-    display:'flex', flexWrap:'wrap', gap:6, padding:6, border:'1px dashed #cfcfcf',
-    borderRadius:8, background:'#fff'
-}
-const tagChip: React.CSSProperties = {
-    display:'inline-flex', alignItems:'center', gap:6, padding:'2px 8px', borderRadius:999,
-    border:'1px solid #d7e3ff', background:'#eef4ff', fontSize:12
-}
-const tagX: React.CSSProperties = {
-    border:'none', background:'transparent', cursor:'pointer', fontSize:12, color:'#555'
-}
-
-const previewBox: React.CSSProperties = {
-    width:'100%', padding:'10px 12px', borderRadius:8, border:'1px solid #ddd', background:'#fff',
-    whiteSpace:'pre-wrap', overflowWrap:'anywhere', boxSizing:'border-box'
-}
-
-/* ────────────────────────────────────────────────────────────────────────── */
-/* Markdown textarea с API + preview, wiki-refs и автодополнением [[...]] */
+/* Markdown textarea с API + preview, wiki-refs и автодополнением [[...]]:
+   + toolbar появляется при фокусе поля;
+   + автогроу без скролла и без ручки ресайза. */
 type MdAreaProps = {
     value: string
     onChange(v: string): void
@@ -462,6 +397,7 @@ type MdApi = {
 function MdArea(props: MdAreaProps) {
     const { value, onChange, placeholder, rows = 3, apiRef, preview, resolveRefs, allTests = [] } = props
     const ref = React.useRef<HTMLTextAreaElement | null>(null)
+    const [active, setActive] = React.useState(false) // показывать тулбар
 
     // API наружу
     React.useEffect(() => {
@@ -499,6 +435,16 @@ function MdArea(props: MdAreaProps) {
         }
         return () => { if (apiRef) apiRef.current = null }
     }, [apiRef, onChange, value])
+
+    // автоувеличение высоты
+    const autoGrow = React.useCallback((el: HTMLTextAreaElement) => {
+        el.style.height = 'auto'
+        el.style.height = `${el.scrollHeight}px`
+    }, [])
+    React.useLayoutEffect(() => {
+        const el = ref.current
+        if (el) autoGrow(el)
+    }, [value, autoGrow])
 
     // ── состояние автодополнения [[...]]
     const [acOpen, setAcOpen]   = React.useState(false)
@@ -593,55 +539,71 @@ function MdArea(props: MdAreaProps) {
     function onChangeWrapped(e: React.ChangeEvent<HTMLTextAreaElement>) {
         onChange(e.target.value)
         updateSuggestions(e.target)
+        autoGrow(e.target)
     }
     function onClickOrKeyUp() {
         const el = ref.current; if (!el) return
         updateSuggestions(el)
     }
-    function onFocus() { const el = ref.current; if (el) updateSuggestions(el) }
 
-    const content = preview
-        ? (
-            <div style={previewBox} dangerouslySetInnerHTML={{ __html: mdToHtml(resolveRefs ? resolveRefs(value) : value) }} />
-        )
-        : (
-            <div style={{ position:'relative' }}>
-          <textarea
-              ref={ref}
-              value={value}
-              onChange={onChangeWrapped}
-              onKeyDown={onKeyDown}
-              onKeyUp={onClickOrKeyUp}
-              onClick={onClickOrKeyUp}
-              onFocus={onFocus}
-              placeholder={placeholder}
-              rows={rows}
-              style={{
-                  width:'100%',
-                  padding:'10px 12px',
-                  fontSize:14,
-                  borderRadius:8,
-                  border:'1px solid #ddd',
-                  resize:'vertical',
-                  boxSizing:'border-box'
-              }}
-          />
-                {acOpen && anchor && (
-                    <AutocompleteBox
-                        top={anchor.top}
-                        left={anchor.left}
-                        items={acItems}
-                        index={acIndex}
-                        onPick={applySuggestion}
-                        onClose={() => setAcOpen(false)}
-                    />
-                )}
-            </div>
-        )
+    const content = (
+        <div className="md-input-wrap">
+            {/* тулбар показываем только когда не preview и есть фокус */}
+            {!preview && active && (
+                <div
+                    className="md-toolbar"
+                    onMouseDown={(e)=>e.preventDefault()} /* не даём терять фокус при клике по кнопкам */
+                >
+                    <button className="btn-icon" title="Bold" onClick={()=>apiRef?.current?.wrap('**','**')}>B</button>
+                    <button className="btn-icon" title="Italic" onClick={()=>apiRef?.current?.wrap('*','*')}><i>I</i></button>
+                    <button className="btn-icon" title="Underline" onClick={()=>apiRef?.current?.wrap('__','__')}><u>U</u></button>
+                    <div className="divider" />
+                    <button className="btn-icon" title="Bulleted list" onClick={()=>apiRef?.current?.insertPrefix('-')}>•</button>
+                    <button className="btn-icon" title="Numbered list" onClick={()=>apiRef?.current?.insertPrefix('1.')}>1.</button>
+                    <div className="divider" />
+                    <button className="btn-icon" title="Code" onClick={()=>apiRef?.current?.wrap('`','`')}>{'</>'}</button>
+                    <button className="btn-icon" title="Link" onClick={()=>apiRef?.current?.wrap('[','](url)')}>🔗</button>
+                    <button className="btn-icon" title="Image" onClick={()=>apiRef?.current?.wrap('![','](image.png)')}>🖼️</button>
+                </div>
+            )}
+
+            <textarea
+                ref={ref}
+                value={value}
+                onChange={onChangeWrapped}
+                onKeyDown={onKeyDown}
+                onKeyUp={onClickOrKeyUp}
+                onClick={onClickOrKeyUp}
+                onFocus={()=>{ setActive(true); const el = ref.current; if (el) { updateSuggestions(el); autoGrow(el) }}}
+                onBlur={()=>{ setActive(false); setAcOpen(false) }}
+                placeholder={placeholder}
+                rows={rows}
+                className={`input textarea textarea-grow ${preview ? 'preview-mode' : ''}`}
+            />
+
+            {/* если preview включён, рендерим html поверх textarea */}
+            {preview && (
+                <div
+                    className="md-preview overlay"
+                    dangerouslySetInnerHTML={{ __html: mdToHtml(resolveRefs ? resolveRefs(value) : value) }}
+                />
+            )}
+
+            {acOpen && anchor && (
+                <AutocompleteBox
+                    top={anchor.top}
+                    left={anchor.left}
+                    items={acItems}
+                    index={acIndex}
+                    onPick={applySuggestion}
+                    onClose={() => setAcOpen(false)}
+                />
+            )}
+        </div>
+    )
 
     return content
 }
-
 
 /* ────────────────────────────────────────────────────────────────────────── */
 // Autocomplete UI
@@ -668,37 +630,18 @@ const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({
 
     return (
         <div
-            style={{
-                position: 'fixed',
-                top,
-                left,
-                zIndex: 9999,
-                width: 380,
-                maxHeight: 260,
-                overflow: 'auto',
-                background: '#fff',
-                border: '1px solid #ddd',
-                borderRadius: 8,
-                boxShadow: '0 10px 30px rgba(0,0,0,.15)',
-            }}
+            className="autocomplete"
+            style={{ top, left }}
             role="listbox"
             aria-label="Wiki references suggestions"
         >
             {items.length === 0 ? (
-                <div style={{ padding: 8, color: '#888' }}>No matches</div>
+                <div className="autocomplete-empty">No matches</div>
             ) : items.map((it, i) => (
                 <div
                     key={`${it.insert}-${i}`}
                     onMouseDown={(e) => { e.preventDefault(); onPick(it) }}
-                    style={{
-                        padding: '6px 10px',
-                        background: i === index ? 'rgba(22,119,255,.1)' : 'transparent',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                        textOverflow: 'ellipsis',
-                        overflow: 'hidden',
-                        userSelect: 'none',
-                    }}
+                    className={`autocomplete-item ${i === index ? 'active' : ''}`}
                     role="option"
                     aria-selected={i === index}
                     title={it.insert}
@@ -742,7 +685,7 @@ function mdToHtml(src: string): string {
 }
 function inlineMd(s: string): string {
     let x = escapeHtml(s)
-    x = x.replace(/`([^`]+)`/g, '<code style="background:#f2f2f2; padding:0 3px; border-radius:4px;">$1</code>')
+    x = x.replace(/`([^`]+)`/g, '<code class="code-inline">$1</code>')
     x = x.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     x = x.replace(/__([^_]+)__/g, '<u>$1</u>')
     x = x.replace(/\*([^*]+)\*/g, '<em>$1</em>')
@@ -752,7 +695,8 @@ function inlineMd(s: string): string {
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/* Step row — Markdown + preview + parts + wiki-refs + подсказки */
+/* Step row — Zephyr-like */
+
 type StepRowProps = {
     index: number
     step: Step
@@ -766,75 +710,54 @@ type StepRowProps = {
     onRemovePart(idx: number, kind: 'action'|'data'|'expected', pIndex: number): void
     resolveRefs(src: string): string
     allTests: TestCase[]
+    draggable?: boolean
+    onDragStart?(): void
+    onDragOver?(e: React.DragEvent): void
+    onDrop?(): void
+    preview: boolean
+    isNarrow: boolean
 }
 
 function StepRowBase(props: StepRowProps, ref: React.Ref<HTMLDivElement>) {
-    const { index, step } = props
-    const [hover, setHover] = React.useState(false)
-    const [preview, setPreview] = React.useState<{ action: boolean; data: boolean; expected: boolean }>({
-        action: false, data: false, expected: false
-    })
-    const togglePreview = (k: 'action'|'data'|'expected') =>
-        setPreview(p => ({ ...p, [k]: !p[k] }))
+    const { index, step, preview, isNarrow } = props
 
-    const cell = (kind: 'action'|'data'|'expected') => {
+    const PartAddBtn = ({ kind }: { kind: 'action'|'data'|'expected' }) => (
+        <button title={`Add ${kind} part`} onClick={() => props.onAddPart(index, kind)} className="add-part-btn">▦ Add part</button>
+    )
+
+    const cell = (kind: 'action'|'data'|'expected', label: string) => {
         const topValue = (step as any)[kind] ?? ''
         const parts = step.internal?.parts?.[kind] ?? []
         const setTop = (v: string) => props.onEditTop({ [kind]: v, ...(kind==='action' ? { text: v } : {}) })
         const mdRef = React.useRef<MdApi | null>(null)
-        const BarBtn: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = (bp) => (
-            <button {...bp} style={{ ...iconBtn, padding:'2px 6px' }} />
-        )
 
         return (
-            <div style={{ padding:10, borderRight:'1px solid #f0f0f0' }}>
-                {(hover || preview[kind]) && (
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, marginBottom:6 }}>
-                        <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-                            <BarBtn title="Bold" onClick={()=>mdRef.current?.wrap('**','**')}>B</BarBtn>
-                            <BarBtn title="Italic" onClick={()=>mdRef.current?.wrap('*','*')}><i>I</i></BarBtn>
-                            <BarBtn title="Underline" onClick={()=>mdRef.current?.wrap('__','__')}><u>U</u></BarBtn>
-                            <div style={{ width:1, background:'#e6e6e6', margin:'0 2px' }} />
-                            <BarBtn title="Bulleted list" onClick={()=>mdRef.current?.insertPrefix('-')}>•</BarBtn>
-                            <BarBtn title="Numbered list" onClick={()=>mdRef.current?.insertPrefix('1.')}>1.</BarBtn>
-                            <div style={{ width:1, background:'#e6e6e6', margin:'0 2px' }} />
-                            <BarBtn title="Code" onClick={()=>mdRef.current?.wrap('`','`')}>{'</>'}</BarBtn>
-                            <BarBtn title="Link" onClick={()=>mdRef.current?.wrap('[','](url)')}>🔗</BarBtn>
-                            <BarBtn title="Image" onClick={()=>mdRef.current?.wrap('![','](image.png)')}>🖼️</BarBtn>
-                        </div>
-
-                        <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-                            <span style={{ fontSize:12, color:'#666' }}>View:</span>
-                            <BarBtn onClick={() => togglePreview(kind)}>{preview[kind] ? 'Raw' : 'Preview'}</BarBtn>
-                            <div style={{ width:1, background:'#e6e6e6', margin:'0 2px' }} />
-                            <BarBtn title="Attach (mock)" onClick={props.onAttach}>📎</BarBtn>
-                            <BarBtn title="Clone step" onClick={props.onClone}>⎘</BarBtn>
-                            <BarBtn title="Add next step" onClick={props.onAddNext}>＋</BarBtn>
-                            <BarBtn title={`Add ${kind} part`} onClick={() => props.onAddPart(index, kind)}>▦</BarBtn>
-                        </div>
-                    </div>
-                )}
+            <div className="step-cell">
+                <div className="cell-head">
+                    <div className="cell-title">{label}</div>
+                    <PartAddBtn kind={kind} />
+                </div>
 
                 <MdArea
                     value={topValue}
                     onChange={setTop}
-                    placeholder={`${kind[0].toUpperCase()+kind.slice(1)} (optional)…`}
+                    placeholder={`${label}…`}
                     apiRef={mdRef}
-                    preview={preview[kind]}
+                    preview={preview}
                     resolveRefs={props.resolveRefs}
                     allTests={props.allTests}
                 />
 
                 {parts.length > 0 && (
-                    <div style={{ marginTop:8, display:'grid', gap:8 }}>
+                    <div className="parts">
                         {parts.map((p: PartItem, pi: number) => (
                             <PartItemRow
                                 key={p.id}
-                                label={`${kind} part #${pi+1}`}
+                                label={`${label} part #${pi+1}`}
                                 value={p.text}
                                 onChange={(v) => props.onEditPart(index, kind, pi, { text: v })}
                                 onRemove={() => props.onRemovePart(index, kind, pi)}
-                                preview={preview[kind]}
+                                preview={preview}
                                 resolveRefs={props.resolveRefs}
                                 allTests={props.allTests}
                             />
@@ -848,25 +771,38 @@ function StepRowBase(props: StepRowProps, ref: React.Ref<HTMLDivElement>) {
     return (
         <div
             ref={ref}
-            onMouseEnter={() => setHover(true)}
-            onMouseLeave={() => setHover(false)}
-            style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', borderTop:'1px solid #eee', position:'relative' }}
+            draggable={props.draggable}
+            onDragStart={props.onDragStart}
+            onDragOver={props.onDragOver}
+            onDrop={props.onDrop}
+            className="step-card"
         >
-            <div style={{ position:'absolute', marginLeft:-28, display:'flex', flexDirection:'column', alignItems:'center' }}>
-                <div style={{ fontSize:12, color:'#999', marginTop:10 }}>{index+1}</div>
-                {hover && <button onClick={props.onRemove} title="Remove step" style={iconBtn}>🗑️</button>}
+            <div className="step-header">
+                <div className="drag" title="Drag to reorder">≡</div>
+                <div className="step-title">Step {index + 1}</div>
+                <span className="spacer" />
+                <button title="Attach (mock)" onClick={props.onAttach} className="btn-small">📎</button>
+                <button title="Clone step" onClick={props.onClone} className="btn-small">⎘</button>
+                <button title="Add next step" onClick={props.onAddNext} className="btn-small">＋</button>
+                <button title="Remove step" onClick={props.onRemove} className="btn-small">🗑️</button>
             </div>
 
-            {cell('action')}
-            {cell('data')}
-            {cell('expected')}
+            <div className={`step-grid ${isNarrow ? 'stack' : ''}`}>
+                {!isNarrow && (
+                    <div className="step-num">
+                        <div className="step-num-badge">{index + 1}</div>
+                    </div>
+                )}
+                <div>{cell('action','Action')}</div>
+                <div>{cell('data','Data')}</div>
+                <div>{cell('expected','Expected result')}</div>
+            </div>
         </div>
     )
 }
-
 const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(StepRowBase)
 
-/* Part row */
+/* Part row: тулбар только при фокусе (через MdArea) */
 function PartItemRow({
                          label, value, onChange, onRemove, preview, resolveRefs, allTests
                      }: {
@@ -879,26 +815,11 @@ function PartItemRow({
     allTests: TestCase[]
 }) {
     const mdRef = React.useRef<MdApi | null>(null)
-    const [hover, setHover] = React.useState(false)
-    const SmallBtn: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = (bp) => (
-        <button {...bp} style={{ ...iconBtn, padding:'1px 4px', fontSize:10 }} />
-    )
-
     return (
-        <div onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}>
-            {(hover || preview) && (
-                <div style={{ display:'flex', gap:4, alignItems:'center', marginBottom:6 }}>
-                    <SmallBtn title="Bold" onClick={()=>mdRef.current?.wrap('**','**')}>B</SmallBtn>
-                    <SmallBtn title="Italic" onClick={()=>mdRef.current?.wrap('*','*')}><i>I</i></SmallBtn>
-                    <SmallBtn title="Underline" onClick={()=>mdRef.current?.wrap('__','__')}><u>U</u></SmallBtn>
-                    <div style={{ width:1, background:'#e6e6e6', margin:'0 2px' }} />
-                    <SmallBtn title="Code" onClick={()=>mdRef.current?.wrap('`','`')}>{'</>'}</SmallBtn>
-                    <SmallBtn title="Link" onClick={()=>mdRef.current?.wrap('[','](url)')}>🔗</SmallBtn>
-                    <SmallBtn title="Image" onClick={()=>mdRef.current?.wrap('![','](image.png)')}>🖼️</SmallBtn>
-                    <span style={{ flex:1 }} />
-                    <SmallBtn title="Remove part" onClick={onRemove}>×</SmallBtn>
-                </div>
-            )}
+        <div className="part-row">
+            <div className="part-remove">
+                <button className="btn-icon" title="Remove part" onClick={onRemove}>×</button>
+            </div>
             <MdArea
                 value={value}
                 onChange={onChange}

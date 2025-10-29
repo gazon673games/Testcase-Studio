@@ -1,4 +1,3 @@
-// src/core/export.ts
 import type { Attachment, PartItem, RootState, Step, TestCase, TestMeta } from './domain'
 import { materializeSharedSteps } from './shared'
 
@@ -14,17 +13,22 @@ export type ExportTest = {
 
 /**
  * Политика экспорта шага:
- * - если есть parts с export===true — склеиваем их по \n
+ * - если есть parts — склеиваем их по \n
  * - иначе берём top-level поля (action/data/expected) или text для совместимости
  */
 function exportOneStep(s: Step): ExportStep {
-    const pick = (kind: 'action'|'data'|'expected') => {
+    const pick = (kind: 'action' | 'data' | 'expected') => {
         const parts: PartItem[] | undefined = s.internal?.parts?.[kind]
-        const flagged = (parts ?? []).filter(p => p.export)
-        if (flagged.length) return flagged.map(p => p.text ?? '').join('\n').trim() || undefined
+        if (parts && parts.length > 0) {
+            // экспортируем все parts, склеивая их через перевод строки
+            return parts.map(p => p.text ?? '').join('\n').trim() || undefined
+        }
+
+        // иначе fallback на поля шага
         const top = (s as any)[kind] ?? (kind === 'action' ? s.text : undefined)
         return (top ?? '').toString() || undefined
     }
+
     return {
         action: pick('action'),
         data: pick('data'),
@@ -32,7 +36,10 @@ function exportOneStep(s: Step): ExportStep {
     }
 }
 
-/** Построить «канонический экспорт» для теста с разворотом shared-steps. */
+/**
+ * Построить «канонический экспорт» для теста
+ * с разворотом shared-steps (если есть RootState)
+ */
 export function buildExport(test: TestCase, state?: RootState): ExportTest {
     const steps = state ? materializeSharedSteps(test.steps, state.sharedSteps) : test.steps
     return {

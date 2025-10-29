@@ -1,23 +1,53 @@
 {
   "id": "76053f9c-f685-4fc8-b588-4cdc89125316",
   "name": "Test1",
-  "description": "dddddddddddddfsdsdfsdfsdfsd",
+  "description": "дескрипшен",
   "steps": [
     {
-      "id": "a37df781-5219-446a-ba20-a3dbd85a4ee5",
-      "text": "dsfsdfsd",
-      "action": "dsfsdfsd"
-    },
-    {
       "id": "b9e76c30-4746-4c43-bf92-d778e30ac42e",
-      "text": "Step 2"
+      "text": "ыфвфы",
+      "action": "ыфвфы",
+      "data": "вфыв",
+      "expected": "фы",
+      "internal": {
+        "parts": {
+          "action": [
+            {
+              "id": "821a3171-44fc-47b0-94a4-1a68ae89da3d",
+              "text": "1"
+            },
+            {
+              "id": "3936a66c-642d-4a25-a570-878a4960f9e7",
+              "text": "2"
+            },
+            {
+              "id": "aed02b9d-b278-40bb-b5ad-04f341b4ec16",
+              "text": "3"
+            }
+          ],
+          "data": [],
+          "expected": []
+        }
+      }
     }
   ],
   "attachments": [],
   "links": [],
-  "updatedAt": "2025-10-27T18:07:25.502Z",
+  "updatedAt": "2025-10-29T11:26:23.986Z",
   "meta": {
     "tags": [],
-    "objective": "sadsa"
+    "objective": "sadsa",
+    "status": "у",
+    "priority": "1",
+    "component": "23",
+    "estimated": "4",
+    "folder": "56",
+    "owner": "7",
+    "automation": "7",
+    "assignedTo": "7",
+    "params": {
+      "param": ""
+    },
+    "preconditions": "ыыцы"
   }
 }

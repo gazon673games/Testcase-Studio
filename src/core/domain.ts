@@ -77,6 +77,10 @@ export interface TestMeta {
     preconditions?: string
 }
 
+export interface ExportConfig {
+    enabled: boolean
+}
+
 export interface TestCase {
     id: ID
     name: string
@@ -87,6 +91,7 @@ export interface TestCase {
     updatedAt: string
     /** 🆕 параметры/теги */
     meta?: TestMeta
+    exportCfg?: ExportConfig
 }
 
 export interface Folder {
@@ -126,7 +131,12 @@ export function mkStep(action = '', data = '', expected = ''): Step {
 }
 
 export function mkTest(name: string, description?: string): TestCase {
-    return { id: uuid(), name, description, steps: [], attachments: [], links: [], updatedAt: nowISO(), meta: { tags: [] } }
+    return {
+        id: uuid(), name, description, steps: [], attachments: [], links: [],
+        updatedAt: nowISO(),
+        meta: { tags: [] },
+        exportCfg: { enabled: true }
+    }
 }
 
 export function mkFolder(name: string, children: Array<Folder | TestCase> = []): Folder {

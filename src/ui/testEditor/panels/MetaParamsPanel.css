@@ -1,0 +1,39 @@
+.params-panel {}
+
+.params-section { margin-top: 12px; }
+.params-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.params-list {
+    display: grid;
+    gap: 8px;
+}
+.param-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    gap: 8px;
+    align-items: center;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    background: #fff;
+    padding: 8px;
+}
+.param-remove {
+    width: 30px;
+    height: 30px;
+    line-height: 1;
+    text-align: center;
+}
+.params-create-bar {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+/* responsive */
+@media (max-width: 920px) {
+    .param-row { grid-template-columns: 1fr 1fr auto; }
+}
