@@ -1,38 +1,72 @@
-import type { Attachment, PartItem, RootState, Step, TestCase, TestMeta } from './domain'
+// @core/export.ts
+import type {
+    Attachment,
+    PartItem,
+    RootState,
+    Step,
+    TestCase,
+    TestMeta,
+} from './domain'
 import { materializeSharedSteps } from './shared'
 
-export type ExportStep = { action?: string; data?: string; expected?: string }
+/** Экспортируемая форма одного шага */
+export type ExportStep = {
+    action?: string
+    data?: string
+    expected?: string
+    /** 🆕 Вложения шага (берём и из step.attachments, и из internal.meta.attachments) */
+    attachments?: Attachment[]
+}
+
+/** Экспортируемая форма теста */
 export type ExportTest = {
     id: string
     name: string
     description?: string
     steps: ExportStep[]
+    /** Вложения уровня теста (как было) */
     attachments: Attachment[]
     meta?: TestMeta
 }
 
-/**
- * Политика экспорта шага:
- * - если есть parts — склеиваем их по \n
- * - иначе берём top-level поля (action/data/expected) или text для совместимости
- */
-function exportOneStep(s: Step): ExportStep {
-    const pick = (kind: 'action' | 'data' | 'expected') => {
-        const parts: PartItem[] | undefined = s.internal?.parts?.[kind]
-        if (parts && parts.length > 0) {
-            // экспортируем все parts, склеивая их через перевод строки
-            return parts.map(p => p.text ?? '').join('\n').trim() || undefined
-        }
+/* ────────────────────────────────────────────────────────── */
+/* helpers */
 
-        // иначе fallback на поля шага
-        const top = (s as any)[kind] ?? (kind === 'action' ? s.text : undefined)
-        return (top ?? '').toString() || undefined
+function pickColumn(s: Step, kind: 'action' | 'data' | 'expected') {
+    const parts: PartItem[] | undefined = s.internal?.parts?.[kind]
+    if (parts && parts.length > 0) {
+        // Склеиваем все части через перенос строки
+        const joined = parts.map(p => p.text ?? '').join('\n').trim()
+        return joined || undefined
     }
+    // Fallback: топ-уровень, для action ещё учитываем s.text
+    const top = (s as any)[kind] ?? (kind === 'action' ? s.text : undefined)
+    const val = (top ?? '').toString().trim()
+    return val || undefined
+}
 
+/** Собираем вложения шага из нового и старого мест */
+function collectStepAttachments(s: Step): Attachment[] {
+    const fromNew = Array.isArray(s.attachments) ? s.attachments : []
+    const legacy = (s.internal as any)?.meta?.attachments
+    const fromLegacy = Array.isArray(legacy) ? legacy : []
+    // Уберём возможные дубликаты по id
+    const map = new Map<string, Attachment>()
+    for (const a of [...fromLegacy, ...fromNew]) {
+        if (a && a.id) map.set(a.id, a)
+    }
+    return [...map.values()]
+}
+
+/* ────────────────────────────────────────────────────────── */
+/* экспорт шага/теста */
+
+function exportOneStep(s: Step): ExportStep {
     return {
-        action: pick('action'),
-        data: pick('data'),
-        expected: pick('expected'),
+        action: pickColumn(s, 'action'),
+        data: pickColumn(s, 'data'),
+        expected: pickColumn(s, 'expected'),
+        attachments: collectStepAttachments(s),
     }
 }
 

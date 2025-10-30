@@ -1,10 +1,26 @@
+// @core/domain.ts
 import { v4 as uuid } from 'uuid'
+
+/* ────────────────────────────────────────────────────────── */
+/* БАЗОВЫЕ ТИПЫ */
 
 export type ProviderKind = 'zephyr' | 'allure'
 export type ID = string
 export type SharedStepID = string
 
-/** Элемент «части» внутри одного из столбцов Action/Data/Expected */
+/* ────────────────────────────────────────────────────────── */
+/* ВЛОЖЕНИЯ (файлы) */
+
+export interface Attachment {
+    id: ID
+    name: string
+    /** Абсолютный/относительный путь или data:URL */
+    pathOrDataUrl: string
+}
+
+/* ────────────────────────────────────────────────────────── */
+/* ШАГ — ЧАСТИ (локальная детализация Action/Data/Expected) */
+
 export interface PartItem {
     id: ID
     text: string
@@ -12,10 +28,10 @@ export interface PartItem {
     export?: boolean
 }
 
-/** Неэкспортируемые расширения шага */
 export interface StepInternal {
     note?: string
     url?: string
+    /** произвольные служебные поля */
     meta?: Record<string, unknown>
     /** Локальные разбиения каждого столбца на части */
     parts?: {
@@ -30,6 +46,9 @@ export interface SubStep {
     title?: string
     text?: string
 }
+
+/* ────────────────────────────────────────────────────────── */
+/* ШАГ ТЕСТА */
 
 export interface Step {
     id: ID
@@ -46,22 +65,34 @@ export interface Step {
     subSteps?: SubStep[]
     internal?: StepInternal
 
+    /** Ссылка на «шаренный» шаг (если используется) */
     usesShared?: SharedStepID
+
+    /** 🆕 Вложения конкретного шага */
+    attachments?: Attachment[]
 }
 
-export interface Attachment {
-    id: ID
-    name: string
-    pathOrDataUrl: string
-}
+/* ────────────────────────────────────────────────────────── */
+/* МЕТАДАННЫЕ ТЕСТА (теги + кастомные параметры) */
 
-export interface TestCaseLink {
-    provider: ProviderKind
-    externalId: string
-}
-
-/** Метаданные теста (параметры и теги) */
 export interface TestMeta {
+    /**
+     * Кастомные параметры (вместо «базовых»).
+     * UI может давать редактировать только этот словарь.
+     */
+    params?: Record<string, string>
+
+    /** Теги. */
+    tags: string[]
+
+    /** Markdown-поля (как и раньше): */
+    objective?: string
+    preconditions?: string
+
+    /**
+     * 👇 Опциональные «базовые» поля оставлены для обратной совместимости.
+     * Если не нужны — UI их просто не показывает/не пишет.
+     */
     status?: string
     priority?: string
     component?: string
@@ -71,11 +102,18 @@ export interface TestMeta {
     testType?: string
     automation?: string
     assignedTo?: string
-    tags: string[]
-    /** Markdown поля: */
-    objective?: string
-    preconditions?: string
 }
+
+/* ────────────────────────────────────────────────────────── */
+/* ССЫЛКИ НА ВНЕШНИЕ TMS */
+
+export interface TestCaseLink {
+    provider: ProviderKind
+    externalId: string
+}
+
+/* ────────────────────────────────────────────────────────── */
+/* ТЕСТ, ПАПКИ, ШАРЕННЫЕ ШАГИ, КОРНЕВОЕ СОСТОЯНИЕ */
 
 export interface ExportConfig {
     enabled: boolean
@@ -86,11 +124,19 @@ export interface TestCase {
     name: string
     description?: string
     steps: Step[]
+
+    /** Вложения теста (глобальные, на уровне тест-кейса) */
     attachments: Attachment[]
+
+    /** Ссылки на внешние системы */
     links: TestCaseLink[]
+
     updatedAt: string
-    /** 🆕 параметры/теги */
+
+    /** Параметры/теги */
     meta?: TestMeta
+
+    /** Флаги экспорта */
     exportCfg?: ExportConfig
 }
 
@@ -112,6 +158,9 @@ export interface RootState {
     sharedSteps: SharedStep[]
 }
 
+/* ────────────────────────────────────────────────────────── */
+/* УТИЛИТЫ/ФАБРИКИ */
+
 export function nowISO() { return new Date().toISOString() }
 
 export function mkSubStep(title = '', text = ''): SubStep {
@@ -126,15 +175,21 @@ export function mkStep(action = '', data = '', expected = ''): Step {
         expected,
         text: action || '',
         subSteps: [],
-        internal: { parts: { action: [], data: [], expected: [] } }
+        internal: { parts: { action: [], data: [], expected: [] } },
+        attachments: [] // 🆕 по умолчанию пустой список вложений шага
     }
 }
 
 export function mkTest(name: string, description?: string): TestCase {
     return {
-        id: uuid(), name, description, steps: [], attachments: [], links: [],
+        id: uuid(),
+        name,
+        description,
+        steps: [],
+        attachments: [],  // вложения теста
+        links: [],
         updatedAt: nowISO(),
-        meta: { tags: [] },
+        meta: { tags: [], params: {} }, // 🆕 по умолчанию — пустые кастомные параметры
         exportCfg: { enabled: true }
     }
 }

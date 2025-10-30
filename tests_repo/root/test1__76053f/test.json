@@ -5,29 +5,84 @@
   "steps": [
     {
       "id": "b9e76c30-4746-4c43-bf92-d778e30ac42e",
-      "text": "Выполнить POST запрос на создание Собственника",
-      "action": "Выполнить POST запрос на создание Собственника",
-      "data": " {{ms-insurance-contract-storage}}/api/v1/internal/contracts/{{policyId}}/documents",
-      "expected": "фы",
+      "text": "экшен",
+      "action": "экшен",
+      "data": "дата",
+      "expected": "экспектер резалт",
       "internal": {
         "parts": {
           "action": [
             {
               "id": "986d9a0c-fbf5-4215-b9ec-32a9a52d5055",
-              "text": ""
+              "text": "парт экшен"
+            },
+            {
+              "id": "3b8121ba-baa2-4e56-82be-2cd214ce414d",
+              "text": "парт экшен 2"
             }
           ],
-          "data": [],
-          "expected": []
+          "data": [
+            {
+              "id": "b095f769-b3ce-4c97-94d0-0317a93aef01",
+              "text": "парт  дата"
+            },
+            {
+              "id": "271dd3ff-a2d9-4df3-bc8b-9786a005842f",
+              "text": "парт  дата 2"
+            }
+          ],
+          "expected": [
+            {
+              "id": "0b790dae-60be-4404-baf7-ee383fb78fee",
+              "text": "парт  дата"
+            },
+            {
+              "id": "8eb1fbd7-875e-430b-93a5-ad6e1af13624",
+              "text": "парт  дата  2"
+            }
+          ]
+        },
+        "meta": {
+          "attachments": [
+            {
+              "id": "92659506-31ee-4a20-872a-cf0737ed4a18",
+              "name": "test-Test1.json",
+              "pathOrDataUrl": "data:application/json;base64,ewogICJpZCI6ICI3NjA1M2Y5Yy1mNjg1LTRmYzgtYjU4OC00Y2RjODkxMjUzMTYiLAogICJuYW1lIjogIlRlc3QxIiwKICAiZGVzY3JpcHRpb24iOiAi0LTQtdGB0LrRgNC40L/RiNC10L0iLAogICJzdGVwcyI6IFsKICAgIHsKICAgICAgImRhdGEiOiAiIHt7bXMtaW5zdXJhbmNlLWNvbnRyYWN0LXN0b3JhZ2V9fS9hcGkvdjEvaW50ZXJuYWwvY29udHJhY3RzL3t7cG9saWN5SWR9fS9kb2N1bWVudHMiLAogICAgICAiZXhwZWN0ZWQiOiAi0YTRiyIKICAgIH0sCiAgICB7CiAgICAgICJhY3Rpb24iOiAi0KLQtdC70L4g0LfQsNC/0YDQvtGB0LBcblxue1xuICAgIFwicmVxdWVzdElkXCI6IFwie3skZ3VpZH19XCIsXG4gICAgXCJjb250cmFjdElkXCI6IFwie3tjb250cmFjdElkfX1cIixcbiAgICBcImluc3VyYW5jZU9iamVjdElkXCI6IFwie3skZ3VpZH19XCIsXG4gICAgXCJlbnRpdHlJZFwiOiBcInt7JGd1aWR9fVwiLFxuICAgIFwiZW50aXR5VHlwZVwiOiBcIlBFUlNPTlwiLFxuICAgIFwiY29udGV4dFwiOiB7XG4gICAgICAgIFwiYWRkaXRpb25hbEluZm9cIjogXCLQndC10LrQvtGC0L7RgNCw0Y8g0LTQvtC/0L7Qu9C90LjRgtC10LvRjNC90LDRjyDQuNC90YTQvtGA0LzQsNGG0LjRj1wiXG4gICAgfSxcbiAgICBcIm5lZWRTY3JlZW5pbmdcIjogdHJ1ZSxcbiAgICBcInNjcmVlbmluZ1Bhc3NlZFwiOiB0cnVlLFxuICAgIFwibmVlZFNjb3JpbmdcIjogdHJ1ZSxcbiAgICBcInNjb3JpbmdWYWx1ZVwiOiAwLFxuICAgIFwic2NvcmluZ1JlcXVlc3RJZFwiOiBcInt7JGd1aWR9fVwiXG59XG5cbiIKICAgIH0KICBdLAogICJhdHRhY2htZW50cyI6IFtdLAogICJtZXRhIjogewogICAgInRhZ3MiOiBbXSwKICAgICJvYmplY3RpdmUiOiAic2Fkc2FmZHNmc2QiLAogICAgImVzdGltYXRlZCI6ICI0IiwKICAgICJmb2xkZXIiOiAiNTYiLAogICAgIm93bmVyIjogIjciLAogICAgImF1dG9tYXRpb24iOiAiNyIsCiAgICAiYXNzaWduZWRUbyI6ICI3IiwKICAgICJwYXJhbXMiOiB7CiAgICAgICJwYXJhbSI6ICIiLAogICAgICAic3RhdHVzIjogItGDIiwKICAgICAgInByaW9yaXR5IjogIjEiLAogICAgICAiY29tcG9uZW50IjogIjIzIgogICAgfSwKICAgICJwcmVjb25kaXRpb25zIjogItGL0YvRhtGLc2Rmc2ZzZGYiCiAgfQp9"
+            }
+          ]
         }
       }
     },
     {
+      "id": "62335faf-f6aa-4c87-9c81-d5ac24f87d6f",
+      "action": "экшен 2",
+      "data": "дата 2",
+      "expected": "экспектер резалт 2",
+      "text": "экшен 2",
+      "internal": {
+        "parts": {
+          "action": [],
+          "data": [],
+          "expected": []
+        },
+        "meta": {
+          "attachments": [
+            {
+              "id": "fc04d21e-9995-40a0-a9e3-9a21ca06ec49",
+              "name": "test-Test1.json",
+              "pathOrDataUrl": "data:application/json;base64,ewogICJpZCI6ICI3NjA1M2Y5Yy1mNjg1LTRmYzgtYjU4OC00Y2RjODkxMjUzMTYiLAogICJuYW1lIjogIlRlc3QxIiwKICAiZGVzY3JpcHRpb24iOiAi0LTQtdGB0LrRgNC40L/RiNC10L0iLAogICJzdGVwcyI6IFsKICAgIHsKICAgICAgImRhdGEiOiAiIHt7bXMtaW5zdXJhbmNlLWNvbnRyYWN0LXN0b3JhZ2V9fS9hcGkvdjEvaW50ZXJuYWwvY29udHJhY3RzL3t7cG9saWN5SWR9fS9kb2N1bWVudHMiLAogICAgICAiZXhwZWN0ZWQiOiAi0YTRiyIKICAgIH0sCiAgICB7CiAgICAgICJhY3Rpb24iOiAi0KLQtdC70L4g0LfQsNC/0YDQvtGB0LBcblxue1xuICAgIFwicmVxdWVzdElkXCI6IFwie3skZ3VpZH19XCIsXG4gICAgXCJjb250cmFjdElkXCI6IFwie3tjb250cmFjdElkfX1cIixcbiAgICBcImluc3VyYW5jZU9iamVjdElkXCI6IFwie3skZ3VpZH19XCIsXG4gICAgXCJlbnRpdHlJZFwiOiBcInt7JGd1aWR9fVwiLFxuICAgIFwiZW50aXR5VHlwZVwiOiBcIlBFUlNPTlwiLFxuICAgIFwiY29udGV4dFwiOiB7XG4gICAgICAgIFwiYWRkaXRpb25hbEluZm9cIjogXCLQndC10LrQvtGC0L7RgNCw0Y8g0LTQvtC/0L7Qu9C90LjRgtC10LvRjNC90LDRjyDQuNC90YTQvtGA0LzQsNGG0LjRj1wiXG4gICAgfSxcbiAgICBcIm5lZWRTY3JlZW5pbmdcIjogdHJ1ZSxcbiAgICBcInNjcmVlbmluZ1Bhc3NlZFwiOiB0cnVlLFxuICAgIFwibmVlZFNjb3JpbmdcIjogdHJ1ZSxcbiAgICBcInNjb3JpbmdWYWx1ZVwiOiAwLFxuICAgIFwic2NvcmluZ1JlcXVlc3RJZFwiOiBcInt7JGd1aWR9fVwiXG59XG5cbiIKICAgIH0KICBdLAogICJhdHRhY2htZW50cyI6IFtdLAogICJtZXRhIjogewogICAgInRhZ3MiOiBbXSwKICAgICJvYmplY3RpdmUiOiAic2Fkc2FmZHNmc2QiLAogICAgImVzdGltYXRlZCI6ICI0IiwKICAgICJmb2xkZXIiOiAiNTYiLAogICAgIm93bmVyIjogIjciLAogICAgImF1dG9tYXRpb24iOiAiNyIsCiAgICAiYXNzaWduZWRUbyI6ICI3IiwKICAgICJwYXJhbXMiOiB7CiAgICAgICJwYXJhbSI6ICIiLAogICAgICAic3RhdHVzIjogItGDIiwKICAgICAgInByaW9yaXR5IjogIjEiLAogICAgICAiY29tcG9uZW50IjogIjIzIgogICAgfSwKICAgICJwcmVjb25kaXRpb25zIjogItGL0YvRhtGLc2Rmc2ZzZGYiCiAgfQp9"
+            }
+          ]
+        }
+      },
+      "subSteps": []
+    },
+    {
       "id": "500618b4-9f0d-404c-ac3c-b38964e24ada",
-      "action": "Тело запроса\n\n{\n    \"requestId\": \"{{$guid}}\",\n    \"contractId\": \"{{contractId}}\",\n    \"insuranceObjectId\": \"{{$guid}}\",\n    \"entityId\": \"{{$guid}}\",\n    \"entityType\": \"PERSON\",\n    \"context\": {\n        \"additionalInfo\": \"Некоторая дополнительная информация\"\n    },\n    \"needScreening\": true,\n    \"screeningPassed\": true,\n    \"needScoring\": true,\n    \"scoringValue\": 0,\n    \"scoringRequestId\": \"{{$guid}}\"\n}\n\n",
+      "action": "степ 3",
       "data": "",
       "expected": "",
-      "text": "Тело запроса\n\n{\n    \"requestId\": \"{{$guid}}\",\n    \"contractId\": \"{{contractId}}\",\n    \"insuranceObjectId\": \"{{$guid}}\",\n    \"entityId\": \"{{$guid}}\",\n    \"entityType\": \"PERSON\",\n    \"context\": {\n        \"additionalInfo\": \"Некоторая дополнительная информация\"\n    },\n    \"needScreening\": true,\n    \"screeningPassed\": true,\n    \"needScoring\": true,\n    \"scoringValue\": 0,\n    \"scoringRequestId\": \"{{$guid}}\"\n}\n\n",
+      "text": "степ 3",
       "internal": {
         "parts": {
           "action": [],
@@ -41,23 +96,32 @@
       "subSteps": []
     }
   ],
-  "attachments": [],
+  "attachments": [
+    {
+      "id": "97c2f8c8-90d9-491e-ab63-6e2e0a9ec320",
+      "name": "test-Test1.json",
+      "pathOrDataUrl": "data:application/json;base64,ewogICJpZCI6ICI3NjA1M2Y5Yy1mNjg1LTRmYzgtYjU4OC00Y2RjODkxMjUzMTYiLAogICJuYW1lIjogIlRlc3QxIiwKICAiZGVzY3JpcHRpb24iOiAi0LTQtdGB0LrRgNC40L/RiNC10L0iLAogICJzdGVwcyI6IFsKICAgIHsKICAgICAgImRhdGEiOiAiIHt7bXMtaW5zdXJhbmNlLWNvbnRyYWN0LXN0b3JhZ2V9fS9hcGkvdjEvaW50ZXJuYWwvY29udHJhY3RzL3t7cG9saWN5SWR9fS9kb2N1bWVudHMiLAogICAgICAiZXhwZWN0ZWQiOiAi0YTRiyIKICAgIH0sCiAgICB7CiAgICAgICJhY3Rpb24iOiAi0KLQtdC70L4g0LfQsNC/0YDQvtGB0LBcblxue1xuICAgIFwicmVxdWVzdElkXCI6IFwie3skZ3VpZH19XCIsXG4gICAgXCJjb250cmFjdElkXCI6IFwie3tjb250cmFjdElkfX1cIixcbiAgICBcImluc3VyYW5jZU9iamVjdElkXCI6IFwie3skZ3VpZH19XCIsXG4gICAgXCJlbnRpdHlJZFwiOiBcInt7JGd1aWR9fVwiLFxuICAgIFwiZW50aXR5VHlwZVwiOiBcIlBFUlNPTlwiLFxuICAgIFwiY29udGV4dFwiOiB7XG4gICAgICAgIFwiYWRkaXRpb25hbEluZm9cIjogXCLQndC10LrQvtGC0L7RgNCw0Y8g0LTQvtC/0L7Qu9C90LjRgtC10LvRjNC90LDRjyDQuNC90YTQvtGA0LzQsNGG0LjRj1wiXG4gICAgfSxcbiAgICBcIm5lZWRTY3JlZW5pbmdcIjogdHJ1ZSxcbiAgICBcInNjcmVlbmluZ1Bhc3NlZFwiOiB0cnVlLFxuICAgIFwibmVlZFNjb3JpbmdcIjogdHJ1ZSxcbiAgICBcInNjb3JpbmdWYWx1ZVwiOiAwLFxuICAgIFwic2NvcmluZ1JlcXVlc3RJZFwiOiBcInt7JGd1aWR9fVwiXG59XG5cbiIKICAgIH0KICBdLAogICJhdHRhY2htZW50cyI6IFtdLAogICJtZXRhIjogewogICAgInRhZ3MiOiBbXSwKICAgICJvYmplY3RpdmUiOiAic2Fkc2FmZHNmc2QiLAogICAgImVzdGltYXRlZCI6ICI0IiwKICAgICJmb2xkZXIiOiAiNTYiLAogICAgIm93bmVyIjogIjciLAogICAgImF1dG9tYXRpb24iOiAiNyIsCiAgICAiYXNzaWduZWRUbyI6ICI3IiwKICAgICJwYXJhbXMiOiB7CiAgICAgICJwYXJhbSI6ICIiLAogICAgICAic3RhdHVzIjogItGDIiwKICAgICAgInByaW9yaXR5IjogIjEiLAogICAgICAiY29tcG9uZW50IjogIjIzIgogICAgfSwKICAgICJwcmVjb25kaXRpb25zIjogItGL0YvRhtGLc2Rmc2ZzZGYiCiAgfQp9"
+    }
+  ],
   "links": [],
-  "updatedAt": "2025-10-30T10:09:28.442Z",
+  "updatedAt": "2025-10-30T11:18:07.023Z",
   "meta": {
-    "tags": [],
-    "objective": "sadsafdsfsd",
-    "status": "у",
-    "priority": "1",
-    "component": "23",
+    "tags": [
+      "тег 1",
+      "тег 2"
+    ],
+    "objective": "обджектив",
     "estimated": "4",
     "folder": "56",
     "owner": "7",
     "automation": "7",
     "assignedTo": "7",
     "params": {
-      "param": ""
+      "param": "тест",
+      "status": "у",
+      "priority": "1",
+      "component": "23"
     },
-    "preconditions": "ыыцыsdfsfsdf"
+    "preconditions": "предикшенс"
   }
 }
