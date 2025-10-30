@@ -5,46 +5,49 @@ import './AttachmentsPanel.css'
 type Props = {
     attachments: Attachment[]
     onChange(next: Attachment[]): void
+    /** Кастомный аплоадер: сохраняет файлы и возвращает готовые Attachment (c id, name, pathOrDataUrl). Необязателен. */
+    onUploadFiles?: (files: File[]) => Promise<Attachment[]>
+    /** Ограничение типов (опционально) */
+    accept?: string
 }
 
-export function AttachmentsPanel({ attachments, onChange }: Props) {
+export function AttachmentsPanel({ attachments, onChange, onUploadFiles, accept = '*/*' }: Props) {
     const inputRef = React.useRef<HTMLInputElement | null>(null)
+    const [loading, setLoading] = React.useState(false)
 
-    function addMock() {
-        const name = prompt('Attachment name (mock):', 'example.txt')
-        if (!name) return
-        const next: Attachment[] = [
-            ...attachments,
-            {
-                id: crypto.randomUUID(),
-                name,
-                pathOrDataUrl: `mock://${name}`,
-            },
-        ]
-        onChange(next)
-    }
-
-    function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
-        const files = e.target.files
-        if (!files || !files.length) return
-        const next = [...attachments]
-        for (const f of Array.from(files)) {
-            // читаем как data URL
-            const reader = new FileReader()
-            reader.onload = () => {
-                next.push({
+    async function fallbackReadAsDataUrl(files: File[]): Promise<Attachment[]> {
+        // Локальный фоллбек: читаем файлы в data URL и возвращаем Attachment[]
+        const toDataUrl = (f: File) =>
+            new Promise<Attachment>((resolve, reject) => {
+                const reader = new FileReader()
+                reader.onload = () => resolve({
                     id: crypto.randomUUID(),
                     name: f.name,
                     pathOrDataUrl: reader.result as string,
                 })
-                onChange([...next])
-            }
-            reader.readAsDataURL(f)
+                reader.onerror = reject
+                reader.readAsDataURL(f)
+            })
+        return Promise.all(files.map(toDataUrl))
+    }
+
+    async function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
+        const files = Array.from(e.target.files ?? [])
+        if (!files.length) return
+        setLoading(true)
+        try {
+            const created = onUploadFiles
+                ? await onUploadFiles(files)
+                : await fallbackReadAsDataUrl(files)
+            onChange([...(attachments ?? []), ...created])
+        } finally {
+            setLoading(false)
+            if (inputRef.current) inputRef.current.value = ''
         }
     }
 
     function remove(id: string) {
-        onChange(attachments.filter(a => a.id !== id))
+        onChange((attachments ?? []).filter(a => a.id !== id))
     }
 
     return (
@@ -52,31 +55,41 @@ export function AttachmentsPanel({ attachments, onChange }: Props) {
             <div className="attachments-head">
                 <label className="label-sm">Attachments</label>
                 <div className="attachments-actions">
-                    <button className="btn-small" onClick={addMock}>+ Mock</button>
-                    <button className="btn-small" onClick={() => inputRef.current?.click()}>
-                        + Upload
+                    <button className="btn-small" onClick={() => inputRef.current?.click()} disabled={loading}>
+                        {loading ? 'Uploading…' : '+ Upload'}
                     </button>
                     <input
                         ref={inputRef}
                         type="file"
                         multiple
+                        accept={accept}
                         style={{ display: 'none' }}
                         onChange={onFilePicked}
                     />
                 </div>
             </div>
 
-            {attachments.length === 0 ? (
+            {(attachments ?? []).length === 0 ? (
                 <div className="muted">No attachments yet.</div>
             ) : (
                 <ul className="attachments-list">
                     {attachments.map(a => (
                         <li key={a.id} className="attachment-item">
-                            <span className="file-name" title={a.name}>{a.name}</span>
+                            <a
+                                className="file-name"
+                                href={a.pathOrDataUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                title={a.name}
+                                download={a.name}
+                            >
+                                {a.name}
+                            </a>
                             <button
                                 className="btn-small remove-btn"
                                 title="Remove attachment"
                                 onClick={() => remove(a.id)}
+                                disabled={loading}
                             >
                                 ×
                             </button>
@@ -87,3 +100,5 @@ export function AttachmentsPanel({ attachments, onChange }: Props) {
         </div>
     )
 }
+
+export default AttachmentsPanel

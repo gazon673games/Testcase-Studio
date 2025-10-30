@@ -5,38 +5,48 @@
   "steps": [
     {
       "id": "b9e76c30-4746-4c43-bf92-d778e30ac42e",
-      "text": "ыфвфы",
-      "action": "ыфвфы",
-      "data": "вфыв",
+      "text": "Выполнить POST запрос на создание Собственника",
+      "action": "Выполнить POST запрос на создание Собственника",
+      "data": " {{ms-insurance-contract-storage}}/api/v1/internal/contracts/{{policyId}}/documents",
       "expected": "фы",
       "internal": {
         "parts": {
           "action": [
             {
-              "id": "821a3171-44fc-47b0-94a4-1a68ae89da3d",
-              "text": "1"
-            },
-            {
-              "id": "3936a66c-642d-4a25-a570-878a4960f9e7",
-              "text": "2"
-            },
-            {
-              "id": "aed02b9d-b278-40bb-b5ad-04f341b4ec16",
-              "text": "3"
+              "id": "986d9a0c-fbf5-4215-b9ec-32a9a52d5055",
+              "text": ""
             }
           ],
           "data": [],
           "expected": []
         }
       }
+    },
+    {
+      "id": "500618b4-9f0d-404c-ac3c-b38964e24ada",
+      "action": "Тело запроса\n\n{\n    \"requestId\": \"{{$guid}}\",\n    \"contractId\": \"{{contractId}}\",\n    \"insuranceObjectId\": \"{{$guid}}\",\n    \"entityId\": \"{{$guid}}\",\n    \"entityType\": \"PERSON\",\n    \"context\": {\n        \"additionalInfo\": \"Некоторая дополнительная информация\"\n    },\n    \"needScreening\": true,\n    \"screeningPassed\": true,\n    \"needScoring\": true,\n    \"scoringValue\": 0,\n    \"scoringRequestId\": \"{{$guid}}\"\n}\n\n",
+      "data": "",
+      "expected": "",
+      "text": "Тело запроса\n\n{\n    \"requestId\": \"{{$guid}}\",\n    \"contractId\": \"{{contractId}}\",\n    \"insuranceObjectId\": \"{{$guid}}\",\n    \"entityId\": \"{{$guid}}\",\n    \"entityType\": \"PERSON\",\n    \"context\": {\n        \"additionalInfo\": \"Некоторая дополнительная информация\"\n    },\n    \"needScreening\": true,\n    \"screeningPassed\": true,\n    \"needScoring\": true,\n    \"scoringValue\": 0,\n    \"scoringRequestId\": \"{{$guid}}\"\n}\n\n",
+      "internal": {
+        "parts": {
+          "action": [],
+          "data": [],
+          "expected": []
+        },
+        "meta": {
+          "attachments": []
+        }
+      },
+      "subSteps": []
     }
   ],
   "attachments": [],
   "links": [],
-  "updatedAt": "2025-10-29T11:26:23.986Z",
+  "updatedAt": "2025-10-30T10:09:28.442Z",
   "meta": {
     "tags": [],
-    "objective": "sadsa",
+    "objective": "sadsafdsfsd",
     "status": "у",
     "priority": "1",
     "component": "23",
@@ -48,6 +58,6 @@
     "params": {
       "param": ""
     },
-    "preconditions": "ыыцы"
+    "preconditions": "ыыцыsdfsfsdf"
   }
 }

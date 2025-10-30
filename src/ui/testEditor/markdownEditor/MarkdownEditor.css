@@ -1,0 +1,128 @@
+/* ─────────────────────────────────────────────────────────────
+MarkdownEditor.css — reusable Markdown textarea + preview
+───────────────────────────────────────────────────────────── */
+
+.md-editor { position: relative; width: 100%; }
+
+/* задаём кастомные CSS-переменные для высоты */
+.md-editor {
+    --md-line-height: 1.45;
+    --md-font-size: 14px;
+    --md-pad-v: 10px;        /* вертикальные паддинги из textarea */
+    --md-max-rows: 24;       /* по умолчанию максимум ~24 строки */
+    --md-min-rows: 3;        /* минимум */
+    /* max высота ≈ (строки * lineHeight * fontSize) + паддинги сверху/снизу */
+    --md-max-height: calc(var(--md-max-rows) * var(--md-line-height) * var(--md-font-size) + var(--md-pad-v) * 2);
+    --md-min-height: calc(var(--md-min-rows) * var(--md-line-height) * var(--md-font-size) + var(--md-pad-v) * 2);
+}
+
+.md-editor .md-input-wrap { position: relative; }
+
+.md-editor .md-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    line-height: 1.45;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    background: #fff;
+    outline: none;
+    box-sizing: border-box;
+
+    /* автогроу: без видимой прокрутки и без ручки ресайза */
+    resize: none;
+    overflow: hidden;
+    scrollbar-width: none; /* Firefox */
+}
+.md-editor .md-textarea::-webkit-scrollbar { display: none; }
+.md-editor .md-textarea::-webkit-resizer { display: none; }
+.md-editor .md-textarea.scrollable {
+    overflow: auto;             /* как только упёрлись в max — включаем прокрутку */
+}
+.md-editor .md-textarea:focus { border-color:#9bb7ff; box-shadow:0 0 0 3px rgba(77,107,220,.12); }
+.md-editor .md-textarea::-webkit-resizer { display: none; }
+
+/* overlay-превью поверх textarea */
+.md-editor .md-preview {
+    position: absolute;
+    inset: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    background: #fff;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    box-sizing: border-box;
+    pointer-events: none;
+}
+/* если превью очень большое — ограничиваем и даём скролл */
+.md-editor .md-preview.clamped {
+    max-height: var(--md-max-height);
+    overflow: auto;
+    pointer-events: auto;     /* позволяем скроллить мышью/тачем */
+}
+
+/* изображения в превью: адаптивно, но не выше max-height полей */
+.md-editor .md-preview img {
+    max-width: 100%;
+    height: auto;
+    display: inline-block;
+}
+
+/* инлайн-код */
+.md-editor .code-inline {
+    background: #f2f2f2;
+    padding: 0 3px;
+    border-radius: 4px;
+}
+
+/* тулбар показывается только при фокусе поля (управляется компонентом) */
+.md-editor .md-toolbar {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin: 6px 0;
+}
+
+/* кнопки тулбара */
+.md-editor .md-btn {
+    border: 1px solid #ddd;
+    background: #fff;
+    border-radius: 6px;
+    padding: 2px 6px;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1.1;
+}
+.md-editor .md-btn:hover { background:#f6f8ff; border-color:#cfd8ff; }
+
+.md-editor .divider {
+    width: 1px;
+    height: 16px;
+    background: #e6e6e6;
+    margin: 0 2px;
+}
+
+/* Автокомплит для [[...]] */
+.md-editor .autocomplete {
+    position: fixed;
+    z-index: 9999;
+    width: 380px;
+    max-height: 260px;
+    overflow: auto;
+    background: #fff; border: 1px solid #ddd; border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.15);
+}
+.md-editor .autocomplete-empty { padding: 8px; color: #888; }
+.md-editor .autocomplete-item {
+    padding: 6px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    user-select: none;
+}
+.md-editor .autocomplete-item.active { background: rgba(22,119,255,.1); }
+
+/* утилита для внешних подписей/лейблов */
+.md-editor .muted { font-size: 12px; color: #666; }
