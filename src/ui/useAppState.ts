@@ -5,6 +5,7 @@ import { insertChild, deleteNode, isFolder, findNode, findParentFolder, moveNode
 import { SyncEngine } from '@core/syncEngine'
 import { ZephyrMockProvider } from '@providers/zephyr.mock'
 import { AllureStubProvider } from '@providers/allure.stub'
+import {fromProviderPayload} from "@providers/mappers";
 
 type Node = Folder | TestCase
 
@@ -106,7 +107,10 @@ export function useAppState() {
     async function save() { if (state) await saveState(state) }
 
     // 🆕: разрешаем патчить meta
-    async function updateTest(testId: ID, patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta'>>) {
+    async function updateTest(
+        testId: ID,
+        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments' | 'links'>>
+    ) {
         if (!state) return
         const next = structuredClone(state)
         const node = findNode(next.root, testId) as TestCase | null
@@ -119,16 +123,23 @@ export function useAppState() {
     async function pull() {
         if (!state) return
         const node = getSelected()
-        if (!node || isFolder(node) || node.links.length === 0) return
-        const link = node.links[0]
-        const remote = await sync.pullTestDetails(link)
+        if (!node || isFolder(node)) return
+        if (node.links.length === 0) return
+
+        const remote = await sync.pullPreferZephyr(node as TestCase) // или pullTestDetails(link)
+        if (!remote) return
+
         const next = structuredClone(state)
-        const target = findNode(next.root, node.id) as TestCase
-        target.name = remote.name
-        target.description = remote.description
-        target.steps = remote.steps
-        target.attachments = remote.attachments
-        target.updatedAt = remote.updatedAt ?? new Date().toISOString()
+        const target = findNode(next.root, (node as any).id) as TestCase
+
+        const patch = fromProviderPayload(remote) // ← тут уже есть steps с id
+        target.name = patch.name
+        target.description = patch.description
+        target.steps = patch.steps                 // 👈 шаги с id
+        target.attachments = patch.attachments
+        target.meta = patch.meta
+        target.updatedAt = patch.updatedAt ?? new Date().toISOString()
+
         await persist(next)
     }
 

@@ -15,7 +15,15 @@ export default defineConfig({
             {
                 // MAIN → ESM
                 entry: '../electron/main.ts',
-                onstart({ startup }) { startup() },
+                onstart({ startup }) {
+                    // обязательна '.' первым аргументом!
+                    startup([
+                        '.',
+                        '--inspect=9229',
+                        '--remote-debugging-port=9223',
+                        '--no-sandbox'
+                    ])
+                },
                 vite: {
                     build: {
                         outDir: '../dist-electron',

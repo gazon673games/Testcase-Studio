@@ -1,46 +1,92 @@
-// src/providers/mappers.ts
-import type { ExportTest } from '@core/export'
-import type { ProviderTest } from './types'
+// @providers/mappers.ts
+import { v4 as uuid } from 'uuid'
+import type { Attachment, Step, TestCase, TestMeta } from '@core/domain'
+import type { ProviderTest, ProviderStep } from '@providers/types'
+import type { ExportTest, ExportStep } from '@core/export'
 
-/** Zephyr и Allure сейчас принимают схожие поля — отдаём общий ProviderTest */
-export function toProviderPayload(x: ExportTest): ProviderTest {
+/** ProviderTest -> наш доменный TestCase (для pull) */
+export function fromProviderPayload(
+    src: ProviderTest
+): Pick<TestCase, 'name' | 'description' | 'steps' | 'attachments' | 'updatedAt' | 'meta'> {
     return {
-        id: x.id,                        // провайдер может заменить id на свой при upsert
-        name: x.name,
-        description: x.description,
-        steps: x.steps.map((s, i) => ({
-            id: `${i+1}`,                  // провайдеры часто сами генерят id; даём стабильные псевдо-id
-            action: s.action,
-            data: s.data,
-            expected: s.expected,
-            text: s.action ?? undefined,   // совместимость со старым UI
-        })),
-        attachments: x.attachments,
-        updatedAt: new Date().toISOString()
+        name: src.name ?? '',
+        description: src.description ?? '',
+        steps: mapProviderSteps(src.steps ?? []),
+        attachments: (src.attachments ?? []).map(copyAttachment),
+        updatedAt: src.updatedAt ?? new Date().toISOString(),
+        meta: { tags: [], params: {} } as TestMeta,
     }
 }
 
-/** Обратное преобразование (naive): ProviderTest -> частичный локальный TestCase */
-export function fromProviderPayload(p: ProviderTest) {
+/** Наш TestCase ИЛИ ExportTest -> ProviderTest (для push) */
+type Domainish = Pick<TestCase, 'id' | 'name' | 'description' | 'steps' | 'attachments' | 'meta'>
+
+/** Перегрузки для удобства типов */
+export function toProviderPayload(test: Domainish): ProviderTest
+export function toProviderPayload(test: ExportTest): ProviderTest
+export function toProviderPayload(test: Domainish | ExportTest): ProviderTest {
+    const id = (test as any).id
+    const name = test.name
+    const description = (test as any).description ?? ''
+    const attachments = (test as any).attachments ?? []
+
+    const stepsArray: Array<Step | ExportStep> = (test as any).steps ?? []
+    const providerSteps = normalizeStepsForProvider(stepsArray)
+
     return {
-        name: p.name,
-        description: p.description,
-        steps: p.steps?.map(s => ({
-            id: cryptoRandomId(),
-            action: s.action ?? s.text ?? '',
-            data: s.data ?? '',
-            expected: s.expected ?? '',
-            text: s.action ?? s.text ?? '',
-            subSteps: [],
-            internal: { parts: { action: [], data: [], expected: [] } }
-        })) ?? [],
-        attachments: p.attachments ?? [],
-        updatedAt: p.updatedAt ?? new Date().toISOString()
+        id: id ?? String(Math.random()),
+        name,
+        description,
+        steps: providerSteps,
+        attachments: attachments.map(copyAttachment),
+        updatedAt: new Date().toISOString(),
     }
 }
 
-function cryptoRandomId() {
-    // в main/renderer доступен crypto.randomUUID, но этот helper держим здесь на всякий
-    try { return (globalThis as any).crypto?.randomUUID?.() ?? String(Math.random()).slice(2) }
-    catch { return String(Math.random()).slice(2) }
+/* ───────── helpers ───────── */
+
+function mapProviderSteps(src: ProviderStep[]): Step[] {
+    return (src ?? []).map(ps => ({
+        id: uuid(),                                // обязательный id для React/редактора
+        action: safeStr(ps.action),
+        data: safeStr(ps.data),
+        expected: safeStr(ps.expected),
+        text: safeStr(ps.text ?? ps.action),
+        subSteps: [],
+        internal: { parts: { action: [], data: [], expected: [] } },
+        attachments: [],
+    }))
+}
+
+/** Унифицируем шаги из Domain Step[] или ExportStep[] в ProviderStep[] */
+function normalizeStepsForProvider(src: Array<Step | ExportStep>): ProviderStep[] {
+    return (src ?? []).map(s => {
+        // у доменного Step есть id/ text / internal и т.п.
+        const isDomain = 'id' in (s as any)
+        if (isDomain) {
+            const ds = s as Step
+            return {
+                action: safeStr(ds.action ?? ds.text),
+                data: safeStr(ds.data),
+                expected: safeStr(ds.expected),
+                text: safeStr(ds.text),
+            }
+        } else {
+            const es = s as ExportStep
+            return {
+                action: safeStr(es.action),
+                data: safeStr(es.data),
+                expected: safeStr(es.expected),
+                text: '', // в ExportStep нет text — оставляем пустым
+            }
+        }
+    })
+}
+
+function copyAttachment(a: Attachment): Attachment {
+    return { id: a.id, name: a.name, pathOrDataUrl: a.pathOrDataUrl }
+}
+
+function safeStr(x: unknown): string {
+    return x == null ? '' : String(x)
 }
