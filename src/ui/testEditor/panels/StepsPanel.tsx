@@ -1,3 +1,4 @@
+// src/ui/testEditor/panels/StepsPanel.tsx
 import * as React from 'react'
 import type { Step, PartItem, TestCase, Attachment } from '@core/domain'
 import { MarkdownEditor } from '../markdownEditor/MarkdownEditor'
@@ -10,7 +11,7 @@ type Props = {
     resolveRefs(src: string): string
     /** Прокрутить/подсветить конкретный шаг по id (опц.) */
     focusStepId?: string | null
-    /** Внешний “Apply” из родителя */
+    /** Внешний “Apply” из родителя (опц.) */
     onApply?: () => void
     /** Кастомный загрузчик файлов именно для шагов (опц.) */
     onUploadStepFiles?: (stepId: string, files: File[]) => Promise<Attachment[]>
@@ -115,13 +116,41 @@ export default function StepsPanel({
         updateStep(idx, s)
     }
 
-    // DnD
+    // ─────────────── DnD: только за «ручку» (≡) ───────────────
     const dragIndex = React.useRef<number | null>(null)
-    function onDragStart(i: number) { dragIndex.current = i }
-    function onDragOver(e: React.DragEvent) { e.preventDefault() }
-    function onDrop(i: number) {
+    const [draggingIndex, setDraggingIndex] = React.useState<number | null>(null)
+    const [hoverIndex, setHoverIndex] = React.useState<number | null>(null)
+
+    function onHandleDragStart(i: number, e: React.DragEvent) {
+        dragIndex.current = i
+        setDraggingIndex(i)
+        setHoverIndex(null)
+        if (e.dataTransfer) {
+            e.dataTransfer.effectAllowed = 'move'
+            e.dataTransfer.setData('text/plain', String(i)) // для FF
+        }
+    }
+    function onHandleDragEnd() {
+        dragIndex.current = null
+        setDraggingIndex(null)
+        setHoverIndex(null)
+    }
+
+    function onCardDragOver(e: React.DragEvent) {
+        e.preventDefault()
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+    }
+    function onCardDragEnter(i: number) {
+        if (draggingIndex != null && i !== draggingIndex) setHoverIndex(i)
+    }
+    function onCardDragLeave(i: number) {
+        if (hoverIndex === i) setHoverIndex(null)
+    }
+    function onCardDrop(i: number) {
         const from = dragIndex.current
         dragIndex.current = null
+        setDraggingIndex(null)
+        setHoverIndex(null)
         if (from == null || from === i) return
         const next = steps.slice()
         const [moved] = next.splice(from, 1)
@@ -169,13 +198,18 @@ export default function StepsPanel({
                             onAddPart={addPart}
                             onEditPart={editPart}
                             onRemovePart={removePart}
-                            draggable
-                            onDragStart={() => onDragStart(i)}
-                            onDragOver={onDragOver}
-                            onDrop={() => onDrop(i)}
                             preview={globalPreview}
                             isNarrow={isNarrow}
-                            // attachments helpers
+                            // DnD только за ручку
+                            onHandleDragStart={(e) => onHandleDragStart(i, e)}
+                            onHandleDragEnd={onHandleDragEnd}
+                            onCardDragOver={onCardDragOver}
+                            onCardDragEnter={() => onCardDragEnter(i)}
+                            onCardDragLeave={() => onCardDragLeave(i)}
+                            onCardDrop={() => onCardDrop(i)}
+                            isDragging={draggingIndex === i}
+                            isDropTarget={hoverIndex === i}
+                            // attachments
                             getStepAttachments={() => {
                                 const a = (s as any)?.internal?.meta?.attachments ?? []
                                 return a as Attachment[]
@@ -210,12 +244,18 @@ type StepRowProps = {
     onRemovePart(idx: number, kind: 'action'|'data'|'expected', pIndex: number): void
     resolveRefs(src: string): string
     allTests: TestCase[]
-    draggable?: boolean
-    onDragStart?(): void
-    onDragOver?(e: React.DragEvent): void
-    onDrop?(): void
     preview: boolean
     isNarrow: boolean
+
+    // DnD только за «ручку»
+    onHandleDragStart(e: React.DragEvent): void
+    onHandleDragEnd(): void
+    onCardDragOver(e: React.DragEvent): void
+    onCardDragEnter(): void
+    onCardDragLeave(): void
+    onCardDrop(): void
+    isDragging: boolean
+    isDropTarget: boolean
 
     // attachments wiring
     getStepAttachments(): Attachment[]
@@ -276,14 +316,23 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRowB
     return (
         <div
             ref={ref}
-            draggable={props.draggable}
-            onDragStart={props.onDragStart}
-            onDragOver={props.onDragOver}
-            onDrop={props.onDrop}
-            className="step-card"
+            className={`step-card${props.isDragging ? ' dragging' : ''}${props.isDropTarget ? ' drop-target' : ''}`}
+            onDragOver={props.onCardDragOver}
+            onDragEnter={props.onCardDragEnter}
+            onDragLeave={props.onCardDragLeave}
+            onDrop={props.onCardDrop}
         >
             <div className="step-header">
-                <div className="drag" title="Drag to reorder">≡</div>
+                {/* Ручка DnD — только она draggable */}
+                <div
+                    className="drag"
+                    title="Drag to reorder"
+                    draggable
+                    onDragStart={props.onHandleDragStart}
+                    onDragEnd={props.onHandleDragEnd}
+                >
+                    ≡
+                </div>
                 <div className="step-title">Step {index + 1}</div>
                 <span className="spacer" />
                 <button title="Clone step" onClick={props.onClone} className="btn-small">⎘</button>

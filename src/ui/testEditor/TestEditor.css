@@ -194,3 +194,25 @@
     opacity:1;
 }
 
+.step-header .drag {
+    cursor: grab;
+    user-select: none;
+    padding: 0 6px;
+}
+.step-header .drag:active {
+    cursor: grabbing;
+}
+
+.step-card.dragging {
+    opacity: .85;
+}
+.step-card.drop-target {
+    outline: 2px dashed #8ab4f8;
+    outline-offset: 2px;
+}
+
+/* чтобы тянуть было удобно только по ручке,
+   а внутри Markdown-редактора не срабатывал DnD текста */
+.step-card .md-editor * {
+    -webkit-user-drag: none;
+}
