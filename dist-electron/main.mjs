@@ -7,7 +7,8 @@ const CHANNELS = {
   LOAD_STATE: "LOAD_STATE",
   SAVE_STATE: "SAVE_STATE",
   LOAD_SETTINGS: "LOAD_SETTINGS",
-  SAVE_SETTINGS: "SAVE_SETTINGS"
+  SAVE_SETTINGS: "SAVE_SETTINGS",
+  GET_ATLASSIAN_SECRET: "GET_ATLASSIAN_SECRET"
 };
 function getBaseDir$1() {
   return app.isPackaged ? path.dirname(app.getPath("exe")) : process.cwd();
@@ -97,20 +98,27 @@ async function loadSettings() {
   try {
     const raw = await promises.readFile(SETTINGS_PATH, "utf-8");
     const parsed = JSON.parse(raw);
-    const hasSecret = parsed.email ? !!await keytar.getPassword(SERVICE, parsed.email) : false;
-    return { email: parsed.email ?? "", hasSecret };
+    const login = parsed.login ?? "";
+    const baseUrl = parsed.baseUrl ?? "";
+    const hasSecret = login ? !!await keytar.getPassword(SERVICE, login) : false;
+    return { login, baseUrl, hasSecret };
   } catch {
-    return { email: "", hasSecret: false };
+    return { login: "", baseUrl: "", hasSecret: false };
   }
 }
-async function saveSettings(email, passwordOrToken) {
+async function saveSettings(login, passwordOrToken, baseUrl) {
   await ensureDir(SETTINGS_PATH);
-  await promises.writeFile(SETTINGS_PATH, JSON.stringify({ email }, null, 2), "utf-8");
-  if (email && typeof passwordOrToken === "string" && passwordOrToken.length > 0) {
-    await keytar.setPassword(SERVICE, email, passwordOrToken);
+  const filePayload = { login, baseUrl };
+  await promises.writeFile(SETTINGS_PATH, JSON.stringify(filePayload, null, 2), "utf-8");
+  if (login && typeof passwordOrToken === "string" && passwordOrToken.length > 0) {
+    await keytar.setPassword(SERVICE, login, passwordOrToken);
   }
-  const hasSecret = email ? !!await keytar.getPassword(SERVICE, email) : false;
-  return { email, hasSecret };
+  const hasSecret = login ? !!await keytar.getPassword(SERVICE, login) : false;
+  return { login, baseUrl: baseUrl ?? "", hasSecret };
+}
+async function getAtlassianSecret(login) {
+  if (!login) return null;
+  return await keytar.getPassword(SERVICE, login);
 }
 function registerHandlers(ipcMain2) {
   ipcMain2.handle(CHANNELS.LOAD_STATE, async (_e, fallback) => {
@@ -127,9 +135,19 @@ function registerHandlers(ipcMain2) {
   ipcMain2.handle(CHANNELS.LOAD_SETTINGS, async () => {
     return await loadSettings();
   });
-  ipcMain2.handle(CHANNELS.SAVE_SETTINGS, async (_e, payload) => {
-    return await saveSettings(payload.email, payload.passwordOrToken);
-  });
+  ipcMain2.handle(
+    CHANNELS.SAVE_SETTINGS,
+    async (_e, payload) => {
+      return await saveSettings(payload.login, payload.passwordOrToken, payload.baseUrl);
+    }
+  );
+  ipcMain2.handle(
+    CHANNELS.GET_ATLASSIAN_SECRET,
+    async (_e, payload) => {
+      const s = await getAtlassianSecret(payload.login);
+      return s ?? "";
+    }
+  );
 }
 let win = null;
 async function createWindow() {

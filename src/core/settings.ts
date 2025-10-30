@@ -1,9 +1,11 @@
 export type AtlassianSettings = {
-    email: string
+    login: string
+    baseUrl: string
     hasSecret: boolean
 }
 
 export const DEFAULT_SETTINGS: AtlassianSettings = {
-    email: "",
+    login: "",
+    baseUrl: "",
     hasSecret: false
 }

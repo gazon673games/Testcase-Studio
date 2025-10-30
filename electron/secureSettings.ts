@@ -15,31 +15,43 @@ async function ensureDir(filePath: string) {
     await fsp.mkdir(path.dirname(filePath), { recursive: true })
 }
 
+type FileShape = { login?: string; baseUrl?: string }
+
 export async function loadSettings(): Promise<AtlassianSettings> {
     try {
         const raw = await fsp.readFile(SETTINGS_PATH, 'utf-8')
-        const parsed = JSON.parse(raw) as { email?: string }
-        const hasSecret = parsed.email ? !!(await keytar.getPassword(SERVICE, parsed.email)) : false
-        return { email: parsed.email ?? "", hasSecret }
+        const parsed = JSON.parse(raw) as FileShape
+        const login = parsed.login ?? ''
+        const baseUrl = parsed.baseUrl ?? ''
+        const hasSecret = login ? !!(await keytar.getPassword(SERVICE, login)) : false
+        return { login, baseUrl, hasSecret }
     } catch {
-        return { email: "", hasSecret: false }
+        return { login: '', baseUrl: '', hasSecret: false }
     }
 }
 
-export async function saveSettings(email: string, passwordOrToken?: string): Promise<AtlassianSettings> {
+export async function saveSettings(
+    login: string,
+    passwordOrToken?: string,
+    baseUrl?: string
+): Promise<AtlassianSettings> {
     await ensureDir(SETTINGS_PATH)
+
     // сохраняем НЕсекретную часть
-    await fsp.writeFile(SETTINGS_PATH, JSON.stringify({ email }, null, 2), 'utf-8')
+    const filePayload: FileShape = { login, baseUrl }
+    await fsp.writeFile(SETTINGS_PATH, JSON.stringify(filePayload, null, 2), 'utf-8')
+
     // секрет — в keychain, если прислали
-    if (email && typeof passwordOrToken === 'string' && passwordOrToken.length > 0) {
-        await keytar.setPassword(SERVICE, email, passwordOrToken)
+    if (login && typeof passwordOrToken === 'string' && passwordOrToken.length > 0) {
+        await keytar.setPassword(SERVICE, login, passwordOrToken)
     }
-    const hasSecret = email ? !!(await keytar.getPassword(SERVICE, email)) : false
-    return { email, hasSecret }
+
+    const hasSecret = login ? !!(await keytar.getPassword(SERVICE, login)) : false
+    return { login, baseUrl: baseUrl ?? '', hasSecret }
 }
 
 // helper для провайдеров (получить секрет в main-процессе)
-export async function getAtlassianSecret(email: string): Promise<string | null> {
-    if (!email) return null
-    return await keytar.getPassword(SERVICE, email)
+export async function getAtlassianSecret(login: string): Promise<string | null> {
+    if (!login) return null
+    return await keytar.getPassword(SERVICE, login)
 }

@@ -1,16 +1,4 @@
-// providers/zephyr.mock.ts
 import type { ITestProvider, ProviderTest, ProviderStep } from './types'
-
-function stripHtml(html: string | undefined | null): string {
-    if (!html) return ''
-    return String(html)
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/(p|div|li|h\d)>/gi, '\n')
-        .replace(/<[^>]+>/g, '')
-        .replace(/\u00a0/g, ' ')
-        .replace(/\n{3,}/g, '\n\n')
-        .trim()
-}
 
 /**
  * Простая мока Zephyr. Понимает:
@@ -26,29 +14,11 @@ export class ZephyrMockProvider implements ITestProvider {
     async getTestDetails(externalId: string): Promise<ProviderTest> {
         const key = this.normalizeKey(externalId)
 
-        // Демоданные для PROD-T6079
         if (key === 'PROD-T6079') {
             const zephyrRaw = {
-                owner: 'JIRAUSER146660',
-                updatedBy: 'JIRAUSER146660',
-                customFields: {
-                    'Assigned to': '712020:7968aa2a-89b7-4818-aadc-ace219324120',
-                    Automation: 'Automated',
-                    'Test Type': 'Regression',
-                },
-                keyNumber: 6079,
                 updatedOn: '2025-09-10T08:45:09.839Z',
-                priority: 'High',
-                majorVersion: 1,
-                createdOn: '2025-08-16T03:26:42.544Z',
-                component: 'Core',
-                projectKey: 'PROD',
-                folder:
-                    '/CORE/[New] Core /[New] Хранилище договоров/CNTS E-03.01 Добавить документы к договору',
-                latestVersion: true,
-                createdBy: 'JIRAUSER144920',
+                name: '[CNTS E-03.01] Добавить файл к договору',
                 testScript: {
-                    id: 169624,
                     type: 'STEP_BY_STEP',
                     steps: [
                         {
@@ -77,32 +47,26 @@ export class ZephyrMockProvider implements ITestProvider {
                         },
                     ],
                 },
-                issueLinks: ['PROD-23172'],
-                name: '[CNTS E-03.01] Добавить файл к договору',
-                lastTestResultStatus: 'Pass',
-                parameters: { variables: [], entries: [] },
-                key: 'PROD-T6079',
-                status: 'Actual',
-            }
+            } as any
 
-            // Маппим Zephyr → ProviderTest
+            // Маппим Zephyr → ProviderTest (БЕЗ конвертации HTML)
             const steps: ProviderStep[] = (zephyrRaw.testScript?.steps ?? [])
                 .filter((s: any) => s && (s.description || s.testData || s.expectedResult))
                 .sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0))
                 .map((s: any) => ({
-                    action: stripHtml(s.description || ''),
-                    data: stripHtml(s.testData || ''),
-                    expected: stripHtml(s.expectedResult || ''),
-                    text: stripHtml(s.description || ''), // добавь
+                    action:   String(s.description || ''),
+                    data:     String(s.testData || ''),
+                    expected: String(s.expectedResult || ''),
+                    text:     String(s.description || ''),
                 }))
 
             const result: ProviderTest = {
-                id: zephyrRaw.key,
+                id: 'PROD-T6079',
                 name: zephyrRaw.name,
-                description: undefined, // Zephyr в примере не даёт отдельного description
+                description: undefined,
                 steps,
                 attachments: [],
-                updatedAt: zephyrRaw.updatedOn, // нормализуем поле
+                updatedAt: zephyrRaw.updatedOn,
             }
             return result
         }
@@ -114,21 +78,15 @@ export class ZephyrMockProvider implements ITestProvider {
             description: 'No data in mock',
             steps: [],
             attachments: [],
-            updatedAt: new Date().toISOString(), // ⚠️ именно updatedAt, не updatedOn
+            updatedAt: new Date().toISOString(),
         }
     }
 
     async upsertTest(payload: ProviderTest): Promise<{ externalId: string }> {
-        // эмулируем сохранение: если есть id — вернём его, иначе сгенерим
         const generated = `PROD-T${Math.floor(1000 + Math.random() * 9000)}`
         return { externalId: payload.id || generated }
     }
 
-    async attach(_externalId: string, _attachment: any): Promise<void> {
-        // no-op в моке
-    }
-
-    async deleteAttachment(_externalId: string, _attachmentId: string): Promise<void> {
-        // no-op в моке
-    }
+    async attach(_externalId: string, _attachment: any): Promise<void> {}
+    async deleteAttachment(_externalId: string, _attachmentId: string): Promise<void> {}
 }
