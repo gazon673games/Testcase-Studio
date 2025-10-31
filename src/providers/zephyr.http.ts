@@ -15,6 +15,8 @@ type ZephyrTestCaseResponse = {
     priority?: string
     component?: string
     projectKey?: string
+    objective?: string | null
+    precondition?: string | null
     folder?: string
     latestVersion?: boolean
     lastTestResultStatus?: string
@@ -79,6 +81,8 @@ export class ZephyrHttpProvider implements ITestProvider {
             issueLinks: json.issueLinks ?? [],
             customFields: json.customFields ?? {},
             parameters: json.parameters ?? { variables: [], entries: [] },
+            objective: json.objective ?? null,
+            preconditions: json.precondition ?? null,
         }
 
         return {

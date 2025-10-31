@@ -43,7 +43,9 @@ export function fromProviderPayload(
     put('createdBy',      (ex as any).createdBy)
     put('createdOn',      (ex as any).createdOn)
     put('updatedOn',      (ex as any).updatedOn)
-    put('issueLinks',     (ex as any).issueLinks) // массив → JSON
+    put('issueLinks',     (ex as any).issueLinks)
+    const objective     = (ex as any).objective ?? null
+    const preconditions = (ex as any).preconditions ?? null
 
     // customFields: объект → каждое поле отдельным ключом
     const cf = (ex as any).customFields as Record<string, unknown> | undefined
@@ -58,7 +60,13 @@ export function fromProviderPayload(
         if ('entries'   in par) put('parameters.entries',   par.entries  ?? [])
     }
 
-    const meta: TestMeta = { tags: [], params }
+    const meta: TestMeta = {
+        tags: [],
+        params,
+        // 👇 добавили
+        objective: objective == null ? undefined : String(objective),
+        preconditions: preconditions == null ? undefined : String(preconditions),
+    }
 
     return { name, description, steps, attachments, updatedAt, meta }
 }

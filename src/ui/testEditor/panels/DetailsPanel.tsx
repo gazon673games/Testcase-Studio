@@ -4,17 +4,28 @@ import { MarkdownEditor } from '../markdownEditor/MarkdownEditor'
 import './DetailsPanel.css'
 
 type Props = {
-    /** Описание теста (теперь тоже Markdown, как и остальные поля) */
+    /** Markdown-описание теста */
     description: string
     onChangeDescription(v: string): void
 
-    meta: TestMeta
-    onChangeMeta(m: TestMeta): void
+    /** Метаданные теста (objective / preconditions и т.п.) */
+    meta: TestMeta | undefined
+    onChangeMeta(next: TestMeta): void
 
     /** для [[wiki-refs]] и автокомплита */
     allTests: TestCase[]
     /** резолвер [[...]] */
     resolveRefs(src: string): string
+}
+
+/** Безопасно мерджим мету, чтобы не терять tags/params и прочие поля */
+function mergeMeta(prev: TestMeta | undefined, patch: Partial<TestMeta>): TestMeta {
+    return {
+        tags: prev?.tags ?? [],
+        params: prev?.params,
+        ...prev,
+        ...patch,
+    }
 }
 
 export function DetailsPanel({
@@ -25,23 +36,25 @@ export function DetailsPanel({
                                  allTests,
                                  resolveRefs,
                              }: Props) {
-    const [preview, setPreview] = React.useState<{
-        description: boolean
-        objective: boolean
-        preconditions: boolean
-    }>({
+    const [preview, setPreview] = React.useState({
         description: false,
         objective: false,
         preconditions: false,
     })
 
-    const setObjective = (v: string) => onChangeMeta({ ...(meta ?? { tags: [] }), objective: v })
-    const setPreconditions = (v: string) =>
-        onChangeMeta({ ...(meta ?? { tags: [] }), preconditions: v })
+    // ⚙️ сеттеры полей meta.* (строки; в UI всегда держим строку, даже если в источнике было null)
+    const setObjective = React.useCallback(
+        (v: string) => onChangeMeta(mergeMeta(meta, { objective: v })),
+        [meta, onChangeMeta],
+    )
+    const setPreconditions = React.useCallback(
+        (v: string) => onChangeMeta(mergeMeta(meta, { preconditions: v })),
+        [meta, onChangeMeta],
+    )
 
     return (
         <div className="details-panel card-box">
-            {/* Description — теперь MarkdownEditor с таким же UX, как у остальных */}
+            {/* Description — MarkdownEditor с превью как у остальных полей */}
             <div className="field">
                 <div className="details-head">
                     <label className="label-sm">Description</label>
@@ -49,15 +62,17 @@ export function DetailsPanel({
                         <span className="muted">View:</span>{' '}
                         <button
                             className="btn-icon"
-                            onClick={() => setPreview((p) => ({ ...p, description: !p.description }))}
+                            onClick={() => setPreview(p => ({ ...p, description: !p.description }))}
                             title="Toggle preview"
+                            type="button"
                         >
                             {preview.description ? 'Raw' : 'Preview'}
                         </button>
                     </div>
                 </div>
+
                 <MarkdownEditor
-                    value={description}
+                    value={description ?? ''}           // ← UI всегда получает строку
                     onChange={onChangeDescription}
                     rows={4}
                     preview={preview.description}
@@ -74,15 +89,17 @@ export function DetailsPanel({
                         <span className="muted">View:</span>{' '}
                         <button
                             className="btn-icon"
-                            onClick={() => setPreview((p) => ({ ...p, objective: !p.objective }))}
+                            onClick={() => setPreview(p => ({ ...p, objective: !p.objective }))}
                             title="Toggle preview"
+                            type="button"
                         >
                             {preview.objective ? 'Raw' : 'Preview'}
                         </button>
                     </div>
                 </div>
+
                 <MarkdownEditor
-                    value={meta?.objective ?? ''}
+                    value={meta?.objective ?? ''}       // ← null/undefined → ''
                     onChange={setObjective}
                     rows={4}
                     preview={preview.objective}
@@ -99,15 +116,17 @@ export function DetailsPanel({
                         <span className="muted">View:</span>{' '}
                         <button
                             className="btn-icon"
-                            onClick={() => setPreview((p) => ({ ...p, preconditions: !p.preconditions }))}
+                            onClick={() => setPreview(p => ({ ...p, preconditions: !p.preconditions }))}
                             title="Toggle preview"
+                            type="button"
                         >
                             {preview.preconditions ? 'Raw' : 'Preview'}
                         </button>
                     </div>
                 </div>
+
                 <MarkdownEditor
-                    value={meta?.preconditions ?? ''}
+                    value={meta?.preconditions ?? ''}   // ← null/undefined → ''
                     onChange={setPreconditions}
                     rows={4}
                     preview={preview.preconditions}
