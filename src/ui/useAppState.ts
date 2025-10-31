@@ -4,6 +4,7 @@ import { loadState, saveState } from '@core/storage'
 import { insertChild, deleteNode, isFolder, findNode, findParentFolder, moveNode as moveTreeNode, mapTests } from '@core/tree'
 import { SyncEngine } from '@core/syncEngine'
 import { ZephyrMockProvider } from '@providers/zephyr.mock'
+import { ZephyrHttpProvider } from '@providers/zephyr.http'
 import { AllureStubProvider } from '@providers/allure.stub'
 import {fromProviderPayload} from "@providers/mappers";
 
@@ -15,7 +16,7 @@ export function useAppState() {
     /** какой шаг подсветить/проскроллить в редакторе */
     const [focusStepId, setFocusStepId] = React.useState<string | null>(null)
 
-    const providers = React.useMemo(() => ({ zephyr: new ZephyrMockProvider(), allure: new AllureStubProvider() }), [])
+    const providers = React.useMemo(() => ({ zephyr: new ZephyrHttpProvider(), allure: new AllureStubProvider() }), [])
     const sync = React.useMemo(() => new SyncEngine(providers), [providers])
 
     React.useEffect(() => { loadState().then(s => { setState(s); setSelectedId(s.root.id) }) }, [])

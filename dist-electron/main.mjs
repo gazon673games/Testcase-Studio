@@ -8,7 +8,8 @@ const CHANNELS = {
   SAVE_STATE: "SAVE_STATE",
   LOAD_SETTINGS: "LOAD_SETTINGS",
   SAVE_SETTINGS: "SAVE_SETTINGS",
-  GET_ATLASSIAN_SECRET: "GET_ATLASSIAN_SECRET"
+  GET_ATLASSIAN_SECRET: "GET_ATLASSIAN_SECRET",
+  ZEPHYR_GET_TESTCASE: "ZEPHYR_GET_TESTCASE"
 };
 function getBaseDir$1() {
   return app.isPackaged ? path.dirname(app.getPath("exe")) : process.cwd();
@@ -120,6 +121,12 @@ async function getAtlassianSecret(login) {
   if (!login) return null;
   return await keytar.getPassword(SERVICE, login);
 }
+function cleanBaseUrl(u) {
+  return (u || "").replace(/\/+$/, "");
+}
+function b64(s) {
+  return Buffer.from(s, "utf8").toString("base64");
+}
 function registerHandlers(ipcMain2) {
   ipcMain2.handle(CHANNELS.LOAD_STATE, async (_e, fallback) => {
     try {
@@ -146,6 +153,31 @@ function registerHandlers(ipcMain2) {
     async (_e, payload) => {
       const s = await getAtlassianSecret(payload.login);
       return s ?? "";
+    }
+  );
+  ipcMain2.handle(
+    CHANNELS.ZEPHYR_GET_TESTCASE,
+    async (_e, payload) => {
+      const settings = await loadSettings();
+      const login = settings.login || "";
+      const baseUrl = cleanBaseUrl(settings.baseUrl || "");
+      if (!login) throw new Error("Atlassian login is empty in settings");
+      if (!baseUrl) throw new Error("Atlassian baseUrl is empty in settings");
+      const password = await getAtlassianSecret(login) || "";
+      if (!password) throw new Error("Atlassian password is not stored in keychain");
+      const url = `${baseUrl}/rest/atm/1.0/testcase/${encodeURIComponent(payload.ref)}`;
+      const auth = `Basic ${b64(`${login}:${password}`)}`;
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { Authorization: auth, Accept: "application/json" }
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(
+          `Zephyr(${payload.by}) ${res.status} ${res.statusText}` + (text ? ` – ${text.slice(0, 300)}` : "")
+        );
+      }
+      return await res.json();
     }
   );
 }
