@@ -1,18 +1,16 @@
+// src/ui/testEditor/panels/MetaParamsPanel.tsx
 import * as React from 'react'
 import type { TestMeta } from '@core/domain'
 import './MetaParamsPanel.css'
 
-type Props = {
-    meta: TestMeta
-    onChange(m: TestMeta): void
-}
+type Props = { meta: TestMeta; onChange(m: TestMeta): void }
 
 /** какие ключи считаем устаревшими "базовыми" и мигрируем в params */
 const LEGACY_KEYS: Array<keyof TestMeta> = ['status', 'priority', 'component']
 
 export function ParamsPanel({ meta, onChange }: Props) {
     const m = meta ?? { tags: [] }
-    const committed: Record<string, string> = (m as any).params ?? {}
+    const committed: Record<string, any> = (m as any).params ?? {}
 
     /** ───────────── MIGRATION (one-shot) ─────────────
      * если остались legacy-поля (status/priority/component),
@@ -28,9 +26,7 @@ export function ParamsPanel({ meta, onChange }: Props) {
         for (const k of LEGACY_KEYS) {
             const v = (m as any)[k]
             if (v !== undefined && v !== null && v !== '') {
-                // если ключа ещё нет в params — перенесём
                 if (nextParams[String(k)] === undefined) nextParams[String(k)] = String(v)
-                // удалим из корня meta
                 delete nextMeta[k]
                 need = true
             }
@@ -44,10 +40,10 @@ export function ParamsPanel({ meta, onChange }: Props) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    /* ───────────── TAGS ───────────── */
+    /* ───────── TAGS ───────── */
     const setTags = (tags: string[]) => onChange({ ...(m as any), tags } as TestMeta)
 
-    /* ───────────── EXISTING CUSTOM PARAMS ───────────── */
+    /* ───────── Параметры ───────── */
     const updateExistingKey = (oldKey: string, newKey: string) => {
         const params = { ...committed }
         const val = params[oldKey]
@@ -68,7 +64,7 @@ export function ParamsPanel({ meta, onChange }: Props) {
         onChange({ ...(m as any), params } as TestMeta)
     }
 
-    /* ───────────── DRAFT NEW PARAMS ───────────── */
+    /* ───────── Черновики новых параметров ───────── */
     type Row = { key: string; value: string }
     const [draftRows, setDraftRows] = React.useState<Row[]>([])
 
@@ -102,6 +98,9 @@ export function ParamsPanel({ meta, onChange }: Props) {
         setDraftRows([])
     }
 
+    // ─────────────────────────────────────────────────────
+    // 🧩 Рендер
+    // ─────────────────────────────────────────────────────
     return (
         <div className="params-panel meta-card">
             {/* TAGS */}
@@ -110,7 +109,7 @@ export function ParamsPanel({ meta, onChange }: Props) {
                 <TagsEditor value={m.tags ?? []} onChange={setTags} />
             </section>
 
-            {/* CUSTOM PARAMS ONLY */}
+            {/* CUSTOM PARAMS (редактор) */}
             <section className="params-section">
                 <div className="params-head">
                     <label className="label-sm">Parameters</label>
@@ -129,7 +128,7 @@ export function ParamsPanel({ meta, onChange }: Props) {
                                 />
                                 <input
                                     className="input"
-                                    value={v}
+                                    value={String(v ?? '')}
                                     onChange={e => updateExistingValue(k, e.target.value)}
                                     placeholder="Value"
                                 />
@@ -146,9 +145,7 @@ export function ParamsPanel({ meta, onChange }: Props) {
             <section className="params-section">
                 <div className="params-head">
                     <label className="label-sm">Add parameters</label>
-                    <button className="btn-small" onClick={addDraft}>
-                        + Add param
-                    </button>
+                    <button className="btn-small" onClick={addDraft}>+ Add param</button>
                 </div>
                 {draftRows.length > 0 && (
                     <div className="params-list">
@@ -166,9 +163,7 @@ export function ParamsPanel({ meta, onChange }: Props) {
                                     onChange={e => updateDraftValue(i, e.target.value)}
                                     placeholder="Value"
                                 />
-                                <button className="btn-small param-remove" onClick={() => removeDraft(i)}>
-                                    ×
-                                </button>
+                                <button className="btn-small param-remove" onClick={() => removeDraft(i)}>×</button>
                             </div>
                         ))}
                     </div>
@@ -206,7 +201,9 @@ function TagsEditor({ value, onChange }: { value: string[]; onChange(v: string[]
         if (e.key === 'Enter' || e.key === ',') {
             e.preventDefault()
             add(draft)
-        } else if (e.key === 'Backspace' && draft === '' && value.length) onChange(value.slice(0, -1))
+        } else if (e.key === 'Backspace' && draft === '' && value.length) {
+            onChange(value.slice(0, -1))
+        }
     }
     const remove = (tag: string) => onChange(value.filter(t => t !== tag))
     return (
@@ -214,9 +211,7 @@ function TagsEditor({ value, onChange }: { value: string[]; onChange(v: string[]
             {value.map(t => (
                 <span key={t} className="tag-chip">
           {t}
-                    <button className="tag-x" onClick={() => remove(t)}>
-            ×
-          </button>
+                    <button className="tag-x" onClick={() => remove(t)}>×</button>
         </span>
             ))}
             <input

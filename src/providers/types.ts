@@ -1,10 +1,8 @@
 // providers/types.ts
 import type { Attachment, Step } from '@core/domain'
 
-/** Шаг, который возвращает провайдер: без наших id/внутренностей */
 export type ProviderStep = Pick<Step, 'action' | 'data' | 'expected' | 'text'>
 
-/** Унифицированная форма теста от провайдера */
 export interface ProviderTest {
     id: string
     name: string
@@ -12,6 +10,7 @@ export interface ProviderTest {
     steps: ProviderStep[]
     attachments: Attachment[]
     updatedAt?: string
+    extras?: Record<string, unknown> // ← NEW
 }
 
 export interface PullOptions { includeAttachments?: boolean }

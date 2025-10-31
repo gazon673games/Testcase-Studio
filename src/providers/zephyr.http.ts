@@ -7,6 +7,21 @@ type ZephyrTestCaseResponse = {
     name?: string
     description?: string | null
     updatedOn?: string
+    owner?: string
+    updatedBy?: string
+    createdBy?: string
+    createdOn?: string
+    keyNumber?: number
+    priority?: string
+    component?: string
+    projectKey?: string
+    folder?: string
+    latestVersion?: boolean
+    lastTestResultStatus?: string
+    status?: string
+    issueLinks?: string[]
+    customFields?: Record<string, unknown>
+    parameters?: { variables?: unknown[]; entries?: unknown[] }
     testScript?: {
         type?: string
         steps?: Array<{
@@ -24,37 +39,56 @@ type ZephyrTestCaseResponse = {
 // разбор ссылки пользователя: ID vs KEY
 function parseRef(raw: string): { by: 'id' | 'key'; ref: string } {
     const t = String(raw ?? '').trim()
-    if (/^\d+$/.test(t)) return { by: 'id', ref: t }     // только цифры → ID
-    if (/-/.test(t)) return { by: 'key', ref: t }        // есть дефис → KEY
-    // fallback: считаем ключом (не мутируем регистр)
+    if (/^\d+$/.test(t)) return { by: 'id', ref: t }  // только цифры → ID
+    if (/-/.test(t))   return { by: 'key', ref: t }   // есть дефис → KEY
     return { by: 'key', ref: t }
 }
 
 export class ZephyrHttpProvider implements ITestProvider {
     async getTestDetails(externalId: string): Promise<ProviderTest> {
         const { by, ref } = parseRef(externalId)
-
-        // ⚠️ вместо fetch из рендера — IPC в main, чтобы не ловить CORS
+        // ⚠️ CORS обходим через IPC в main
         const json = (await apiClient.zephyrGetTestCase(ref, by)) as ZephyrTestCaseResponse
 
         const steps: ProviderStep[] = (json.testScript?.steps ?? [])
             .filter((s) => s && (s.description || s.testData || s.expectedResult))
             .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
             .map((s) => ({
-                // НИЧЕГО не чистим: храним HTML как есть
-                action: String(s.description ?? ''),
-                data: String(s.testData ?? ''),
+                action:   String(s.description ?? ''),
+                data:     String(s.testData ?? ''),
                 expected: String(s.expectedResult ?? ''),
-                text: String(s.description ?? ''),
+                text:     String(s.description ?? ''),
             }))
 
+        // ✨ Собираем extras — всё, что нужно разложить в meta.params
+        const extras: Record<string, unknown> = {
+            key: json.key,
+            keyNumber: json.keyNumber,
+            status: json.status,
+            priority: json.priority,
+            component: json.component,
+            projectKey: json.projectKey,
+            folder: json.folder,
+            latestVersion: json.latestVersion,
+            lastTestResultStatus: json.lastTestResultStatus,
+            owner: json.owner,
+            updatedBy: json.updatedBy,
+            createdBy: json.createdBy,
+            createdOn: json.createdOn,
+            updatedOn: json.updatedOn,
+            issueLinks: json.issueLinks ?? [],
+            customFields: json.customFields ?? {},
+            parameters: json.parameters ?? { variables: [], entries: [] },
+        }
+
         return {
-            id: json.key || ref, // если пришёл key — используем его; иначе оставим ref
+            id: json.key || ref,
             name: String(json.name ?? (json.key || ref)),
             description: json.description ?? undefined,
             steps,
             attachments: [],
             updatedAt: json.updatedOn ?? new Date().toISOString(),
+            extras, // ← NEW
         }
     }
 
