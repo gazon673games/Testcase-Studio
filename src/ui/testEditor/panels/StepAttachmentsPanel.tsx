@@ -62,7 +62,7 @@ export default function StepAttachmentsPanel({
             <div className="attachments-head" style={{ marginBottom: 4 }}>
                 <label className="label-sm">Step attachments</label>
                 <div className="attachments-actions">
-                    <button className="btn-small" onClick={() => inputRef.current?.click()} disabled={loading}>
+                    <button type="button" className="btn-small" onClick={() => inputRef.current?.click()} disabled={loading}>
                         {loading ? 'Uploading…' : '+ Upload'}
                     </button>
                     <input
@@ -93,6 +93,7 @@ export default function StepAttachmentsPanel({
                                 {a.name}
                             </a>
                             <button
+                                type="button"
                                 className="btn-small remove-btn"
                                 title="Remove file"
                                 onClick={() => remove(a.id)}

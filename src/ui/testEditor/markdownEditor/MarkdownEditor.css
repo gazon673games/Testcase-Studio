@@ -4,6 +4,30 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 
 .md-editor { position: relative; width: 100%; }
 
+.md-editor .md-preview.measurer {
+    position: absolute;
+    inset: 0;
+    visibility: hidden;
+    z-index: -1;
+    pointer-events: none;
+    border: 1px solid #ddd;
+    padding: 10px 12px;
+}
+
+.md-editor .md-measure.text {
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #fff;
+    white-space: pre-wrap;      /* как у textarea */
+    word-break: break-word;     /* перестраховка для очень длинных токенов */
+    overflow-wrap: anywhere;
+    font-size: 14px;
+    line-height: 1.45;
+    font-family: inherit;
+}
+
+/* с
 /* задаём кастомные CSS-переменные для высоты */
 .md-editor {
     --md-line-height: 1.45;
@@ -29,18 +53,34 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     outline: none;
     box-sizing: border-box;
 
-    /* автогроу: без видимой прокрутки и без ручки ресайза */
-    resize: none;
-    overflow: hidden;
-    scrollbar-width: none; /* Firefox */
+    resize: none;        /* высоту управляем сами */
+    overflow: hidden;    /* никогда не скроллим внутри поля */
+    scrollbar-width: none;
 }
 .md-editor .md-textarea::-webkit-scrollbar { display: none; }
 .md-editor .md-textarea::-webkit-resizer { display: none; }
 .md-editor .md-textarea.scrollable {
-    overflow: auto;             /* как только упёрлись в max — включаем прокрутку */
+    overflow: auto;
+    scrollbar-width: auto;
+}
+.md-editor .md-textarea.scrollable::-webkit-scrollbar {
+    display: initial;
+    width: 8px;
+}
+.md-editor .md-textarea.scrollable::-webkit-scrollbar-thumb {
+    border-radius: 8px;
+    background: rgba(0,0,0,.2);
+}
+.md-editor .md-textarea.scrollable::-webkit-scrollbar-track {
+    background: transparent;
 }
 .md-editor .md-textarea:focus { border-color:#9bb7ff; box-shadow:0 0 0 3px rgba(77,107,220,.12); }
 .md-editor .md-textarea::-webkit-resizer { display: none; }
+
+.md-editor.is-preview .md-textarea {
+    visibility: hidden;
+    pointer-events: none;
+}
 
 /* overlay-превью поверх textarea */
 .md-editor .md-preview {
@@ -53,7 +93,8 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     box-sizing: border-box;
-    pointer-events: none;
+    pointer-events: auto;
+    overflow: auto;
 }
 /* если превью очень большое — ограничиваем и даём скролл */
 .md-editor .md-preview.clamped {
@@ -105,11 +146,8 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 
 /* Автокомплит для [[...]] */
 .md-editor .autocomplete {
-    position: fixed;
-    z-index: 9999;
-    width: 380px;
-    max-height: 260px;
-    overflow: auto;
+    position: fixed; z-index: 9999;
+    width: 380px; max-height: 260px; overflow: auto;
     background: #fff; border: 1px solid #ddd; border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0,0,0,.15);
 }

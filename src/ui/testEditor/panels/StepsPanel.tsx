@@ -166,24 +166,39 @@ export default function StepsPanel({
                     <span>Steps{typeof steps.length === 'number' ? ` (${steps.length})` : ''}</span>
                 </button>
                 <span className="spacer" />
-                <div className="section-header-right">
+                <div className="section-header-right steps-toolbar">
                     <span className="muted">View:</span>
-                    <button onClick={() => setGlobalPreview(p => !p)} className="btn-small">
+                    <button type="button" onClick={() => setGlobalPreview(p => !p)} className="btn-small">
                         {globalPreview ? 'Raw' : 'Preview'}
                     </button>
                     <button
+                        type="button"
                         onClick={() => addStepAfter(Math.max(steps.length - 1, -1))}
                         className="btn-small"
                     >
                         + Add step
                     </button>
-                    {onApply && <button onClick={onApply} className="btn-small">Apply</button>}
+                    {onApply && <button type="button" onClick={onApply} className="btn-small">Apply</button>}
                 </div>
             </div>
 
             {open && (
                 <div className="steps">
-                    {steps.map((s, i) => (
+                    {steps.length === 0 ? (
+                        <div className="steps-empty">
+                            <div className="steps-empty-title">No steps yet</div>
+                            <div className="steps-empty-text">
+                                Add the first step and start composing action, data and expected result.
+                            </div>
+                            <button
+                                type="button"
+                                className="btn-small"
+                                onClick={() => addStepAfter(-1)}
+                            >
+                                + Add first step
+                            </button>
+                        </div>
+                    ) : steps.map((s, i) => (
                         <StepRow
                             key={s.id}
                             ref={(el) => { stepRefs.current[s.id] = el }}
@@ -278,7 +293,14 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRowB
         return (
             <div className="step-cell">
                 <div className="cell-head">
-                    <div className="cell-title">{label}</div>
+                    <div className="cell-head-main">
+                        <div className="cell-title">{label}</div>
+                        {parts.length > 0 && (
+                            <span className="cell-chip">
+                                {parts.length} {parts.length === 1 ? 'part' : 'parts'}
+                            </span>
+                        )}
+                    </div>
                     <PartAddBtn kind={kind} />
                 </div>
 
@@ -312,6 +334,11 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRowB
     }
 
     const stepAttachments = props.getStepAttachments()
+    const attachmentCount = stepAttachments.length
+    const partCount =
+        (step.internal?.parts?.action?.length ?? 0) +
+        (step.internal?.parts?.data?.length ?? 0) +
+        (step.internal?.parts?.expected?.length ?? 0)
 
     return (
         <div
@@ -333,7 +360,14 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRowB
                 >
                     ≡
                 </div>
-                <div className="step-title">Step {index + 1}</div>
+                <div className="step-title-wrap">
+                    <div className="step-title">Step {index + 1}</div>
+                    <div className="step-meta">
+                        {partCount > 0 && <span className="step-chip">{partCount} parts</span>}
+                        {attachmentCount > 0 && <span className="step-chip">{attachmentCount} files</span>}
+                        {preview && <span className="step-chip step-chip-preview">Preview</span>}
+                    </div>
+                </div>
                 <span className="spacer" />
                 <button title="Clone step" onClick={props.onClone} className="btn-small">⎘</button>
                 <button title="Add next step" onClick={props.onAddNext} className="btn-small">＋</button>
@@ -352,7 +386,7 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRowB
             </div>
 
             {/* attachments блока шага */}
-            <div style={{ padding: isNarrow ? 10 : '10px 10px 12px' }}>
+            <div className="step-footer" style={{ padding: isNarrow ? 10 : '10px 10px 12px' }}>
                 <StepAttachmentsPanel
                     stepId={step.id}
                     attachments={stepAttachments}

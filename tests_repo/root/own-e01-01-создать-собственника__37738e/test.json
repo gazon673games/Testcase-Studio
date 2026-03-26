@@ -1,0 +1,87 @@
+{
+  "id": "37738e56-9792-4c80-851c-f578c602876e",
+  "name": "[OWN-E01.01] Создать собственника",
+  "description": "",
+  "steps": [
+    {
+      "id": "37bcf9de-2751-418e-9cda-707c0c793058",
+      "action": "[[New Test#1.data]]",
+      "data": "",
+      "expected": "",
+      "text": "[[New Test#1.data]]",
+      "internal": {
+        "parts": {
+          "action": [],
+          "data": [],
+          "expected": []
+        },
+        "meta": {
+          "attachments": []
+        }
+      },
+      "subSteps": []
+    },
+    {
+      "id": "29f90b0a-580b-413d-99c5-9be85325a772",
+      "action": "<strong>Выполнить POST запрос на создание Собственника</strong><br />{{ms-insurance-contract-object-owner}}/api/v1/internal/owners<br /><br /><strong>Тело запроса</strong><br /><br />{<br />    \"requestId\": \"{{$guid}}\",<br />    \"contractId\": \"{{contractId}}\",<br />    \"insuranceObjectId\": \"{{$guid}}\",<br />    \"entityId\": \"{{$guid}}\",<br />    \"entityType\": \"PERSON\",<br />    \"context\": {<br />        \"additionalInfo\": \"Некоторая дополнительная информация\"<br />    },<br />    \"needScreening\": true,<br />    \"screeningPassed\": true,<br />    \"needScoring\": true,<br />    \"scoringValue\": 0,<br />    \"scoringRequestId\": \"{{$guid}}\"<br />}<br /><br /><br /><span style=\"color:rgb(44, 130, 201)\">t1</span><br /><span style=\"color:rgb(184, 49, 47)\">t2</span><br /><span style=\"color:rgb(250, 197, 28)\">t3</span><br /><br />",
+      "data": "где<br /><em>{{ms-insurance-contract-object-owner}}</em> - URL ms-insurance-contract-object-owner тестируемого стенда",
+      "expected": "<strong>Статус код = 200</strong><br />Получен ответ вида<br /><br />{<br />    \"requestId\": \"4998c795-8c2b-4d75-9d97-438dc6fce27b\",<br />    \"flkReport\": {<br />        \"requestId\": \"4998c795-8c2b-4d75-9d97-438dc6fce27b\",<br />        \"mismatches\": []<br />    },<br />    \"id\": \"9e6fe620-6531-4e2e-ae96-bb988981c3d1\"<br />}<br /><br /><br />",
+      "text": "<strong>Выполнить POST запрос на создание Собственника</strong><br />{{ms-insurance-contract-object-owner}}/api/v1/internal/owners<br /><br /><strong>Тело запроса</strong><br /><br />{<br />    \"requestId\": \"{{$guid}}\",<br />    \"contractId\": \"{{contractId}}\",<br />    \"insuranceObjectId\": \"{{$guid}}\",<br />    \"entityId\": \"{{$guid}}\",<br />    \"entityType\": \"PERSON\",<br />    \"context\": {<br />        \"additionalInfo\": \"Некоторая дополнительная информация\"<br />    },<br />    \"needScreening\": true,<br />    \"screeningPassed\": true,<br />    \"needScoring\": true,<br />    \"scoringValue\": 0,<br />    \"scoringRequestId\": \"{{$guid}}\"<br />}<br /><br /><br /><span style=\"color:rgb(44, 130, 201)\">t1</span><br /><span style=\"color:rgb(184, 49, 47)\">t2</span><br /><span style=\"color:rgb(250, 197, 28)\">t3</span><br /><br />",
+      "subSteps": [],
+      "internal": {
+        "parts": {
+          "action": [],
+          "data": [],
+          "expected": []
+        }
+      },
+      "attachments": []
+    },
+    {
+      "id": "07ed0b6f-4507-4609-9cc5-a646f9a75180",
+      "action": "<strong>Проверить сохранение Собственника в БД </strong><br /><br />Для этого в БД ms-insurance-contract-object-owner в таблице owner выполнить SELECT-запрос вида <br /><br /><em>SELECT x.* FROM public.\"owner\" x<br />WHERE id =</em><em><em>'{{id}}'</em></em><br /><br />где <em>{{id}}</em> - id Собственника , полученного в теле ответа шага 2",
+      "data": "",
+      "expected": "<strong>Получена запись по Собственнику</strong><br /><br />Набор атрибутов ​соответствует набору атрибутов, ​указаных в теле запроса<br /><br />Запись в БД<br /><br />{<br />\"id\":\"9e6fe620-6531-4e2e-ae96-bb988981c3d1\",<br />\"contract_id\":\"fa991f86-cc73-4b6d-829b-54849f6ee0f8\",<br />\"insurance_object_id\":\"648d8a2c-4dd4-4744-bc04-01e8cd5be14d\",<br />\"entity_id\":\"d9e77afe-0ac0-483a-a3fc-01394e5dff5e\",<br />\"entity_type\":\"PERSON\",<br />\"context\":{...},<br />\"need_screening\":true,<br />\"screening_passed\":null,<br />\"need_scoring\":true,<br />\"scoring_request_id\":null,<br />\"scoring_value\":null,<br />\"request_id\":\"4998c795-8c2b-4d75-9d97-438dc6fce27b\",<br />\"created_at\":\"2025-08-27T13:04:09.184Z\",<br />\"updated_at\":\"2025-08-27T13:04:09.184Z\"<br />}<em><br /><br /></em><em><br /></em><br /><br /><br />",
+      "text": "<strong>Проверить сохранение Собственника в БД </strong><br /><br />Для этого в БД ms-insurance-contract-object-owner в таблице owner выполнить SELECT-запрос вида <br /><br /><em>SELECT x.* FROM public.\"owner\" x<br />WHERE id =</em><em><em>'{{id}}'</em></em><br /><br />где <em>{{id}}</em> - id Собственника , полученного в теле ответа шага 2",
+      "subSteps": [],
+      "internal": {
+        "parts": {
+          "action": [],
+          "data": [],
+          "expected": []
+        }
+      },
+      "attachments": []
+    }
+  ],
+  "attachments": [],
+  "links": [],
+  "updatedAt": "2025-12-23T11:29:46.869Z",
+  "meta": {
+    "tags": [],
+    "params": {
+      "key": "PROD-T6209",
+      "keyNumber": "6209",
+      "status": "Actual",
+      "priority": "High",
+      "component": "Core",
+      "projectKey": "PROD",
+      "folder": "/CORE/[New] Core /[New] Собственник/OWN-E01.01 Создать собственника",
+      "latestVersion": "true",
+      "lastTestResultStatus": "Pass",
+      "owner": "JIRAUSER146660",
+      "updatedBy": "JIRAUSER137773",
+      "createdBy": "JIRAUSER144920",
+      "createdOn": "2025-08-16T03:26:42.544Z",
+      "updatedOn": "2025-11-06T11:55:39.530Z",
+      "issueLinks": "[\"PROD-24560\"]",
+      "customFields.Automation": "Automated",
+      "customFields.Test Type": "Regression",
+      "parameters.variables": "[]",
+      "parameters.entries": "[]"
+    }
+  },
+  "exportCfg": {
+    "enabled": true
+  }
+}

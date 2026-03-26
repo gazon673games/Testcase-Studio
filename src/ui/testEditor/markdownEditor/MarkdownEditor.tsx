@@ -1,9 +1,7 @@
 import * as React from 'react'
 import './MarkdownEditor.css'
 
-/**
- * Минимальный контракт теста/шага для [[wiki-refs]] автокомплита.
- */
+/** Минимальный контракт теста/шага для [[wiki-refs]] автокомплита. */
 export type RefTest = {
     id: string
     name: string
@@ -45,6 +43,12 @@ export type MarkdownEditorProps = {
     hideToolbar?: boolean
 
     className?: string
+}
+
+type CaretAnchor = {
+    top: number
+    left: number
+    bottom: number
 }
 
 /* ───────────────────────── Markdown ───────────────────────── */
@@ -108,86 +112,93 @@ function normalizeImageWikiRefs(src: string, resolveRefs?: (s: string) => string
 
 /* ─────────────────────── HTML sanitizer ────────────────────── */
 
-/** Разрешённые теги и атрибуты */
 const ALLOW_TAGS = new Set([
     'strong','b','em','i','u','code','pre','br','p','div','span',
     'ul','ol','li','h1','h2','h3','h4','h5','h6','a','img','hr'
 ])
 const ALLOW_ATTR: Record<string, Set<string>> = {
-    'a': new Set(['href','title','target','rel']),
-    'img': new Set(['src','alt','title']),
-    // прочим тегам атрибуты режем
+    a: new Set(['href','title','target','rel']),
+    img: new Set(['src','alt','title']),
+    span: new Set(['style']), // style только у span, дальше фильтруем
 }
 const URL_ATTR = new Set(['href','src'])
 
 function isSafeUrl(url: string) {
     try {
-        const u = new URL(url, 'http://x/') // base чтобы относительные не падали
+        const u = new URL(url, 'http://x/')
         const p = u.protocol.toLowerCase()
-        return p === 'http:' || p === 'https:' || (url.startsWith('data:image/'))
+        return p === 'http:' || p === 'https:' || url.startsWith('data:image/')
     } catch { return false }
 }
 
-/** Санитизируем HTML через DOMParser (в рантайме браузера/электрона) */
-function sanitizeHtml(html: string): string {
-    // 1) защитимся от нестрок
-    if (typeof html !== 'string') return ''
+/** Разрешаем только color для span: hex/rgb/rgba */
+function pickSafeStyle(tag: string, style: string | null): string | null {
+    if (!style || tag !== 'span') return null
+    const parts = style.split(';').map(s => s.trim()).filter(Boolean)
+    let colorVal: string | null = null
 
-    // 2) создаём контейнер и вливаем html
+    for (const decl of parts) {
+        const [rawProp, ...rest] = decl.split(':')
+        if (!rawProp || !rest.length) continue
+        const prop = rawProp.trim().toLowerCase()
+        const value = rest.join(':').trim()
+
+        if (prop === 'color') {
+            const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
+            const rgb = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(\s*,\s*(0|0?\.\d+|1(\.0)?))?\s*\)$/i
+            if (hex.test(value) || rgb.test(value)) colorVal = value
+        }
+    }
+    return colorVal ? `color: ${colorVal}` : null
+}
+
+function sanitizeHtml(html: string): string {
+    if (typeof html !== 'string') return ''
     const container = document.createElement('div')
     container.innerHTML = html
 
-    // 3) рекурсивная чистка по allowlist
-    const BLACKLIST_REMOVE = new Set(['script', 'style']) // эти вырезаем целиком
+    const BLACKLIST_REMOVE = new Set(['script', 'style'])
 
     const walk = (node: Node) => {
         if (node.nodeType === Node.ELEMENT_NODE) {
             const el = node as HTMLElement
             const tag = el.tagName.toLowerCase()
 
-            if (BLACKLIST_REMOVE.has(tag)) {
-                // удаляем узел со всем содержимым
-                el.remove()
-                return
-            }
+            if (BLACKLIST_REMOVE.has(tag)) { el.remove(); return }
 
             if (!ALLOW_TAGS.has(tag)) {
-                // unwrap: переносим детей наверх, сам узел убираем
                 const parent = el.parentNode
                 if (parent) {
                     while (el.firstChild) parent.insertBefore(el.firstChild, el)
                     parent.removeChild(el)
-                    // после unwrap нужно не продолжать обход текущего el (он уже удалён),
-                    // но его дети уже перемещены наверх — они попадут в обход родителя.
                 }
             } else {
-                // чистим атрибуты
                 for (const attr of Array.from(el.attributes)) {
                     const name = attr.name.toLowerCase()
-                    if (name.startsWith('on') || name === 'style') { el.removeAttribute(attr.name); continue }
+                    if (name.startsWith('on')) { el.removeAttribute(attr.name); continue }
                     if (URL_ATTR.has(name)) {
                         if (!isSafeUrl(attr.value)) { el.removeAttribute(attr.name); continue }
+                    }
+                    if (name === 'style') {
+                        const safe = pickSafeStyle(tag, el.getAttribute('style'))
+                        if (safe) el.setAttribute('style', safe)
+                        else el.removeAttribute('style')
+                        continue
                     }
                     const allowForTag = ALLOW_ATTR[tag]
                     if (allowForTag) {
                         if (!allowForTag.has(name)) el.removeAttribute(attr.name)
                     } else {
-                        // для тегов без спец-списка разрашим только title
                         if (name !== 'title') el.removeAttribute(attr.name)
                     }
                 }
             }
         }
-
-        // обходим копию списка, т.к. дерево может мутировать
-        for (const child of Array.from(node.childNodes)) {
-            walk(child)
-        }
+        for (const child of Array.from(node.childNodes)) walk(child)
     }
 
     walk(container)
 
-    // 4) безопасные значения по умолчанию для ссылок
     for (const a of Array.from(container.querySelectorAll('a'))) {
         a.setAttribute('rel', 'noopener noreferrer')
         if (!a.getAttribute('target')) a.setAttribute('target', '_blank')
@@ -196,9 +207,56 @@ function sanitizeHtml(html: string): string {
     return container.innerHTML
 }
 
-/** Простой детектор “похоже на HTML со стилем Zephyr” */
 function looksLikeHtml(s: string) {
-    return /<\s*(strong|b|em|i|u|code|pre|br|p|div|ol|ul|li|h[1-6]|a|img)\b/i.test(s)
+    return /<\s*(strong|b|em|i|u|code|pre|br|p|div|span|ol|ul|li|h[1-6]|a|img)\b/i.test(s)
+}
+
+function getCaretAnchor(el: HTMLTextAreaElement): CaretAnchor | null {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return null
+
+    const rect = el.getBoundingClientRect()
+    const styles = window.getComputedStyle(el)
+    const mirror = document.createElement('div')
+    const marker = document.createElement('span')
+    const caret = el.selectionStart ?? 0
+
+    mirror.style.position = 'absolute'
+    mirror.style.visibility = 'hidden'
+    mirror.style.pointerEvents = 'none'
+    mirror.style.boxSizing = styles.boxSizing
+    mirror.style.whiteSpace = 'pre-wrap'
+    mirror.style.wordBreak = 'break-word'
+    mirror.style.overflowWrap = 'anywhere'
+    mirror.style.width = `${rect.width}px`
+    mirror.style.left = `${rect.left + window.scrollX}px`
+    mirror.style.top = `${rect.top + window.scrollY}px`
+    mirror.style.padding = styles.padding
+    mirror.style.border = styles.border
+    mirror.style.font = styles.font
+    mirror.style.fontFamily = styles.fontFamily
+    mirror.style.fontSize = styles.fontSize
+    mirror.style.fontStyle = styles.fontStyle
+    mirror.style.fontWeight = styles.fontWeight
+    mirror.style.letterSpacing = styles.letterSpacing
+    mirror.style.lineHeight = styles.lineHeight
+    mirror.style.textAlign = styles.textAlign as string
+    mirror.style.textTransform = styles.textTransform
+    mirror.style.textIndent = styles.textIndent
+    mirror.style.tabSize = styles.tabSize
+
+    mirror.textContent = el.value.slice(0, caret)
+    marker.textContent = el.value.slice(caret, caret + 1) || '\u200b'
+    mirror.appendChild(marker)
+    document.body.appendChild(mirror)
+
+    const markerRect = marker.getBoundingClientRect()
+    document.body.removeChild(mirror)
+
+    const height = markerRect.height || parseFloat(styles.lineHeight) || 18
+    const top = markerRect.top + window.scrollY - el.scrollTop
+    const left = markerRect.left + window.scrollX - el.scrollLeft
+
+    return { top, left, bottom: top + height }
 }
 
 /* ───────────────────────── Компонент ───────────────────────── */
@@ -220,11 +278,10 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
 
     const taRef = React.useRef<HTMLTextAreaElement | null>(null)
     const previewRef = React.useRef<HTMLDivElement | null>(null)
+    const measurerRef = React.useRef<HTMLDivElement | null>(null) // ← скрытый измеритель
     const [active, setActive] = React.useState(false)
 
-    const MAX_AUTO_HEIGHT = 600 // px
-
-    // локальные команды для тулбара
+    // тулбар API
     const doWrap = React.useCallback((before: string, after: string) => {
         const el = taRef.current
         if (!el) return
@@ -261,7 +318,6 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         requestAnimationFrame(() => el.focus())
     }, [value, onChange])
 
-    // выдать API наружу — опц.
     React.useEffect(() => {
         if (!apiRef) return
         apiRef.current = {
@@ -272,27 +328,59 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         return () => { if (apiRef) apiRef.current = null }
     }, [apiRef, doWrap, doInsertPrefix])
 
-    // автогроу
-    const autoGrow = React.useCallback((el: HTMLTextAreaElement) => {
-        el.style.height = 'auto'
-        let target = el.scrollHeight
-        if (preview && previewRef.current) {
-            target = Math.max(target, previewRef.current.scrollHeight)
+    // HTML для превью/измерителя
+    const renderPreviewHtml = React.useCallback((input: string) => {
+        const src = typeof resolveRefs === 'function' ? resolveRefs(input ?? '') : (input ?? '')
+        if (looksLikeHtml(src)) {
+            return sanitizeHtml(src)
+        } else {
+            return mdToHtml(normalizeImageWikiRefs(src, resolveRefs))
         }
-        const final = Math.min(target, MAX_AUTO_HEIGHT)
-        el.style.height = `${final}px`
-        el.style.overflowY = target > MAX_AUTO_HEIGHT ? 'auto' : 'hidden'
-    }, [preview])
+    }, [resolveRefs])
 
-    React.useLayoutEffect(() => {
-        if (taRef.current) autoGrow(taRef.current)
-    }, [value, preview, autoGrow])
+    // Синхронизация высот: textarea и preview получают одинаковую высоту = высоте измерителя
+    const syncHeights = React.useCallback(() => {
+        const ta = taRef.current
+        if (!ta) return
+
+        // 1) обновляем содержимое измерителя и меряем его
+        const measurer = measurerRef.current
+        if (measurer) {
+            // уже содержит HTML через dangerouslySetInnerHTML в JSX; просто меряем
+            // форсируем reflow
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+            measurer.offsetHeight
+        }
+
+        const targetH =
+            measurer?.scrollHeight ??
+            (previewRef.current?.scrollHeight || ta.scrollHeight)
+
+        // 2) выставляем одинаковую высоту всем поверхностям
+        ta.style.height = 'auto'
+        ta.style.overflow = 'hidden'
+        ta.style.height = `${targetH}px`
+
+        if (previewRef.current) {
+            previewRef.current.style.height = `${targetH}px`
+            previewRef.current.style.overflow = 'auto'
+        }
+    }, [])
+
+    // триггеры синхронизации
+    React.useLayoutEffect(() => { syncHeights() }, [value, preview, syncHeights])
 
     React.useEffect(() => {
-        const onResize = () => { if (taRef.current) autoGrow(taRef.current) }
+        const onResize = () => syncHeights()
         window.addEventListener('resize', onResize)
         return () => window.removeEventListener('resize', onResize)
-    }, [autoGrow])
+    }, [syncHeights])
+
+    React.useEffect(() => {
+        if (!preview) return
+        taRef.current?.blur()
+        setAcOpen(false)
+    }, [preview])
 
     // ───── автокомплит [[...]]
     const [acOpen, setAcOpen] = React.useState(false)
@@ -310,8 +398,24 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
             setAcOpen(false); setRange(null); return
         }
         const q = before.slice(start + 2)
-        const r = el.getBoundingClientRect()
-        setAnchor({ top: r.bottom + window.scrollY, left: r.left + window.scrollX + 8 })
+        const caretAnchor = getCaretAnchor(el)
+        const menuWidth = 380
+        const menuHeight = 260
+        const gutter = 12
+        const fallbackRect = el.getBoundingClientRect()
+        const minLeft = window.scrollX + gutter
+        const maxLeft = Math.max(minLeft, window.scrollX + window.innerWidth - menuWidth - gutter)
+        const left = caretAnchor
+            ? Math.max(minLeft, Math.min(caretAnchor.left, maxLeft))
+            : fallbackRect.left + window.scrollX + 8
+        const top = caretAnchor
+            ? (
+                caretAnchor.bottom + menuHeight + gutter <= window.scrollY + window.innerHeight
+                    ? caretAnchor.bottom + 6
+                    : Math.max(window.scrollY + gutter, caretAnchor.top - menuHeight - 6)
+            )
+            : fallbackRect.bottom + window.scrollY
+        setAnchor({ top, left })
         setRange({ from: start, to: caret })
 
         const hashPos = q.indexOf('#')
@@ -378,7 +482,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     function onChangeWrapped(e: React.ChangeEvent<HTMLTextAreaElement>) {
         onChange(e.target.value)
         updateSuggestions(e.target)
-        if (taRef.current) autoGrow(taRef.current)
+        // высота синхронизируется через useLayoutEffect
     }
     function onClickOrKeyUp() {
         const el = taRef.current
@@ -386,29 +490,12 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         updateSuggestions(el)
     }
 
-    React.useEffect(() => {
-        const onScroll = () => setAcOpen(false)
-        window.addEventListener('scroll', onScroll, true)
-        return () => window.removeEventListener('scroll', onScroll, true)
-    }, [])
-
-    /* ─────────── Превью: Markdown ИЛИ Санитизированный HTML ─────────── */
-
-    function renderPreviewHtml(input: string) {
-        const src = typeof resolveRefs === 'function' ? resolveRefs(input ?? '') : (input ?? '')
-        if (looksLikeHtml(src)) {
-            return sanitizeHtml(src)
-        } else {
-            return mdToHtml(normalizeImageWikiRefs(src, resolveRefs))
-        }
-    }
-
     // тулбар
     const toolbar = !hideToolbar && active && !preview ? (
         <div className="md-toolbar" onMouseDown={(e) => e.preventDefault()}>
-            <button className="md-btn" title="Bold" onClick={() => doWrap('**', '**')}>B</button>
-            <button className="md-btn" title="Italic" onClick={() => doWrap('*', '*')}><i>I</i></button>
-            <button className="md-btn" title="Underline" onClick={() => doWrap('__', '__')}><u>U</u></button>
+            <button type="button" className="md-btn" title="Bold" onClick={() => doWrap('**', '**')}>B</button>
+            <button type="button" className="md-btn" title="Italic" onClick={() => doWrap('*', '*')}><i>I</i></button>
+            <button type="button" className="md-btn" title="Underline" onClick={() => doWrap('__', '__')}><u>U</u></button>
             <div className="divider" />
             <button className="md-btn" title="Bulleted list" onClick={() => doInsertPrefix('-')}>•</button>
             <button className="md-btn" title="Numbered list" onClick={() => doInsertPrefix('1.')}>1.</button>
@@ -425,34 +512,49 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         </div>
     ) : null
 
+    const html = React.useMemo(() => renderPreviewHtml(value), [value]) // один раз считаем HTML
+
+    const previewHtml = React.useMemo(() => renderPreviewHtml(value), [value, renderPreviewHtml])
+
     return (
-        <div className={`md-editor ${className || ''}`}>
+        <div className={`md-editor ${preview ? 'is-preview' : ''} ${className || ''}`}>
             {toolbar}
             <div className="md-input-wrap">
-        <textarea
-            ref={taRef}
-            value={value}
-            onChange={onChangeWrapped}
-            onKeyDown={onKeyDown}
-            onKeyUp={onClickOrKeyUp}
-            onClick={onClickOrKeyUp}
-            onFocus={() => {
-                setActive(true)
-                const el = taRef.current
-                if (el) { updateSuggestions(el); autoGrow(el) }
-            }}
-            onBlur={() => { setActive(false); setAcOpen(false) }}
-            placeholder={placeholder}
-            rows={rows}
-            className="md-textarea"
-        />
+                {/* скрытый измеритель — ВСЕГДА присутствует и принимает итоговый HTML */}
+                <div
+                    ref={measurerRef}
+                    className="md-preview measurer"
+                    aria-hidden
+                    dangerouslySetInnerHTML={{ __html: previewHtml }}
+                />
+
+                <textarea
+                    ref={taRef}
+                    value={value}
+                    onChange={onChangeWrapped}
+                    onKeyDown={onKeyDown}
+                    onKeyUp={onClickOrKeyUp}
+                    onClick={onClickOrKeyUp}
+                    onFocus={() => {
+                        setActive(true)
+                        const el = taRef.current
+                        if (el) updateSuggestions(el)
+                    }}
+                    onBlur={() => { setActive(false); setAcOpen(false) }}
+                    placeholder={placeholder}
+                    rows={rows}
+                    className="md-textarea"
+                    wrap="soft"
+                    aria-hidden={preview}
+                    tabIndex={preview ? -1 : 0}
+                />
 
                 {preview && (
                     <div
                         ref={previewRef}
                         className="md-preview"
-                        /* ВНИМАНИЕ: HTML уже санитизирован в renderPreviewHtml */
-                        dangerouslySetInnerHTML={{ __html: renderPreviewHtml(value) }}
+                        tabIndex={0}
+                        dangerouslySetInnerHTML={{ __html: previewHtml }}
                     />
                 )}
 

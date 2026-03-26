@@ -296,6 +296,7 @@ function Menu({
 function Item({ label, onClick, danger, disabled }: { label: string; onClick(): void; danger?: boolean; disabled?: boolean }) {
     return (
         <button
+            type="button"
             onClick={() => { if (!disabled) onClick() }}
             disabled={disabled}
             style={{

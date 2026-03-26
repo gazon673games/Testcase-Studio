@@ -89,6 +89,14 @@ function mapProviderSteps(src: ProviderStep[]): Step[] {
         data: safeStr(ps.data),
         expected: safeStr(ps.expected),
         text: safeStr(ps.text ?? ps.action),
+
+        // 🆕 сырец (как пришло)
+        raw: {
+            action: safeStr(ps.action),
+            data: safeStr(ps.data),
+            expected: safeStr(ps.expected),
+        },
+
         subSteps: [],
         internal: { parts: { action: [], data: [], expected: [] } },
         attachments: [],

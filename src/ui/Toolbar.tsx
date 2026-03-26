@@ -10,6 +10,7 @@ type Props = {
 export function Toolbar(p: Props) {
     const Btn = (props: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
         <button
+            type={props.type ?? 'button'}
             {...props}
             style={{
                 padding: '6px 12px',

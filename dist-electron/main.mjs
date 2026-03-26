@@ -1,9 +1,9 @@
-import { app, BrowserWindow, ipcMain } from "electron";
-import path from "node:path";
-import { promises } from "fs";
-import { randomUUID } from "crypto";
-import keytar from "keytar";
-const CHANNELS = {
+import { app as u, BrowserWindow as y, ipcMain as b } from "electron";
+import s from "node:path";
+import { promises as c } from "fs";
+import { randomUUID as P } from "crypto";
+import T from "keytar";
+const h = {
   LOAD_STATE: "LOAD_STATE",
   SAVE_STATE: "SAVE_STATE",
   LOAD_SETTINGS: "LOAD_SETTINGS",
@@ -11,206 +11,157 @@ const CHANNELS = {
   GET_ATLASSIAN_SECRET: "GET_ATLASSIAN_SECRET",
   ZEPHYR_GET_TESTCASE: "ZEPHYR_GET_TESTCASE"
 };
-function getBaseDir$1() {
-  return app.isPackaged ? path.dirname(app.getPath("exe")) : process.cwd();
+function j() {
+  return u.isPackaged ? s.dirname(u.getPath("exe")) : process.cwd();
 }
-const REPO_DIR = "tests_repo";
-function slugify(name) {
-  return name.toLowerCase().replace(/[^a-z0-9\u0400-\u04FF]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "node";
+const N = "tests_repo";
+function I(t) {
+  return t.toLowerCase().replace(/[^a-z0-9\u0400-\u04FF]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "node";
 }
-function isTestFolder(dirPath, entries) {
-  return entries.includes("test.json");
+function L(t, n) {
+  return n.includes("test.json");
 }
-async function ensureDir$1(p) {
-  await promises.mkdir(p, { recursive: true });
+async function f(t) {
+  await c.mkdir(t, { recursive: !0 });
 }
-async function loadFromFs() {
-  const base = path.join(getBaseDir$1(), REPO_DIR);
-  await ensureDir$1(base);
-  const rootDir = path.join(base, "root");
-  await ensureDir$1(rootDir);
-  async function readNode(dir) {
-    const entries = await promises.readdir(dir);
-    if (isTestFolder(dir, entries)) {
-      const raw = await promises.readFile(path.join(dir, "test.json"), "utf-8");
-      return JSON.parse(raw);
+async function U() {
+  const t = s.join(j(), N);
+  await f(t);
+  const n = s.join(t, "root");
+  await f(n);
+  async function e(r) {
+    const d = await c.readdir(r);
+    if (L(r, d)) {
+      const w = await c.readFile(s.join(r, "test.json"), "utf-8");
+      return JSON.parse(w);
     }
-    const folder = { id: randomUUID(), name: path.basename(dir), children: [] };
-    for (const name of entries) {
-      const childPath = path.join(dir, name);
-      const stat = await promises.lstat(childPath);
-      if (stat.isDirectory()) {
-        folder.children.push(await readNode(childPath));
-      }
+    const l = { id: P(), name: s.basename(r), children: [] };
+    for (const w of d) {
+      const o = s.join(r, w);
+      (await c.lstat(o)).isDirectory() && l.children.push(await e(o));
     }
-    return folder;
+    return l;
   }
-  const root = await readNode(rootDir);
-  return { root, sharedSteps: [] };
+  return { root: await e(n), sharedSteps: [] };
 }
-async function saveToFs(state) {
-  const base = path.join(getBaseDir$1(), REPO_DIR);
-  await ensureDir$1(base);
-  const rootDir = path.join(base, "root");
-  await ensureDir$1(rootDir);
-  async function writeFolder(fsDir, folder) {
-    await ensureDir$1(fsDir);
-    const desired = /* @__PURE__ */ new Map();
-    for (const child of folder.children) {
-      if ("children" in child) {
-        const target = path.join(fsDir, child.name);
-        desired.set(target, { node: child, targetPath: target });
+async function $(t) {
+  const n = s.join(j(), N);
+  await f(n);
+  const e = s.join(n, "root");
+  await f(e);
+  async function i(r, d) {
+    await f(r);
+    const l = /* @__PURE__ */ new Map();
+    for (const o of d.children)
+      if ("children" in o) {
+        const a = s.join(r, o.name);
+        l.set(a, { node: o, targetPath: a });
       } else {
-        const slug = slugify(child.name);
-        const idSuffix = child.id?.slice(0, 6) ?? randomUUID().slice(0, 6);
-        const target = path.join(fsDir, `${slug}__${idSuffix}`);
-        desired.set(target, { node: child, targetPath: target });
+        const a = I(o.name), S = o.id?.slice(0, 6) ?? P().slice(0, 6), _ = s.join(r, `${a}__${S}`);
+        l.set(_, { node: o, targetPath: _ });
       }
-    }
-    for (const { node, targetPath } of desired.values()) {
-      if ("children" in node) {
-        await writeFolder(targetPath, node);
-      } else {
-        await ensureDir$1(targetPath);
-        await ensureDir$1(path.join(targetPath, "attachments"));
-        await promises.writeFile(path.join(targetPath, "test.json"), JSON.stringify(node, null, 2), "utf-8");
-      }
-    }
-    const current = await promises.readdir(fsDir);
-    for (const name of current) {
-      const p = path.join(fsDir, name);
-      if (!(await promises.lstat(p)).isDirectory()) continue;
-      if (!desired.has(p)) {
-        await promises.rm(p, { recursive: true, force: true });
-      }
+    for (const { node: o, targetPath: a } of l.values())
+      "children" in o ? await i(a, o) : (await f(a), await f(s.join(a, "attachments")), await c.writeFile(s.join(a, "test.json"), JSON.stringify(o, null, 2), "utf-8"));
+    const w = await c.readdir(r);
+    for (const o of w) {
+      const a = s.join(r, o);
+      (await c.lstat(a)).isDirectory() && (l.has(a) || await c.rm(a, { recursive: !0, force: !0 }));
     }
   }
-  await writeFolder(rootDir, state.root);
+  await i(e, t.root);
 }
-const SERVICE = "testshub-atlassian";
-function getBaseDir() {
-  return app.isPackaged ? path.dirname(app.getPath("exe")) : process.cwd();
+const A = "testshub-atlassian";
+function D() {
+  return u.isPackaged ? s.dirname(u.getPath("exe")) : process.cwd();
 }
-const SETTINGS_PATH = path.join(getBaseDir(), "tests_repo", ".settings.json");
-async function ensureDir(filePath) {
-  await promises.mkdir(path.dirname(filePath), { recursive: true });
+const g = s.join(D(), "tests_repo", ".settings.json");
+async function G(t) {
+  await c.mkdir(s.dirname(t), { recursive: !0 });
 }
-async function loadSettings() {
+async function p() {
   try {
-    const raw = await promises.readFile(SETTINGS_PATH, "utf-8");
-    const parsed = JSON.parse(raw);
-    const login = parsed.login ?? "";
-    const baseUrl = parsed.baseUrl ?? "";
-    const hasSecret = login ? !!await keytar.getPassword(SERVICE, login) : false;
-    return { login, baseUrl, hasSecret };
+    const t = await c.readFile(g, "utf-8"), n = JSON.parse(t), e = n.login ?? "", i = n.baseUrl ?? "", r = e ? !!await T.getPassword(A, e) : !1;
+    return { login: e, baseUrl: i, hasSecret: r };
   } catch {
-    return { login: "", baseUrl: "", hasSecret: false };
+    return { login: "", baseUrl: "", hasSecret: !1 };
   }
 }
-async function saveSettings(login, passwordOrToken, baseUrl) {
-  await ensureDir(SETTINGS_PATH);
-  const filePayload = { login, baseUrl };
-  await promises.writeFile(SETTINGS_PATH, JSON.stringify(filePayload, null, 2), "utf-8");
-  if (login && typeof passwordOrToken === "string" && passwordOrToken.length > 0) {
-    await keytar.setPassword(SERVICE, login, passwordOrToken);
-  }
-  const hasSecret = login ? !!await keytar.getPassword(SERVICE, login) : false;
-  return { login, baseUrl: baseUrl ?? "", hasSecret };
+async function F(t, n, e) {
+  await G(g);
+  const i = { login: t, baseUrl: e };
+  await c.writeFile(g, JSON.stringify(i, null, 2), "utf-8"), t && typeof n == "string" && n.length > 0 && await T.setPassword(A, t, n);
+  const r = t ? !!await T.getPassword(A, t) : !1;
+  return { login: t, baseUrl: e ?? "", hasSecret: r };
 }
-async function getAtlassianSecret(login) {
-  if (!login) return null;
-  return await keytar.getPassword(SERVICE, login);
+async function m(t) {
+  return t ? await T.getPassword(A, t) : null;
 }
-function cleanBaseUrl(u) {
-  return (u || "").replace(/\/+$/, "");
+function C(t) {
+  return (t || "").replace(/\/+$/, "");
 }
-function b64(s) {
-  return Buffer.from(s, "utf8").toString("base64");
+function v(t) {
+  return Buffer.from(t, "utf8").toString("base64");
 }
-function registerHandlers(ipcMain2) {
-  ipcMain2.handle(CHANNELS.LOAD_STATE, async (_e, fallback) => {
+function O(t) {
+  t.handle(h.LOAD_STATE, async (n, e) => {
     try {
-      return await loadFromFs();
+      return await U();
     } catch {
-      return fallback;
+      return e;
     }
-  });
-  ipcMain2.handle(CHANNELS.SAVE_STATE, async (_e, state) => {
-    await saveToFs(state);
-    return true;
-  });
-  ipcMain2.handle(CHANNELS.LOAD_SETTINGS, async () => {
-    return await loadSettings();
-  });
-  ipcMain2.handle(
-    CHANNELS.SAVE_SETTINGS,
-    async (_e, payload) => {
-      return await saveSettings(payload.login, payload.passwordOrToken, payload.baseUrl);
-    }
-  );
-  ipcMain2.handle(
-    CHANNELS.GET_ATLASSIAN_SECRET,
-    async (_e, payload) => {
-      const s = await getAtlassianSecret(payload.login);
-      return s ?? "";
-    }
-  );
-  ipcMain2.handle(
-    CHANNELS.ZEPHYR_GET_TESTCASE,
-    async (_e, payload) => {
-      const settings = await loadSettings();
-      const login = settings.login || "";
-      const baseUrl = cleanBaseUrl(settings.baseUrl || "");
-      if (!login) throw new Error("Atlassian login is empty in settings");
-      if (!baseUrl) throw new Error("Atlassian baseUrl is empty in settings");
-      const password = await getAtlassianSecret(login) || "";
-      if (!password) throw new Error("Atlassian password is not stored in keychain");
-      const url = `${baseUrl}/rest/atm/1.0/testcase/${encodeURIComponent(payload.ref)}`;
-      const auth = `Basic ${b64(`${login}:${password}`)}`;
-      const res = await fetch(url, {
+  }), t.handle(h.SAVE_STATE, async (n, e) => (await $(e), !0)), t.handle(h.LOAD_SETTINGS, async () => await p()), t.handle(
+    h.SAVE_SETTINGS,
+    async (n, e) => await F(e.login, e.passwordOrToken, e.baseUrl)
+  ), t.handle(
+    h.GET_ATLASSIAN_SECRET,
+    async (n, e) => await m(e.login) ?? ""
+  ), t.handle(
+    h.ZEPHYR_GET_TESTCASE,
+    async (n, e) => {
+      const i = await p(), r = i.login || "", d = C(i.baseUrl || "");
+      if (!r) throw new Error("Atlassian login is empty in settings");
+      if (!d) throw new Error("Atlassian baseUrl is empty in settings");
+      const l = await m(r) || "";
+      if (!l) throw new Error("Atlassian password is not stored in keychain");
+      const w = `${d}/rest/atm/1.0/testcase/${encodeURIComponent(e.ref)}`, o = `Basic ${v(`${r}:${l}`)}`, a = await fetch(w, {
         method: "GET",
-        headers: { Authorization: auth, Accept: "application/json" }
+        headers: { Authorization: o, Accept: "application/json" }
       });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
+      if (!a.ok) {
+        const S = await a.text().catch(() => "");
         throw new Error(
-          `Zephyr(${payload.by}) ${res.status} ${res.statusText}` + (text ? ` – ${text.slice(0, 300)}` : "")
+          `Zephyr(${e.by}) ${a.status} ${a.statusText}` + (S ? ` – ${S.slice(0, 300)}` : "")
         );
       }
-      return await res.json();
+      return await a.json();
     }
   );
 }
-let win = null;
-async function createWindow() {
-  win = new BrowserWindow({
+let E = null;
+async function R() {
+  E = new y({
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(app.getAppPath(), "electron", "preload.cjs"),
-      contextIsolation: true,
-      nodeIntegration: false
+      preload: s.join(u.getAppPath(), "electron", "preload.cjs"),
+      contextIsolation: !0,
+      nodeIntegration: !1
     }
   });
-  const devUrl = process.env.ELECTRON_RENDERER_URL || "http://localhost:5173";
-  {
-    try {
-      await win.loadURL(devUrl);
-      win.webContents.openDevTools({ mode: "detach" });
-    } catch (err) {
-      console.error("Failed to load renderer dev URL:", devUrl, err);
-      await win.loadFile(path.join(app.getAppPath(), "dist", "index.html"));
-    }
+  const t = process.env.ELECTRON_RENDERER_URL || "http://localhost:5173";
+  try {
+    await E.loadURL(t), E.webContents.openDevTools({ mode: "detach" });
+  } catch (n) {
+    console.error("Failed to load renderer dev URL:", t, n), await E.loadFile(s.join(u.getAppPath(), "dist", "index.html"));
   }
 }
-app.whenReady().then(() => {
-  registerHandlers(ipcMain);
-  createWindow();
+u.whenReady().then(() => {
+  O(b), R();
 });
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+u.on("window-all-closed", () => {
+  process.platform !== "darwin" && u.quit();
 });
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+u.on("activate", () => {
+  y.getAllWindows().length === 0 && R();
 });
 //# sourceMappingURL=main.mjs.map

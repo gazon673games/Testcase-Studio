@@ -52,23 +52,21 @@
 
     export interface Step {
         id: ID
-
-        /** ✅ Экспортируемые плоские поля — все опциональны */
         action?: string
         data?: string
         expected?: string
-
-        /** 🔁 Совместимость со старым UI/моками */
         text?: string
 
-        /** Локальная детализация и служебные поля (в TMS не уходит) */
+        // 🆕 исходник шага (например HTML из Zephyr)
+        raw?: {
+            action?: string
+            data?: string
+            expected?: string
+        }
+
         subSteps?: SubStep[]
         internal?: StepInternal
-
-        /** Ссылка на «шаренный» шаг (если используется) */
         usesShared?: SharedStepID
-
-        /** 🆕 Вложения конкретного шага */
         attachments?: Attachment[]
     }
 
@@ -174,9 +172,10 @@
             data,
             expected,
             text: action || '',
+            raw: { action, data, expected }, // 🆕
             subSteps: [],
             internal: { parts: { action: [], data: [], expected: [] } },
-            attachments: [] // 🆕 по умолчанию пустой список вложений шага
+            attachments: []
         }
     }
 

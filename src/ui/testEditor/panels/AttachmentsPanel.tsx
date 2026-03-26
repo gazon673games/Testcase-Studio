@@ -55,7 +55,7 @@ export function AttachmentsPanel({ attachments, onChange, onUploadFiles, accept 
             <div className="attachments-head">
                 <label className="label-sm">Attachments</label>
                 <div className="attachments-actions">
-                    <button className="btn-small" onClick={() => inputRef.current?.click()} disabled={loading}>
+                    <button type="button" className="btn-small" onClick={() => inputRef.current?.click()} disabled={loading}>
                         {loading ? 'Uploading…' : '+ Upload'}
                     </button>
                     <input
@@ -86,6 +86,7 @@ export function AttachmentsPanel({ attachments, onChange, onUploadFiles, accept 
                                 {a.name}
                             </a>
                             <button
+                                type="button"
                                 className="btn-small remove-btn"
                                 title="Remove attachment"
                                 onClick={() => remove(a.id)}

@@ -108,6 +108,7 @@ export function SettingsModal({ open, onClose }: Props) {
                     <div style={sidebar}>
                         {TABS.map(t => (
                             <button
+                                type="button"
                                 key={t.key}
                                 onClick={() => setTab(t.key)}
                                 style={{ ...tabBtn, ...(tab === t.key ? tabBtnActive : {}) }}
