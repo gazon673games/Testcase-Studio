@@ -1,4 +1,5 @@
 import type { PartItem, SharedStep, Step, TestCase, TestMeta } from './domain'
+import { mdToHtml, looksLikeHtml } from './markdown'
 
 export type RefOwnerType = 'test' | 'shared'
 export type RefKind = 'action' | 'data' | 'expected'
@@ -9,9 +10,9 @@ export type RefOwner =
 
 export interface RefCatalog {
     testsById: Map<string, TestCase>
-    testsByName: Map<string, TestCase>
+    testsByName: Map<string, TestCase[]>
     sharedById: Map<string, SharedStep>
-    sharedByName: Map<string, SharedStep>
+    sharedByName: Map<string, SharedStep[]>
 }
 
 export interface ParsedWikiRef {
@@ -43,6 +44,13 @@ export interface ResolvedWikiRef {
     preview: string
     label: string
     brokenReason?: string
+    brokenReasonCode?: 'source-ambiguous' | 'source-missing' | 'step-missing' | 'part-missing' | 'field-empty'
+}
+
+export type ResolveRefsMode = 'plain' | 'html'
+
+export interface ResolveRefsInTextOptions {
+    mode?: ResolveRefsMode
 }
 
 export interface SharedUsage {
@@ -56,21 +64,29 @@ export interface SharedUsage {
     raw?: string
 }
 
+type OwnerLookup =
+    | { owner: RefOwner }
+    | { error: 'missing' | 'ambiguous' }
+
 const WIKI_REF_RE = /(!)?\[\[([^[\]]+)\]\]/g
 
 export function buildRefCatalog(allTests: TestCase[], sharedSteps: SharedStep[]): RefCatalog {
     const testsById = new Map<string, TestCase>()
-    const testsByName = new Map<string, TestCase>()
+    const testsByName = new Map<string, TestCase[]>()
     const sharedById = new Map<string, SharedStep>()
-    const sharedByName = new Map<string, SharedStep>()
+    const sharedByName = new Map<string, SharedStep[]>()
 
     for (const test of allTests) {
         testsById.set(test.id, test)
-        if (!testsByName.has(test.name)) testsByName.set(test.name, test)
+        const list = testsByName.get(test.name)
+        if (list) list.push(test)
+        else testsByName.set(test.name, [test])
     }
     for (const shared of sharedSteps) {
         sharedById.set(shared.id, shared)
-        if (!sharedByName.has(shared.name)) sharedByName.set(shared.name, shared)
+        const list = sharedByName.get(shared.name)
+        if (list) list.push(shared)
+        else sharedByName.set(shared.name, [shared])
     }
 
     return { testsById, testsByName, sharedById, sharedByName }
@@ -99,11 +115,56 @@ export function extractWikiRefs(src: string): ParsedWikiRef[] {
 }
 
 export function resolveRefsInText(src: string, catalog: RefCatalog): string {
+    return resolveRefs(src, catalog, { mode: 'plain' })
+}
+
+export function renderRefsInText(src: string, catalog: RefCatalog, options: ResolveRefsInTextOptions = {}): string {
+    return resolveRefs(src, catalog, options)
+}
+
+export function formatResolvedRefLabel(
+    ref: Pick<ResolvedWikiRef, 'ownerType' | 'ownerName' | 'preview' | 'raw'>,
+    t: (key: 'refs.owner.shared' | 'refs.owner.test' | 'refs.stepFallback', params?: Record<string, string | number>) => string
+): string {
+    const ownerPrefix = ref.ownerType === 'shared' ? t('refs.owner.shared') : t('refs.owner.test')
+    const stepTitle = trimPreview(ref.preview || '') || t('refs.stepFallback')
+    return `${ownerPrefix}: ${ref.ownerName ?? ''} -> ${stepTitle}`
+}
+
+export function formatResolvedRefBrokenReason(
+    ref: Pick<ResolvedWikiRef, 'brokenReasonCode' | 'brokenReason'>,
+    t: (
+        key:
+            | 'refs.broken.sourceAmbiguous'
+            | 'refs.broken.sourceMissing'
+            | 'refs.broken.stepMissing'
+            | 'refs.broken.partMissing'
+            | 'refs.broken.fieldEmpty'
+    ) => string
+): string {
+    switch (ref.brokenReasonCode) {
+        case 'source-ambiguous':
+            return t('refs.broken.sourceAmbiguous')
+        case 'source-missing':
+            return t('refs.broken.sourceMissing')
+        case 'step-missing':
+            return t('refs.broken.stepMissing')
+        case 'part-missing':
+            return t('refs.broken.partMissing')
+        case 'field-empty':
+            return t('refs.broken.fieldEmpty')
+        default:
+            return ref.brokenReason ?? t('refs.broken.sourceMissing')
+    }
+}
+
+function resolveRefs(src: string, catalog: RefCatalog, options: ResolveRefsInTextOptions = {}): string {
+    const mode = options.mode ?? 'plain'
     return src.replace(WIKI_REF_RE, (_full, imageMarker: string | undefined, body: string) => {
         const image = Boolean(imageMarker)
         const parsed = parseWikiRefBody(String(body).trim(), image ? `![[${body}]]` : `[[${body}]]`, image)
         const resolved = resolveWikiRef(parsed, catalog)
-        return resolved.ok ? resolved.preview : parsed.raw
+        return resolved.ok ? renderResolvedValue(resolved, mode) : parsed.raw
     })
 }
 
@@ -128,10 +189,15 @@ export function resolveWikiRef(parsed: ParsedWikiRef, catalog: RefCatalog): Reso
         label: parsed.raw,
     }
 
-    const targetOwner = findOwner(parsed, catalog)
-    if (!targetOwner) {
-        return { ...base, brokenReason: 'Source not found' }
+    const ownerLookup = findOwner(parsed, catalog)
+    if ('error' in ownerLookup) {
+        return {
+            ...base,
+            brokenReasonCode: ownerLookup.error === 'ambiguous' ? 'source-ambiguous' : 'source-missing',
+            brokenReason: ownerLookup.error === 'ambiguous' ? 'Source name is ambiguous' : 'Source not found',
+        }
     }
+    const targetOwner = ownerLookup.owner
 
     const step = parsed.stepId
         ? targetOwner.owner.steps.find((candidate) => candidate.id === parsed.stepId)
@@ -144,6 +210,7 @@ export function resolveWikiRef(parsed: ParsedWikiRef, catalog: RefCatalog): Reso
             ownerType: targetOwner.ownerType,
             ownerId: targetOwner.owner.id,
             ownerName: targetOwner.owner.name,
+            brokenReasonCode: 'step-missing',
             brokenReason: 'Step not found',
         }
     }
@@ -156,6 +223,7 @@ export function resolveWikiRef(parsed: ParsedWikiRef, catalog: RefCatalog): Reso
             ownerId: targetOwner.owner.id,
             ownerName: targetOwner.owner.name,
             stepId: step.id,
+            brokenReasonCode: parsed.partId ? 'part-missing' : 'field-empty',
             brokenReason: parsed.partId ? 'Part not found' : 'Field is empty',
         }
     }
@@ -172,6 +240,36 @@ export function resolveWikiRef(parsed: ParsedWikiRef, catalog: RefCatalog): Reso
         preview,
         label: `${labelPrefix}: ${targetOwner.owner.name} -> ${stepTitle}`,
     }
+}
+
+function renderResolvedValue(ref: ResolvedWikiRef, mode: ResolveRefsMode): string {
+    if (mode === 'plain' || !ref.image) return ref.preview
+    return renderEmbeddedHtml(ref.preview)
+}
+
+function renderEmbeddedHtml(value: string): string {
+    const trimmed = String(value ?? '').trim()
+    if (!trimmed) return ''
+    if (looksLikeHtml(trimmed)) return `<div class="tsh-ref-embed">${trimmed}</div>`
+    if (looksLikeImageSource(trimmed)) {
+        return `<figure class="tsh-ref-embed tsh-ref-embed--image"><img src="${escapeHtmlAttribute(trimmed)}" alt="" /></figure>`
+    }
+    return `<div class="tsh-ref-embed">${mdToHtml(trimmed)}</div>`
+}
+
+function looksLikeImageSource(value: string): boolean {
+    if (!value) return false
+    if (/^data:image\//i.test(value)) return true
+    if (/^https?:\/\/\S+$/i.test(value)) return /\.(avif|bmp|gif|ico|jpe?g|png|svg|webp)(\?.*)?$/i.test(value)
+    return /\.(avif|bmp|gif|ico|jpe?g|png|svg|webp)$/i.test(value)
+}
+
+function escapeHtmlAttribute(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
 }
 
 export function collectSharedUsages(
@@ -309,20 +407,21 @@ function normalizeKind(value: string | undefined): RefKind {
     return value === 'data' || value === 'expected' ? value : 'action'
 }
 
-function findOwner(parsed: ParsedWikiRef, catalog: RefCatalog): RefOwner | null {
+function findOwner(parsed: ParsedWikiRef, catalog: RefCatalog): OwnerLookup {
     if (parsed.ownerType === 'test' && parsed.ownerId) {
         const owner = catalog.testsById.get(parsed.ownerId)
-        return owner ? { ownerType: 'test', owner } : null
+        return owner ? { owner: { ownerType: 'test', owner } } : { error: 'missing' }
     }
     if (parsed.ownerType === 'shared' && parsed.ownerId) {
         const owner = catalog.sharedById.get(parsed.ownerId)
-        return owner ? { ownerType: 'shared', owner } : null
+        return owner ? { owner: { ownerType: 'shared', owner } } : { error: 'missing' }
     }
     if (parsed.ownerName) {
-        const owner = catalog.testsByName.get(parsed.ownerName)
-        return owner ? { ownerType: 'test', owner } : null
+        const owners = catalog.testsByName.get(parsed.ownerName) ?? []
+        if (owners.length === 1) return { owner: { ownerType: 'test', owner: owners[0] } }
+        return owners.length > 1 ? { error: 'ambiguous' } : { error: 'missing' }
     }
-    return null
+    return { error: 'missing' }
 }
 
 function getStepRefValue(step: Step, kind: RefKind, partId?: string): string | null {

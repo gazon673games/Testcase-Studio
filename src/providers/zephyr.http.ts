@@ -34,6 +34,7 @@ type ZephyrTestCaseResponse = {
             testData?: string | null
             expectedResult?: string | null
             testCaseKey?: string | null
+            attachments?: any[]
         }>
     }
     attachments?: any[]
@@ -62,6 +63,7 @@ export class ZephyrHttpProvider implements ITestProvider {
                 expected: String(s.expectedResult ?? ''),
                 text:     String(s.description ?? ''),
                 providerStepId: String(s.id ?? `index:${s.index ?? index + 1}`),
+                attachments: normalizeRemoteAttachments(s.attachments, `step:${s.id ?? index + 1}`),
             }))
 
         // ✨ Собираем extras — всё, что нужно разложить в meta.params
@@ -93,7 +95,7 @@ export class ZephyrHttpProvider implements ITestProvider {
             name: String(json.name ?? (json.key || ref)),
             description: json.description ?? undefined,
             steps,
-            attachments: [],
+            attachments: normalizeRemoteAttachments(json.attachments, json.key || ref),
             updatedAt: json.updatedOn ?? new Date().toISOString(),
             extras, // ← NEW
         }
@@ -132,8 +134,12 @@ export class ZephyrHttpProvider implements ITestProvider {
         const json = await apiClient.zephyrUpsertTestCase(body, ref || undefined)
         return { externalId: safeStr(json?.key).trim() || ref || payload.id || '' }
     }
-    async attach() {}
-    async deleteAttachment() {}
+    async attach(externalId: string, attachment: { name: string; pathOrDataUrl: string }) {
+        return apiClient.zephyrUploadAttachment(externalId, attachment)
+    }
+    async deleteAttachment(_externalId: string, attachmentId: string) {
+        return apiClient.zephyrDeleteAttachment(attachmentId)
+    }
 }
 
 function normalizeSearchPage(raw: any): { items: ProviderTestRef[]; hasMore: boolean; nextStartAt: number } {
@@ -221,4 +227,23 @@ function buildUpsertBody(payload: ProviderTest) {
     }
 
     return body
+}
+
+function normalizeRemoteAttachments(values: any[] | undefined, scope: string) {
+    if (!Array.isArray(values)) return []
+    return values
+        .map((value, index) => {
+            const id = safeStr(value?.id ?? value?.attachmentId ?? `${scope}:${index + 1}`).trim()
+            const name =
+                safeStr(value?.name ?? value?.fileName ?? value?.filename ?? value?.title).trim() ||
+                `attachment-${index + 1}`
+            const pathOrDataUrl =
+                safeStr(value?.downloadUrl ?? value?.content ?? value?.url ?? value?.href ?? value?.self).trim()
+            return { id, name, pathOrDataUrl }
+        })
+        .filter((attachment) => Boolean(attachment.name))
+}
+
+function safeStr(value: unknown): string {
+    return value == null ? '' : String(value)
 }

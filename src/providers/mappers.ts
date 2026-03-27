@@ -126,7 +126,7 @@ function mapProviderSteps(src: ProviderStep[], previousSteps: Step[] = []): Step
             subSteps: preserved?.subSteps ?? [],
             internal: preserved?.internal ?? { parts: { action: [], data: [], expected: [] } },
             usesShared: preserved?.usesShared,
-            attachments: preserved?.attachments ?? [],
+            attachments: (providerStep.attachments?.length ? providerStep.attachments : preserved?.attachments ?? []).map(copyAttachment),
         }
     })
 }
@@ -142,6 +142,7 @@ function normalizeStepsForProvider(src: Array<Step | ExportStep>): ProviderStep[
                 expected: safeStr(domainStep.expected),
                 text: safeStr(domainStep.text),
                 providerStepId: safeStr(domainStep.raw?.providerStepId) || undefined,
+                attachments: (domainStep.attachments ?? []).map(copyAttachment),
             }
         }
 
@@ -151,6 +152,7 @@ function normalizeStepsForProvider(src: Array<Step | ExportStep>): ProviderStep[
             data: safeStr(exportStep.data),
             expected: safeStr(exportStep.expected),
             text: '',
+            attachments: (exportStep.attachments ?? []).map(copyAttachment),
         }
     })
 }

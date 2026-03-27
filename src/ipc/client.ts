@@ -24,6 +24,12 @@ export const apiClient = {
     zephyrUpsertTestCase: (body: unknown, ref?: string) =>
         window.api.invoke<any>(CHANNELS.ZEPHYR_UPSERT_TESTCASE, { body, ref }),
 
+    zephyrUploadAttachment: (testCaseKey: string, attachment: { name: string; pathOrDataUrl: string }) =>
+        window.api.invoke<any>(CHANNELS.ZEPHYR_UPLOAD_ATTACHMENT, { testCaseKey, attachment }),
+
+    zephyrDeleteAttachment: (attachmentId: string) =>
+        window.api.invoke<any>(CHANNELS.ZEPHYR_DELETE_ATTACHMENT, { attachmentId }),
+
     writeStateSnapshot: (state: RootState, kind = 'snapshot', meta?: Record<string, unknown>) =>
         window.api.invoke<string>(CHANNELS.WRITE_STATE_SNAPSHOT, { state, kind, meta }),
 

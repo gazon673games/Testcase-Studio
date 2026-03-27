@@ -1,10 +1,11 @@
 import { mdToHtml, looksLikeHtml } from './markdown'
 import { buildPreviewStepDiffRows, summarizePreviewSteps, summarizePreviewText, type PreviewStepDiffRow } from './previewDiff'
 import { buildExport } from './export'
-import { buildRefCatalog, resolveRefsInText } from './refs'
-import { nowISO, type RootState, type TestCase, type TestMeta } from './domain'
+import { buildRefCatalog, renderRefsInText } from './refs'
+import { nowISO, type Attachment, type RootState, type TestCase, type TestMeta } from './domain'
 import { mapTests } from './tree'
 import type { ProviderStep, ProviderTest } from '@providers/types'
+import { translate } from '../ui/preferences'
 
 export type ZephyrPublishStatus = 'create' | 'update' | 'skip' | 'blocked'
 export type ZephyrPublishDiffField =
@@ -13,6 +14,7 @@ export type ZephyrPublishDiffField =
     | 'steps'
     | 'objective'
     | 'preconditions'
+    | 'attachments'
     | 'folder'
     | 'labels'
 
@@ -36,6 +38,8 @@ export interface ZephyrPublishPreviewItem {
     publish: boolean
     diffs: ZephyrPublishDiff[]
     payload: ProviderTest
+    attachmentsToUpload: Attachment[]
+    attachmentIdsToDelete: string[]
     attachmentWarnings: string[]
 }
 
@@ -117,8 +121,9 @@ export function buildZephyrPublishPayload(test: TestCase, state: RootState): Pro
             data: render(step.data),
             expected: render(step.expected),
             text: render(step.action),
+            attachments: (step.attachments ?? []).map(copyAttachment),
         })),
-        attachments: exportPayload.attachments,
+        attachments: (exportPayload.attachments ?? []).map(copyAttachment),
         updatedAt: nowISO(),
         extras: {
             projectKey,
@@ -161,7 +166,8 @@ function buildPreviewItem(
     const externalId = safeString(payload.id)
     const projectKey = safeString(payload.extras?.projectKey)
     const folder = safeString(payload.extras?.folder)
-    const attachmentWarnings = collectAttachmentWarnings(test, payload)
+    const localAttachments = collectProviderAttachments(payload)
+    const t = translate
 
     if (!externalId && !projectKey) {
         return {
@@ -169,11 +175,13 @@ function buildPreviewItem(
             testId: test.id,
             testName: test.name,
             status: 'blocked',
-            reason: 'Missing projectKey for create publish',
+            reason: t('publish.reason.missingProjectKey'),
             publish: false,
             diffs: [],
             payload,
-            attachmentWarnings,
+            attachmentsToUpload: localAttachments,
+            attachmentIdsToDelete: [],
+            attachmentWarnings: collectAttachmentWarnings(localAttachments, []),
         }
     }
 
@@ -185,11 +193,13 @@ function buildPreviewItem(
             projectKey,
             folder,
             status: 'create',
-            reason: 'Will create a new Zephyr test case',
+            reason: t('publish.reason.create'),
             publish: true,
             diffs: buildCreateDiffs(payload),
             payload,
-            attachmentWarnings,
+            attachmentsToUpload: localAttachments,
+            attachmentIdsToDelete: [],
+            attachmentWarnings: collectAttachmentWarnings(localAttachments, []),
         }
     }
 
@@ -203,11 +213,13 @@ function buildPreviewItem(
             projectKey,
             folder,
             status: 'blocked',
-            reason: remote.message || 'Failed to load remote test case before publish',
+            reason: remote.message || t('publish.reason.remoteLoadFailed'),
             publish: false,
             diffs: [],
             payload,
-            attachmentWarnings,
+            attachmentsToUpload: localAttachments,
+            attachmentIdsToDelete: [],
+            attachmentWarnings: collectAttachmentWarnings(localAttachments, []),
         }
     }
 
@@ -220,14 +232,18 @@ function buildPreviewItem(
             projectKey,
             folder,
             status: 'blocked',
-            reason: 'Remote test case is unavailable for dry-run diff',
+            reason: t('publish.reason.remoteUnavailable'),
             publish: false,
             diffs: [],
             payload,
-            attachmentWarnings,
+            attachmentsToUpload: localAttachments,
+            attachmentIdsToDelete: [],
+            attachmentWarnings: collectAttachmentWarnings(localAttachments, []),
         }
     }
 
+    const remoteAttachments = collectProviderAttachments(remote)
+    const attachmentPlan = buildAttachmentPlan(localAttachments, remoteAttachments)
     const diffs = diffPayloadAgainstRemote(payload, remote)
     if (diffs.length === 0) {
         return {
@@ -238,11 +254,13 @@ function buildPreviewItem(
             projectKey,
             folder,
             status: 'skip',
-            reason: 'Remote test case already matches local content',
+            reason: t('publish.reason.skip'),
             publish: false,
             diffs: [],
             payload,
-            attachmentWarnings,
+            attachmentsToUpload: attachmentPlan.uploads,
+            attachmentIdsToDelete: attachmentPlan.deleteIds,
+            attachmentWarnings: collectAttachmentWarnings(localAttachments, remoteAttachments),
         }
     }
 
@@ -254,28 +272,31 @@ function buildPreviewItem(
         projectKey,
         folder,
         status: 'update',
-        reason: 'Remote test case will be replaced with local content',
+        reason: t('publish.reason.update'),
         publish: true,
         diffs,
         payload,
-        attachmentWarnings,
+        attachmentsToUpload: attachmentPlan.uploads,
+        attachmentIdsToDelete: attachmentPlan.deleteIds,
+        attachmentWarnings: collectAttachmentWarnings(localAttachments, remoteAttachments),
     }
 }
 
 function diffPayloadAgainstRemote(local: ProviderTest, remote: ProviderTest): ZephyrPublishDiff[] {
+    const t = translate
     const diffs: ZephyrPublishDiff[] = []
-    pushDiff(diffs, 'name', 'Name', local.name, remote.name)
+    pushDiff(diffs, 'name', t('publish.diff.name'), local.name, remote.name)
     pushDiff(
         diffs,
         'description',
-        'Description',
+        t('publish.diff.description'),
         summarizePreviewText(local.description),
         summarizePreviewText(remote.description)
     )
     pushDiff(
         diffs,
         'steps',
-        'Steps',
+        t('publish.diff.steps'),
         summarizePreviewSteps(local.steps),
         summarizePreviewSteps(remote.steps),
         buildPreviewStepDiffRows(local.steps, remote.steps)
@@ -283,37 +304,51 @@ function diffPayloadAgainstRemote(local: ProviderTest, remote: ProviderTest): Ze
     pushDiff(
         diffs,
         'objective',
-        'Objective',
+        t('publish.diff.objective'),
         summarizePreviewText(safeString(local.extras?.objective)),
         summarizePreviewText(safeString(remote.extras?.objective))
     )
     pushDiff(
         diffs,
         'preconditions',
-        'Preconditions',
+        t('publish.diff.preconditions'),
         summarizePreviewText(safeString(local.extras?.preconditions)),
         summarizePreviewText(safeString(remote.extras?.preconditions))
     )
-    pushDiff(diffs, 'folder', 'Folder', safeString(local.extras?.folder) ?? 'No folder', safeString(remote.extras?.folder) ?? 'No folder')
-    pushDiff(diffs, 'labels', 'Labels', summarizeLabels(local.extras?.labels), summarizeLabels(remote.extras?.labels))
+    pushDiff(diffs, 'attachments', t('publish.diff.attachments'), summarizeAttachments(local), summarizeAttachments(remote))
+    pushDiff(
+        diffs,
+        'folder',
+        t('publish.diff.folder'),
+        safeString(local.extras?.folder) ?? t('publish.diff.noFolder'),
+        safeString(remote.extras?.folder) ?? t('publish.diff.noFolder')
+    )
+    pushDiff(diffs, 'labels', t('publish.diff.labels'), summarizeLabels(local.extras?.labels), summarizeLabels(remote.extras?.labels))
     return diffs
 }
 
 function buildCreateDiffs(local: ProviderTest): ZephyrPublishDiff[] {
+    const t = translate
     return [
-        { field: 'name', label: 'Name', local: local.name, remote: 'No remote test case' },
+        { field: 'name', label: t('publish.diff.name'), local: local.name, remote: t('publish.diff.noRemote') },
         {
             field: 'steps',
-            label: 'Steps',
+            label: t('publish.diff.steps'),
             local: summarizePreviewSteps(local.steps),
-            remote: 'No remote test case',
+            remote: t('publish.diff.noRemote'),
             stepRows: buildPreviewStepDiffRows(local.steps, []),
         },
         {
             field: 'folder',
-            label: 'Folder',
-            local: safeString(local.extras?.folder) ?? 'No folder',
-            remote: 'No remote test case',
+            label: t('publish.diff.folder'),
+            local: safeString(local.extras?.folder) ?? t('publish.diff.noFolder'),
+            remote: t('publish.diff.noRemote'),
+        },
+        {
+            field: 'attachments',
+            label: t('publish.diff.attachments'),
+            local: summarizeAttachments(local),
+            remote: t('publish.diff.noRemote'),
         },
     ]
 }
@@ -321,7 +356,7 @@ function buildCreateDiffs(local: ProviderTest): ZephyrPublishDiff[] {
 function renderZephyrText(value: string | undefined, catalog: ReturnType<typeof buildRefCatalog>): string {
     const raw = String(value ?? '')
     if (!raw.trim()) return ''
-    const resolved = resolveRefsInText(raw, catalog)
+    const resolved = renderRefsInText(raw, catalog, { mode: 'html' })
     return looksLikeHtml(resolved) ? resolved : mdToHtml(resolved)
 }
 
@@ -340,11 +375,6 @@ export function resolveZephyrExternalId(test: Pick<TestCase, 'links' | 'meta'>):
     return safeString(test.meta?.params?.key ?? test.meta?.params?.[PUBLISH_REMOTE_KEY])
 }
 
-function collectAttachmentWarnings(test: TestCase, payload: ProviderTest): string[] {
-    if (!(test.attachments?.length ?? 0)) return []
-    return ['Attachments are not uploaded yet; publish logs will keep them listed as skipped.']
-}
-
 function buildPublishSignature(payload: ProviderTest): string {
     return JSON.stringify({
         name: payload.name,
@@ -353,6 +383,14 @@ function buildPublishSignature(payload: ProviderTest): string {
             action: step.action ?? '',
             data: step.data ?? '',
             expected: step.expected ?? '',
+            attachments: (step.attachments ?? []).map((attachment) => ({
+                name: attachment.name,
+                pathOrDataUrl: attachment.pathOrDataUrl,
+            })),
+        })),
+        attachments: (payload.attachments ?? []).map((attachment) => ({
+            name: attachment.name,
+            pathOrDataUrl: attachment.pathOrDataUrl,
         })),
         objective: safeString(payload.extras?.objective) ?? '',
         preconditions: safeString(payload.extras?.preconditions) ?? '',
@@ -361,18 +399,93 @@ function buildPublishSignature(payload: ProviderTest): string {
     })
 }
 
+function collectProviderAttachments(payload: ProviderTest): Attachment[] {
+    const items = new Map<string, Attachment>()
+    const push = (attachment: Attachment | undefined) => {
+        if (!attachment) return
+        const key = attachment.id || `${attachment.name}::${attachment.pathOrDataUrl}`
+        if (!items.has(key)) items.set(key, copyAttachment(attachment))
+    }
+
+    ;(payload.attachments ?? []).forEach(push)
+    ;(payload.steps ?? []).forEach((step) => (step.attachments ?? []).forEach(push))
+    return [...items.values()]
+}
+
+function buildAttachmentPlan(local: Attachment[], remote: Attachment[]) {
+    const remoteBuckets = bucketAttachmentsByName(remote)
+    const localBuckets = bucketAttachmentsByName(local)
+    const uploads: Attachment[] = []
+    const deleteIds: string[] = []
+
+    for (const attachment of local) {
+        const bucket = remoteBuckets.get(attachment.name) ?? []
+        if (bucket.length) {
+            bucket.shift()
+            continue
+        }
+        uploads.push(copyAttachment(attachment))
+    }
+
+    for (const attachment of remote) {
+        const bucket = localBuckets.get(attachment.name) ?? []
+        if (bucket.length) {
+            bucket.shift()
+            continue
+        }
+        if (attachment.id) deleteIds.push(attachment.id)
+    }
+
+    return { uploads, deleteIds }
+}
+
+function collectAttachmentWarnings(local: Attachment[], remote: Attachment[]): string[] {
+    const t = translate
+    const warnings: string[] = []
+    const plan = buildAttachmentPlan(local, remote)
+    if (plan.uploads.length) warnings.push(t('publish.warning.attachmentsUpload'))
+    if (plan.deleteIds.length) warnings.push(t('publish.warning.attachmentsDelete'))
+    return warnings
+}
+
+function summarizeAttachments(payload: ProviderTest): string {
+    const t = translate
+    const attachments = collectProviderAttachments(payload)
+    if (!attachments.length) return t('publish.summary.noAttachments')
+    const head = attachments.slice(0, 3).map((attachment) => attachment.name).filter(Boolean)
+    return t('publish.summary.attachments', {
+        count: attachments.length,
+        names: head.length ? ` - ${head.join(', ')}` : '',
+    })
+}
+
+function bucketAttachmentsByName(attachments: Attachment[]) {
+    const buckets = new Map<string, Attachment[]>()
+    attachments.forEach((attachment) => {
+        const bucket = buckets.get(attachment.name)
+        if (bucket) bucket.push(attachment)
+        else buckets.set(attachment.name, [attachment])
+    })
+    return buckets
+}
+
 function summarizeProviderSteps(steps: ProviderStep[]): string {
-    if (!steps?.length) return '0 steps'
+    const t = translate
+    if (!steps?.length) return t('publish.summary.stepsZero')
     const head = steps
         .slice(0, 2)
-        .map((step) => summarizeText(step.action || step.text || 'Empty step'))
+        .map((step) => summarizeText(step.action || step.text || t('publish.summary.empty')))
         .filter(Boolean)
-    return `${steps.length} steps${head.length ? ` - ${head.join(' | ')}` : ''}`
+    return t('publish.summary.steps', {
+        count: steps.length,
+        head: head.length ? ` - ${head.join(' | ')}` : '',
+    })
 }
 
 function summarizeLabels(value: unknown): string {
+    const t = translate
     const labels = normalizeLabels(value)
-    return labels.length ? labels.join(', ') : 'No labels'
+    return labels.length ? labels.join(', ') : t('publish.summary.noLabels')
 }
 
 function normalizeLabels(value: unknown): string[] {
@@ -382,11 +495,12 @@ function normalizeLabels(value: unknown): string[] {
 }
 
 function summarizeText(value: string | undefined, limit = 120): string {
+    const t = translate
     const text = String(value ?? '')
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-    if (!text) return 'Empty'
+    if (!text) return t('publish.summary.empty')
     return text.length > limit ? `${text.slice(0, limit - 1)}…` : text
 }
 
@@ -406,4 +520,12 @@ function pushDiff(
 function safeString(value: unknown): string | undefined {
     const next = typeof value === 'string' ? value.trim() : value == null ? '' : String(value).trim()
     return next || undefined
+}
+
+function copyAttachment(attachment: Attachment): Attachment {
+    return {
+        id: attachment.id,
+        name: attachment.name,
+        pathOrDataUrl: attachment.pathOrDataUrl,
+    }
 }

@@ -126,6 +126,12 @@ export class SyncEngine {
             try {
                 const response = await provider.upsertTest(item.payload, { pushAttachments: false })
                 const externalId = response.externalId || item.externalId || item.payload.id || ''
+                for (const attachmentId of item.attachmentIdsToDelete) {
+                    await provider.deleteAttachment(externalId, attachmentId)
+                }
+                for (const attachment of item.attachmentsToUpload) {
+                    await provider.attach(externalId, attachment)
+                }
                 const node = findNode(state.root, item.testId)
                 if (node && !isFolder(node)) applyPublishSuccess(node, externalId, item.payload)
 

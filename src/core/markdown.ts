@@ -8,6 +8,7 @@ function inlineMd(src: string): string {
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     html = html.replace(/__([^_]+)__/g, '<u>$1</u>')
     html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" />')
     html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
     return html
 }

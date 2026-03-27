@@ -13,6 +13,7 @@ import { buildPreviewStepDiffRows, summarizePreviewSteps, summarizePreviewText, 
 import { findNode, findParentFolder, insertChild, isFolder, mapTests, moveNode as moveTreeNode } from './tree'
 import { fromProviderPayload } from '@providers/mappers'
 import type { ProviderTest } from '@providers/types'
+import { translate } from '../ui/preferences'
 
 export type ZephyrImportMode = 'project' | 'folder' | 'keys'
 export type ZephyrImportStrategy = 'replace' | 'skip' | 'merge-locally-later'
@@ -88,7 +89,9 @@ const IMPORT_IMPORTED_AT_KEY = '__zephyrImport.importedAt'
 const IMPORT_REMOTE_KEY_KEY = '__zephyrImport.remoteKey'
 const IMPORT_CONFLICT_REMOTE_KEY = '__zephyrImport.conflictRemoteKey'
 const IMPORT_CONFLICT_LOCAL_ID = '__zephyrImport.conflictLocalId'
-const CONFLICT_FOLDER_NAME = 'Zephyr import conflicts'
+function getConflictFolderName() {
+    return translate('import.conflictFolder')
+}
 
 export function buildZephyrImportQuery(request: ZephyrImportRequest): string {
     const override = String(request.rawQuery ?? '').trim()
@@ -198,7 +201,7 @@ export function applyZephyrImportPreview(state: RootState, preview: ZephyrImport
 
 export function describeFolderPath(root: Folder, folderId: string): string {
     const labels = findFolderLabels(root, folderId)
-    return labels.length ? labels.join(' / ') : 'Root'
+    return labels.length ? labels.join(' / ') : translate('defaults.root')
 }
 
 function buildPreviewItem(
@@ -244,41 +247,42 @@ function evaluateImportState(
     imported: TestCase,
     localMatchCount: number
 ): { status: ZephyrImportStatus; reason: string; strategy: ZephyrImportStrategy; replaceDisabled?: boolean } {
+    const t = translate
     if (localMatchCount > 1) {
         return {
             status: 'conflict',
-            reason: 'Multiple local tests already point to this Zephyr case',
+            reason: t('import.reason.multipleMatches'),
             strategy: 'skip',
             replaceDisabled: true,
         }
     }
 
     if (!existing) {
-        return { status: 'new', reason: 'Will create a new local test', strategy: 'replace' }
+        return { status: 'new', reason: t('import.reason.newLocal'), strategy: 'replace' }
     }
 
     const storedSignature = getImportSignature(existing)
     const currentManagedKeys = getImportMetaKeys(existing) ?? getManagedMetaKeys(imported)
-    const localSignature = buildManagedSignature(existing, currentManagedKeys)
-    const remoteSignature = buildManagedSignature(imported, getManagedMetaKeys(imported))
+    const localSignature = buildImportManagedSignature(existing, currentManagedKeys)
+    const remoteSignature = buildImportManagedSignature(imported, getManagedMetaKeys(imported))
 
     if (localSignature === remoteSignature) {
-        return { status: 'unchanged', reason: 'Local test already matches Zephyr', strategy: 'skip' }
+        return { status: 'unchanged', reason: t('import.reason.matchesRemote'), strategy: 'skip' }
     }
 
     if (storedSignature) {
         if (localSignature === storedSignature) {
-            return { status: 'update', reason: 'Remote changed since the last import', strategy: 'replace' }
+            return { status: 'update', reason: t('import.reason.remoteChanged'), strategy: 'replace' }
         }
         if (remoteSignature === storedSignature) {
-            return { status: 'conflict', reason: 'Only local content changed since the last import', strategy: 'skip' }
+            return { status: 'conflict', reason: t('import.reason.onlyLocalChanged'), strategy: 'skip' }
         }
-        return { status: 'conflict', reason: 'Both local and remote changed since the last import', strategy: 'skip' }
+        return { status: 'conflict', reason: t('import.reason.bothChanged'), strategy: 'skip' }
     }
 
     return {
         status: 'conflict',
-        reason: 'Linked local test differs and has no import baseline yet',
+        reason: t('import.reason.noBaseline'),
         strategy: 'skip',
     }
 }
@@ -302,7 +306,7 @@ function materializeImportedTest(remote: ProviderTest, existing?: TestCase): Tes
         exportCfg: existing?.exportCfg ?? base.exportCfg,
     })
 
-    const signature = buildManagedSignature(next, nextImportedKeys)
+    const signature = buildImportManagedSignature(next, nextImportedKeys)
     applyImportMarkers(next.meta, {
         signature,
         metaKeys: nextImportedKeys,
@@ -358,7 +362,7 @@ function applyImportMarkers(
     else delete meta.params[IMPORT_REMOTE_UPDATED_AT_KEY]
 }
 
-function buildManagedSignature(test: TestCase, metaKeys: string[]): string {
+export function buildImportManagedSignature(test: TestCase, metaKeys: string[]): string {
     return stableJson({
         name: test.name ?? '',
         description: test.description ?? '',
@@ -368,6 +372,13 @@ function buildManagedSignature(test: TestCase, metaKeys: string[]): string {
             expected: step.expected ?? '',
             text: step.text ?? '',
             providerStepId: step.raw?.providerStepId ?? '',
+            usesShared: step.usesShared ?? '',
+            attachments: collectAttachmentSignature(step.attachments ?? []),
+            parts: {
+                action: collectPartSignature(step.internal?.parts?.action),
+                data: collectPartSignature(step.internal?.parts?.data),
+                expected: collectPartSignature(step.internal?.parts?.expected),
+            },
         })),
         attachments: (test.attachments ?? []).map((attachment) => ({
             name: attachment.name,
@@ -442,43 +453,45 @@ function diffImportedFields(
     targetFolderLabel: string,
     _targetFolderSegments: string[]
 ): ZephyrImportDiff[] {
+    const t = translate
     const diffs: ZephyrImportDiff[] = []
-    pushDiff(diffs, 'name', 'Name', local.name, remote.name)
+    pushDiff(diffs, 'name', t('import.diff.name'), local.name, remote.name)
     pushDiff(
         diffs,
         'description',
-        'Description',
+        t('import.diff.description'),
         summarizePreviewText(local.description),
         summarizePreviewText(remote.description)
     )
     pushDiff(
         diffs,
         'steps',
-        'Steps',
+        t('import.diff.steps'),
         summarizePreviewSteps(local.steps),
         summarizePreviewSteps(remote.steps),
         buildPreviewStepDiffRows(local.steps, remote.steps)
     )
-    pushDiff(diffs, 'meta', 'Meta', summarizeMeta(local.meta), summarizeMeta(remote.meta))
-    pushDiff(diffs, 'attachments', 'Attachments', summarizeAttachments(local), summarizeAttachments(remote))
+    pushDiff(diffs, 'meta', t('import.diff.meta'), summarizeMeta(local.meta), summarizeMeta(remote.meta))
+    pushDiff(diffs, 'attachments', t('import.diff.attachments'), summarizeAttachments(local), summarizeAttachments(remote))
 
     const localFolder = describeFolderPath(root, findParentFolder(root, local.id)?.id ?? root.id)
-    pushDiff(diffs, 'folder', 'Folder', localFolder, targetFolderLabel)
+    pushDiff(diffs, 'folder', t('import.diff.folder'), localFolder, targetFolderLabel)
     return diffs
 }
 
 function diffNewImportedFields(remote: TestCase, targetFolderLabel: string): ZephyrImportDiff[] {
+    const t = translate
     return [
-        { field: 'name', label: 'Name', local: 'New local test', remote: remote.name },
+        { field: 'name', label: t('import.diff.name'), local: t('import.diff.newLocal'), remote: remote.name },
         {
             field: 'steps',
-            label: 'Steps',
-            local: 'No local version',
+            label: t('import.diff.steps'),
+            local: t('import.diff.noLocal'),
             remote: summarizePreviewSteps(remote.steps),
             stepRows: buildPreviewStepDiffRows([], remote.steps),
         },
-        { field: 'meta', label: 'Meta', local: 'No local version', remote: summarizeMeta(remote.meta) },
-        { field: 'folder', label: 'Folder', local: 'Will be created', remote: targetFolderLabel },
+        { field: 'meta', label: t('import.diff.meta'), local: t('import.diff.noLocal'), remote: summarizeMeta(remote.meta) },
+        { field: 'folder', label: t('import.diff.folder'), local: t('import.diff.willCreate'), remote: targetFolderLabel },
     ]
 }
 
@@ -506,26 +519,44 @@ function summarizeSteps(test: Pick<TestCase, 'steps'>): string {
 }
 
 function summarizeMeta(meta: TestMeta | undefined): string {
+    const t = translate
     const paramsCount = Object.keys(meta?.params ?? {}).filter((key) => !isImportMarkerKey(key)).length
     const bits = [
-        meta?.objective ? 'objective' : '',
-        meta?.preconditions ? 'preconditions' : '',
-        paramsCount ? `${paramsCount} params` : '',
+        meta?.objective ? t('import.summary.objective') : '',
+        meta?.preconditions ? t('import.summary.preconditions') : '',
+        paramsCount ? t('import.summary.params', { count: paramsCount }) : '',
     ].filter(Boolean)
-    return bits.length ? bits.join(', ') : 'No remote meta'
+    return bits.length ? bits.join(', ') : t('import.summary.noMeta')
 }
 
-function summarizeAttachments(test: Pick<TestCase, 'attachments'>): string {
-    const attachments = test.attachments ?? []
-    return attachments.length ? `${attachments.length} attachment(s)` : 'No attachments'
+function summarizeAttachments(test: Pick<TestCase, 'attachments' | 'steps'>): string {
+    const t = translate
+    const total = (test.attachments?.length ?? 0) + (test.steps ?? []).reduce((sum, step) => sum + (step.attachments?.length ?? 0), 0)
+    return total ? t('import.summary.attachments', { count: total }) : t('import.summary.noAttachments')
+}
+
+function collectPartSignature(parts: Array<{ id?: string; text?: string; export?: boolean }> | undefined) {
+    return (parts ?? []).map((part) => ({
+        id: String(part.id ?? ''),
+        text: String(part.text ?? ''),
+        export: part.export !== false,
+    }))
+}
+
+function collectAttachmentSignature(attachments: Array<{ name?: string; pathOrDataUrl?: string }> | undefined) {
+    return (attachments ?? []).map((attachment) => ({
+        name: String(attachment.name ?? ''),
+        pathOrDataUrl: String(attachment.pathOrDataUrl ?? ''),
+    }))
 }
 
 function summarizeText(value: string | undefined, limit = 120): string {
+    const t = translate
     const text = String(value ?? '')
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-    if (!text) return 'Empty'
+    if (!text) return t('import.summary.empty')
     return text.length > limit ? `${text.slice(0, limit - 1)}…` : text
 }
 
@@ -571,7 +602,7 @@ function upsertConflictDraft(
     imported.meta.params[IMPORT_CONFLICT_REMOTE_KEY] = item.remoteId
     if (localTest) imported.meta.params[IMPORT_CONFLICT_LOCAL_ID] = localTest.id
 
-    const baseFolder = ensureTargetFolder(state.root, destinationFolder.id, [CONFLICT_FOLDER_NAME, ...buildTargetFolderSegments(item.remote, request)])
+    const baseFolder = ensureTargetFolder(state.root, destinationFolder.id, [getConflictFolderName(), ...buildTargetFolderSegments(item.remote, request)])
     const existingDraft = mapTests(state.root).find((test) => {
         const params = test.meta?.params ?? {}
         if (params[IMPORT_CONFLICT_REMOTE_KEY] !== item.remoteId) return false

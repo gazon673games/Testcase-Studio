@@ -6,7 +6,7 @@ import type {
     TestCase,
     TestMeta,
 } from './domain'
-import { buildRefCatalog, resolveRefsInText, type RefCatalog } from './refs'
+import { buildRefCatalog, renderRefsInText, type RefCatalog } from './refs'
 import { materializeSharedSteps } from './shared'
 import { mapTests } from './tree'
 
@@ -29,7 +29,7 @@ export type ExportTest = {
 function createTextResolver(catalog?: RefCatalog) {
     return (value: string | undefined) => {
         if (!value) return undefined
-        const resolved = catalog ? resolveRefsInText(value, catalog) : value
+        const resolved = catalog ? renderRefsInText(value, catalog, { mode: 'plain' }) : value
         const trimmed = resolved.trim()
         return trimmed || undefined
     }

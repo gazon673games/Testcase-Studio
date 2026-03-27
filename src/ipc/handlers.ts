@@ -1,5 +1,6 @@
 // src/ipc/handlers.ts
 import type { IpcMain } from 'electron'
+import { readFile } from 'node:fs/promises'
 import { CHANNELS } from './channels.js'
 import type { RootState } from '@core/domain'
 import { loadFromFs, saveToFs, writePublishLog, writeStateSnapshot } from '../../electron/repo.js'
@@ -14,6 +15,16 @@ function cleanBaseUrl(u: string) {
 }
 function b64(s: string) {
     return Buffer.from(s, 'utf8').toString('base64')
+}
+
+function attachmentToBuffer(pathOrDataUrl: string): Buffer {
+    const raw = String(pathOrDataUrl ?? '')
+    const dataUrlMatch = raw.match(/^data:([^;,]+)?(?:;charset=[^;,]+)?(;base64)?,(.*)$/i)
+    if (!dataUrlMatch) {
+        throw new Error('NOT_A_DATA_URL')
+    }
+    const payload = dataUrlMatch[3] ?? ''
+    return dataUrlMatch[2] ? Buffer.from(payload, 'base64') : Buffer.from(decodeURIComponent(payload), 'utf8')
 }
 
 export function registerHandlers(ipcMain: IpcMain) {
@@ -157,6 +168,89 @@ export function registerHandlers(ipcMain: IpcMain) {
             }
 
             return await res.json().catch(() => ({}))
+        }
+    )
+
+    ipcMain.handle(
+        CHANNELS.ZEPHYR_UPLOAD_ATTACHMENT,
+        async (_e, payload: { testCaseKey: string; attachment: { name?: string; pathOrDataUrl?: string } }) => {
+            const settings = await loadUserSettings()
+            const login = settings.login || ''
+            const baseUrl = cleanBaseUrl(settings.baseUrl || '')
+            if (!login) throw new Error('Atlassian login is empty in settings')
+            if (!baseUrl) throw new Error('Atlassian baseUrl is empty in settings')
+
+            const password = (await getSecretMain(login)) || ''
+            if (!password) throw new Error('Atlassian password is not stored in keychain')
+
+            const testCaseKey = String(payload.testCaseKey ?? '').trim()
+            if (!testCaseKey) throw new Error('Zephyr attachment upload requires a test case key')
+
+            const attachmentName = String(payload.attachment?.name ?? '').trim() || 'attachment'
+            const pathOrDataUrl = String(payload.attachment?.pathOrDataUrl ?? '')
+            if (!pathOrDataUrl) throw new Error(`Attachment "${attachmentName}" has no file content`)
+
+            let bytes: Buffer
+            try {
+                bytes = attachmentToBuffer(pathOrDataUrl)
+            } catch {
+                bytes = await readFile(pathOrDataUrl)
+            }
+
+            const auth = `Basic ${b64(`${login}:${password}`)}`
+            const form = new FormData()
+            form.append('file', new Blob([bytes]), attachmentName)
+
+            const url = `${baseUrl}/rest/atm/1.0/testcase/${encodeURIComponent(testCaseKey)}/attachments`
+            const res = await fetch(url, {
+                method: 'POST',
+                body: form,
+                headers: { Authorization: auth },
+            })
+
+            if (!res.ok) {
+                const text = await res.text().catch(() => '')
+                throw new Error(
+                    `Zephyr(upload attachment) ${res.status} ${res.statusText}` +
+                    (text ? ` – ${text.slice(0, 400)}` : '')
+                )
+            }
+
+            return await res.json().catch(() => ({}))
+        }
+    )
+
+    ipcMain.handle(
+        CHANNELS.ZEPHYR_DELETE_ATTACHMENT,
+        async (_e, payload: { attachmentId: string }) => {
+            const settings = await loadUserSettings()
+            const login = settings.login || ''
+            const baseUrl = cleanBaseUrl(settings.baseUrl || '')
+            if (!login) throw new Error('Atlassian login is empty in settings')
+            if (!baseUrl) throw new Error('Atlassian baseUrl is empty in settings')
+
+            const password = (await getSecretMain(login)) || ''
+            if (!password) throw new Error('Atlassian password is not stored in keychain')
+
+            const attachmentId = String(payload.attachmentId ?? '').trim()
+            if (!attachmentId) throw new Error('Zephyr attachment delete requires an attachment id')
+
+            const auth = `Basic ${b64(`${login}:${password}`)}`
+            const url = `${baseUrl}/rest/atm/1.0/attachment/${encodeURIComponent(attachmentId)}`
+            const res = await fetch(url, {
+                method: 'DELETE',
+                headers: { Authorization: auth, Accept: 'application/json' },
+            })
+
+            if (!res.ok) {
+                const text = await res.text().catch(() => '')
+                throw new Error(
+                    `Zephyr(delete attachment) ${res.status} ${res.statusText}` +
+                    (text ? ` – ${text.slice(0, 300)}` : '')
+                )
+            }
+
+            return true
         }
     )
 }
