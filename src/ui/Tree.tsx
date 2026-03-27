@@ -19,11 +19,36 @@ type ContextMenuState =
     | { x: number; y: number; targetId: string; targetIsFolder: boolean; targetName: string }
     | null
 type EditingState = { id: string; value: string } | null
+type VisibleItem =
+    | {
+          key: string
+          kind: 'folder' | 'test'
+          id: string
+          parentKey?: string
+          depth: number
+          hasChildren: boolean
+          expanded: boolean
+          name: string
+      }
+    | {
+          key: string
+          kind: 'step'
+          id: string
+          testId: string
+          parentKey: string
+          depth: number
+          hasChildren: false
+          expanded: false
+          name: string
+      }
 
 export function Tree(props: Props) {
     const [expanded, setExpanded] = React.useState<Set<string>>(() => new Set([props.root.id]))
     const [menu, setMenu] = React.useState<ContextMenuState>(null)
     const [editing, setEditing] = React.useState<EditingState>(null)
+    const rowRefs = React.useRef<Record<string, HTMLElement | null>>({})
+    const selectedKey = makeNodeKey(props.selectedId ?? props.root.id)
+    const [focusedKey, setFocusedKey] = React.useState(selectedKey)
 
     React.useEffect(() => {
         setExpanded((current) => {
@@ -34,6 +59,24 @@ export function Tree(props: Props) {
         })
     }, [props.root.id])
 
+    const visibleItems = React.useMemo(() => flattenVisibleItems(props.root, expanded), [props.root, expanded])
+    const visibleKeys = React.useMemo(() => visibleItems.map((item) => item.key), [visibleItems])
+
+    React.useEffect(() => {
+        setFocusedKey(selectedKey)
+    }, [selectedKey])
+
+    React.useEffect(() => {
+        if (!visibleKeys.length) return
+        if (visibleKeys.includes(focusedKey)) return
+        setFocusedKey(visibleKeys.includes(selectedKey) ? selectedKey : visibleKeys[0])
+    }, [focusedKey, selectedKey, visibleKeys])
+
+    React.useEffect(() => {
+        if (editing) return
+        rowRefs.current[focusedKey]?.focus()
+    }, [editing, focusedKey])
+
     const toggleExpanded = React.useCallback((id: string) => {
         setExpanded((current) => {
             const next = new Set(current)
@@ -42,14 +85,32 @@ export function Tree(props: Props) {
         })
     }, [])
 
+    const openMenuAt = React.useCallback(
+        (x: number, y: number, id: string, targetIsFolder: boolean, targetName: string) => {
+            props.onSelect(id)
+            setFocusedKey(makeNodeKey(id))
+            setMenu({ x, y, targetId: id, targetIsFolder, targetName })
+        },
+        [props]
+    )
+
     const openMenu = React.useCallback(
         (event: React.MouseEvent, id: string, targetIsFolder: boolean, targetName: string) => {
             event.preventDefault()
             event.stopPropagation()
-            props.onSelect(id)
-            setMenu({ x: event.clientX, y: event.clientY, targetId: id, targetIsFolder, targetName })
+            openMenuAt(event.clientX, event.clientY, id, targetIsFolder, targetName)
         },
-        [props]
+        [openMenuAt]
+    )
+
+    const openMenuFromButton = React.useCallback(
+        (event: React.MouseEvent<HTMLButtonElement>, id: string, targetIsFolder: boolean, targetName: string) => {
+            event.preventDefault()
+            event.stopPropagation()
+            const rect = event.currentTarget.getBoundingClientRect()
+            openMenuAt(rect.left, rect.bottom + 6, id, targetIsFolder, targetName)
+        },
+        [openMenuAt]
     )
 
     const closeMenu = React.useCallback(() => setMenu(null), [])
@@ -61,8 +122,15 @@ export function Tree(props: Props) {
             if (element && element.contains(event.target as globalThis.Node)) return
             closeMenu()
         }
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') closeMenu()
+        }
         document.addEventListener('mousedown', onMouseDown)
-        return () => document.removeEventListener('mousedown', onMouseDown)
+        document.addEventListener('keydown', onKeyDown)
+        return () => {
+            document.removeEventListener('mousedown', onMouseDown)
+            document.removeEventListener('keydown', onKeyDown)
+        }
     }, [menu, closeMenu])
 
     const commitRename = React.useCallback(() => {
@@ -72,32 +140,122 @@ export function Tree(props: Props) {
 
     const cancelRename = React.useCallback(() => setEditing(null), [])
 
+    const onTreeKeyDown = React.useCallback(
+        (event: React.KeyboardEvent<HTMLElement>, item: VisibleItem) => {
+            const currentIndex = visibleItems.findIndex((entry) => entry.key === item.key)
+            if (currentIndex === -1) return
+
+            const moveFocusTo = (index: number) => {
+                const next = visibleItems[index]
+                if (next) setFocusedKey(next.key)
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault()
+                moveFocusTo(Math.min(currentIndex + 1, visibleItems.length - 1))
+                return
+            }
+
+            if (event.key === 'ArrowUp') {
+                event.preventDefault()
+                moveFocusTo(Math.max(currentIndex - 1, 0))
+                return
+            }
+
+            if (event.key === 'Home') {
+                event.preventDefault()
+                moveFocusTo(0)
+                return
+            }
+
+            if (event.key === 'End') {
+                event.preventDefault()
+                moveFocusTo(visibleItems.length - 1)
+                return
+            }
+
+            if (event.key === 'ArrowRight') {
+                if (item.kind === 'step' || !item.hasChildren) return
+                event.preventDefault()
+                if (!item.expanded) {
+                    toggleExpanded(item.id)
+                    return
+                }
+                const next = visibleItems[currentIndex + 1]
+                if (next?.parentKey === item.key) setFocusedKey(next.key)
+                return
+            }
+
+            if (event.key === 'ArrowLeft') {
+                event.preventDefault()
+                if (item.kind !== 'step' && item.hasChildren && item.expanded) {
+                    toggleExpanded(item.id)
+                    return
+                }
+                if (item.parentKey) setFocusedKey(item.parentKey)
+                return
+            }
+
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                if (item.kind === 'step') props.onOpenStep(item.testId, item.id)
+                else props.onSelect(item.id)
+                return
+            }
+
+            if ((event.key === 'F10' && event.shiftKey) || event.key === 'ContextMenu') {
+                if (item.kind === 'step') return
+                event.preventDefault()
+                const rect = rowRefs.current[item.key]?.getBoundingClientRect()
+                if (!rect) return
+                openMenuAt(rect.left + 20, rect.bottom + 6, item.id, item.kind === 'folder', item.name)
+                return
+            }
+
+            if (event.key === 'F2' && item.kind !== 'step' && item.id !== props.root.id) {
+                event.preventDefault()
+                setEditing({ id: item.id, value: item.name })
+            }
+        },
+        [openMenuAt, props, toggleExpanded, visibleItems]
+    )
+
     return (
         <div style={treeShellStyle}>
             <div style={treeHeaderStyle}>
                 <div style={treeHeaderEyebrowStyle}>Navigator</div>
                 <div style={treeHeaderTitleStyle}>Tests</div>
+                <div style={treeHeaderHintStyle}>Arrows move focus, Enter opens, Shift+F10 shows actions.</div>
             </div>
 
-            <NodeView
-                node={props.root}
-                depth={0}
-                selectedId={props.selectedId}
-                onSelect={props.onSelect}
-                onMove={props.onMove}
-                onCreateFolderAt={props.onCreateFolderAt}
-                onCreateTestAt={props.onCreateTestAt}
-                onRename={props.onRename}
-                onDelete={props.onDelete}
-                expanded={expanded}
-                onToggleExpanded={toggleExpanded}
-                onContextOpen={openMenu}
-                editing={editing}
-                setEditing={setEditing}
-                commitRename={commitRename}
-                cancelRename={cancelRename}
-                onOpenStep={props.onOpenStep}
-            />
+            <div role="tree" aria-label="Tests navigator">
+                <NodeView
+                    node={props.root}
+                    depth={0}
+                    selectedId={props.selectedId}
+                    focusedKey={focusedKey}
+                    onFocusItem={setFocusedKey}
+                    onTreeKeyDown={onTreeKeyDown}
+                    registerRowRef={(key, element) => {
+                        rowRefs.current[key] = element
+                    }}
+                    onSelect={props.onSelect}
+                    onMove={props.onMove}
+                    onCreateFolderAt={props.onCreateFolderAt}
+                    onCreateTestAt={props.onCreateTestAt}
+                    onRename={props.onRename}
+                    onDelete={props.onDelete}
+                    expanded={expanded}
+                    onToggleExpanded={toggleExpanded}
+                    onContextOpen={openMenu}
+                    onMenuButtonOpen={openMenuFromButton}
+                    editing={editing}
+                    setEditing={setEditing}
+                    commitRename={commitRename}
+                    cancelRename={cancelRename}
+                    onOpenStep={props.onOpenStep}
+                />
+            </div>
 
             {menu && (
                 <Menu
@@ -121,8 +279,13 @@ export function Tree(props: Props) {
 
 type NodeViewProps = {
     node: ViewNode
+    parentKey?: string
     depth: number
     selectedId: string | null
+    focusedKey: string
+    onFocusItem(key: string): void
+    onTreeKeyDown(event: React.KeyboardEvent<HTMLElement>, item: VisibleItem): void
+    registerRowRef(key: string, element: HTMLElement | null): void
     onSelect(id: string): void
     onMove(nodeId: string, targetFolderId: string): Promise<boolean> | boolean
     onCreateFolderAt(parentId: string): void
@@ -132,6 +295,7 @@ type NodeViewProps = {
     expanded: Set<string>
     onToggleExpanded(id: string): void
     onContextOpen(event: React.MouseEvent, id: string, isFolder: boolean, name: string): void
+    onMenuButtonOpen(event: React.MouseEvent<HTMLButtonElement>, id: string, isFolder: boolean, name: string): void
     editing: EditingState
     setEditing(value: EditingState): void
     commitRename(): void
@@ -142,8 +306,13 @@ type NodeViewProps = {
 function NodeView(props: NodeViewProps) {
     const {
         node,
+        parentKey,
         depth,
         selectedId,
+        focusedKey,
+        onFocusItem,
+        onTreeKeyDown,
+        registerRowRef,
         onSelect,
         onMove,
         expanded,
@@ -156,13 +325,30 @@ function NodeView(props: NodeViewProps) {
     } = props
 
     const id = node.id
+    const key = makeNodeKey(id)
     const isDir = isFolder(node)
     const isOpen = expanded.has(id)
     const selected = id === selectedId
+    const focused = key === focusedKey
     const offset = 10 + depth * 14
     const isEditing = editing?.id === id
     const inputRef = React.useRef<HTMLInputElement | null>(null)
     const [hoverDrop, setHoverDrop] = React.useState(false)
+    const hasChildren = isDir ? node.children.length > 0 : node.steps.length > 0
+    const itemCount = isDir ? node.children.length : node.steps.length
+    const itemLabel = isDir
+        ? `${itemCount} item${itemCount === 1 ? '' : 's'}`
+        : `${itemCount} step${itemCount === 1 ? '' : 's'}`
+    const item: VisibleItem = {
+        key,
+        kind: isDir ? 'folder' : 'test',
+        id,
+        parentKey,
+        depth,
+        hasChildren,
+        expanded: isOpen,
+        name: node.name,
+    }
 
     React.useEffect(() => {
         if (isEditing) {
@@ -193,26 +379,32 @@ function NodeView(props: NodeViewProps) {
         setHoverDrop(false)
     }
 
-    const itemCount = isDir ? node.children.length : node.steps.length
-    const itemLabel = isDir
-        ? `${itemCount} item${itemCount === 1 ? '' : 's'}`
-        : `${itemCount} step${itemCount === 1 ? '' : 's'}`
-
     return (
         <div onContextMenu={(event) => props.onContextOpen(event, id, isDir, node.name)}>
             <div
+                ref={(element) => registerRowRef(key, element)}
                 draggable
+                role="treeitem"
+                aria-level={depth + 1}
+                aria-selected={selected}
+                aria-expanded={hasChildren ? isOpen : undefined}
+                tabIndex={focused ? 0 : -1}
+                onFocus={() => onFocusItem(key)}
+                onKeyDown={isEditing ? undefined : (event) => onTreeKeyDown(event, item)}
                 onDragStart={onDragStart}
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}
                 onDrop={onDrop}
-                onClick={() => onSelect(id)}
+                onClick={() => {
+                    onFocusItem(key)
+                    onSelect(id)
+                }}
                 style={{
                     ...treeRowStyle,
                     marginLeft: offset,
-                    background: selected ? '#eaf2ff' : hoverDrop ? '#f5f8ff' : 'transparent',
-                    borderColor: selected ? '#bfd2f7' : hoverDrop ? '#d5e2fb' : 'transparent',
-                    boxShadow: selected ? 'inset 0 0 0 1px #d7e4ff' : undefined,
+                    background: selected ? '#eaf2ff' : hoverDrop ? '#f5f8ff' : focused ? '#f7faff' : 'transparent',
+                    borderColor: selected ? '#bfd2f7' : hoverDrop ? '#d5e2fb' : focused ? '#d7e4fb' : 'transparent',
+                    boxShadow: selected ? 'inset 0 0 0 1px #d7e4ff' : focused ? 'inset 0 0 0 1px #e2ebfa' : undefined,
                 }}
                 title={isDir ? 'Folder' : 'Test case'}
             >
@@ -220,10 +412,15 @@ function NodeView(props: NodeViewProps) {
                     type="button"
                     onClick={(event) => {
                         event.stopPropagation()
-                        onToggleExpanded(id)
+                        if (hasChildren) onToggleExpanded(id)
                     }}
-                    style={expandButtonStyle}
-                    aria-label={isOpen ? 'Collapse' : 'Expand'}
+                    style={{
+                        ...expandButtonStyle,
+                        opacity: hasChildren ? 1 : 0.45,
+                        cursor: hasChildren ? 'pointer' : 'default',
+                    }}
+                    aria-label={hasChildren ? (isOpen ? 'Collapse' : 'Expand') : 'No nested items'}
+                    disabled={!hasChildren}
                 >
                     {isOpen ? 'v' : '>'}
                 </button>
@@ -250,6 +447,15 @@ function NodeView(props: NodeViewProps) {
                             )}
                         </div>
                         <span style={treeMetaPillStyle}>{itemLabel}</span>
+                        <button
+                            type="button"
+                            aria-label={`Open actions for ${node.name}`}
+                            aria-haspopup="menu"
+                            onClick={(event) => props.onMenuButtonOpen(event, id, isDir, node.name)}
+                            style={rowMenuButtonStyle}
+                        >
+                            ...
+                        </button>
                     </>
                 ) : (
                     <input
@@ -257,6 +463,7 @@ function NodeView(props: NodeViewProps) {
                         value={editing?.value ?? ''}
                         onChange={(event) => setEditing({ id, value: event.target.value })}
                         onKeyDown={(event) => {
+                            event.stopPropagation()
                             if (event.key === 'Enter') commitRename()
                             else if (event.key === 'Escape') cancelRename()
                         }}
@@ -267,31 +474,53 @@ function NodeView(props: NodeViewProps) {
                 )}
             </div>
 
-            {isOpen && (
+            {isOpen && hasChildren && (
                 isDir
-                    ? node.children.map((child) => (
-                        <NodeView
-                            key={child.id}
-                            node={child}
+                    ? (
+                        <div role="group">
+                            {node.children.map((child) => (
+                                <NodeView
+                                    key={child.id}
+                                    node={child}
+                                    parentKey={key}
+                                    depth={depth + 1}
+                                    selectedId={selectedId}
+                                    focusedKey={focusedKey}
+                                    onFocusItem={onFocusItem}
+                                    onTreeKeyDown={onTreeKeyDown}
+                                    registerRowRef={registerRowRef}
+                                    onSelect={props.onSelect}
+                                    onMove={props.onMove}
+                                    onCreateFolderAt={props.onCreateFolderAt}
+                                    onCreateTestAt={props.onCreateTestAt}
+                                    onRename={props.onRename}
+                                    onDelete={props.onDelete}
+                                    expanded={expanded}
+                                    onToggleExpanded={props.onToggleExpanded}
+                                    onContextOpen={props.onContextOpen}
+                                    onMenuButtonOpen={props.onMenuButtonOpen}
+                                    editing={editing}
+                                    setEditing={setEditing}
+                                    commitRename={commitRename}
+                                    cancelRename={cancelRename}
+                                    onOpenStep={onOpenStep}
+                                />
+                            ))}
+                        </div>
+                    )
+                    : (
+                        <StepsList
+                            testId={id}
+                            parentKey={key}
+                            steps={node.steps}
                             depth={depth + 1}
-                            selectedId={selectedId}
-                            onSelect={props.onSelect}
-                            onMove={props.onMove}
-                            onCreateFolderAt={props.onCreateFolderAt}
-                            onCreateTestAt={props.onCreateTestAt}
-                            onRename={props.onRename}
-                            onDelete={props.onDelete}
-                            expanded={expanded}
-                            onToggleExpanded={props.onToggleExpanded}
-                            onContextOpen={props.onContextOpen}
-                            editing={editing}
-                            setEditing={setEditing}
-                            commitRename={commitRename}
-                            cancelRename={cancelRename}
+                            focusedKey={focusedKey}
+                            onFocusItem={onFocusItem}
+                            onTreeKeyDown={onTreeKeyDown}
+                            registerRowRef={registerRowRef}
                             onOpenStep={onOpenStep}
                         />
-                    ))
-                    : <StepsList testId={id} steps={node.steps} depth={depth + 1} onOpenStep={onOpenStep} />
+                    )
             )}
         </div>
     )
@@ -299,33 +528,68 @@ function NodeView(props: NodeViewProps) {
 
 function StepsList({
     testId,
+    parentKey,
     steps,
     depth,
+    focusedKey,
+    onFocusItem,
+    onTreeKeyDown,
+    registerRowRef,
     onOpenStep,
 }: {
     testId: string
+    parentKey: string
     steps: Step[]
     depth: number
+    focusedKey: string
+    onFocusItem(key: string): void
+    onTreeKeyDown(event: React.KeyboardEvent<HTMLElement>, item: VisibleItem): void
+    registerRowRef(key: string, element: HTMLElement | null): void
     onOpenStep: (testId: string, stepId: string) => void
 }) {
     const offset = 24 + depth * 14
 
     return (
-        <div style={{ marginLeft: offset, marginTop: 4, display: 'grid', gap: 4, paddingBottom: 6 }}>
+        <div role="group" style={{ marginLeft: offset, marginTop: 4, display: 'grid', gap: 4, paddingBottom: 6 }}>
             {steps.map((step, index) => {
                 const details = [
                     step.usesShared ? 'shared' : '',
                     step.subSteps?.length ? `${step.subSteps.length} sub` : '',
                     step.attachments?.length ? `${step.attachments.length} file` : '',
                 ].filter(Boolean)
+                const key = makeStepKey(testId, step.id)
+                const item: VisibleItem = {
+                    key,
+                    kind: 'step',
+                    id: step.id,
+                    testId,
+                    parentKey,
+                    depth,
+                    hasChildren: false,
+                    expanded: false,
+                    name: summarizeStepLabel(step),
+                }
+                const focused = key === focusedKey
 
                 return (
                     <div
                         key={step.id}
-                        style={stepRowStyle}
-                        title="Double click to open in editor"
-                        onDoubleClick={(event) => {
+                        ref={(element) => registerRowRef(key, element)}
+                        role="treeitem"
+                        aria-level={depth + 1}
+                        tabIndex={focused ? 0 : -1}
+                        style={{
+                            ...stepRowStyle,
+                            background: focused ? '#f5f8ff' : '#ffffff',
+                            borderColor: focused ? '#d5e2fb' : '#e8edf4',
+                            boxShadow: focused ? 'inset 0 0 0 1px #e1eafb' : undefined,
+                        }}
+                        title="Open this step in the editor"
+                        onFocus={() => onFocusItem(key)}
+                        onKeyDown={(event) => onTreeKeyDown(event, item)}
+                        onClick={(event) => {
                             event.stopPropagation()
+                            onFocusItem(key)
                             onOpenStep(testId, step.id)
                         }}
                     >
@@ -378,38 +642,49 @@ function Menu({
     onRename(): void
     onDelete(): void
 }) {
+    const firstItemRef = React.useRef<HTMLButtonElement | null>(null)
+
+    React.useEffect(() => {
+        firstItemRef.current?.focus()
+    }, [])
+
+    const { left, top } = clampMenuPosition(x, y)
+
     return (
         <div
             id="tree-context-menu"
-            style={menuStyle(x, y)}
+            role="menu"
+            aria-label="Tree actions"
+            style={menuStyle(left, top)}
             onMouseDown={(event) => event.stopPropagation()}
         >
             {isFolder && (
                 <>
-                    <MenuItem label="New Folder" onClick={() => { onNewFolder(); onClose() }} />
+                    <MenuItem ref={firstItemRef} label="New Folder" onClick={() => { onNewFolder(); onClose() }} />
                     <MenuItem label="New Test" onClick={() => { onNewTest(); onClose() }} />
                 </>
             )}
-            <MenuItem label="Rename" disabled={isRoot} onClick={() => { onRename(); onClose() }} />
+            {!isFolder && <MenuItem ref={firstItemRef} label="Rename" disabled={isRoot} onClick={() => { onRename(); onClose() }} />}
+            {isFolder && <MenuItem label="Rename" disabled={isRoot} onClick={() => { onRename(); onClose() }} />}
             <MenuItem label="Delete" disabled={isRoot} danger onClick={() => { onDelete(); onClose() }} />
         </div>
     )
 }
 
-function MenuItem({
-    label,
-    onClick,
-    danger,
-    disabled,
-}: {
-    label: string
-    onClick(): void
-    danger?: boolean
-    disabled?: boolean
-}) {
+const MenuItem = React.forwardRef<
+    HTMLButtonElement,
+    {
+        label: string
+        onClick(): void
+        danger?: boolean
+        disabled?: boolean
+    }
+>(function MenuItem({ label, onClick, danger, disabled }, ref) {
     return (
         <button
+            ref={ref}
             type="button"
+            role="menuitem"
             onClick={() => {
                 if (!disabled) onClick()
             }}
@@ -430,6 +705,69 @@ function MenuItem({
             {label}
         </button>
     )
+})
+
+function flattenVisibleItems(root: Folder, expanded: Set<string>) {
+    const walk = (node: ViewNode, depth: number, parentKey?: string): VisibleItem[] => {
+        const id = node.id
+        const key = makeNodeKey(id)
+        const dir = isFolder(node)
+        const hasChildren = dir ? node.children.length > 0 : node.steps.length > 0
+        const isOpen = expanded.has(id)
+        const items: VisibleItem[] = [{
+            key,
+            kind: dir ? 'folder' : 'test',
+            id,
+            parentKey,
+            depth,
+            hasChildren,
+            expanded: isOpen,
+            name: node.name,
+        }]
+
+        if (!isOpen || !hasChildren) return items
+
+        if (dir) {
+            for (const child of node.children) items.push(...walk(child, depth + 1, key))
+        } else {
+            for (const step of node.steps) {
+                items.push({
+                    key: makeStepKey(node.id, step.id),
+                    kind: 'step',
+                    id: step.id,
+                    testId: node.id,
+                    parentKey: key,
+                    depth: depth + 1,
+                    hasChildren: false,
+                    expanded: false,
+                    name: summarizeStepLabel(step),
+                })
+            }
+        }
+
+        return items
+    }
+
+    return walk(root, 0)
+}
+
+function clampMenuPosition(x: number, y: number) {
+    if (typeof window === 'undefined') return { left: x, top: y }
+    const width = 188
+    const height = 180
+    const gutter = 12
+    return {
+        left: Math.max(gutter, Math.min(x, window.innerWidth - width - gutter)),
+        top: Math.max(gutter, Math.min(y, window.innerHeight - height - gutter)),
+    }
+}
+
+function makeNodeKey(id: string) {
+    return `node:${id}`
+}
+
+function makeStepKey(testId: string, stepId: string) {
+    return `step:${testId}:${stepId}`
 }
 
 const treeShellStyle: React.CSSProperties = {
@@ -461,6 +799,12 @@ const treeHeaderTitleStyle: React.CSSProperties = {
     color: '#20354f',
 }
 
+const treeHeaderHintStyle: React.CSSProperties = {
+    color: '#728097',
+    fontSize: 12,
+    lineHeight: 1.45,
+}
+
 const treeRowStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
@@ -472,6 +816,7 @@ const treeRowStyle: React.CSSProperties = {
     border: '1px solid transparent',
     cursor: 'pointer',
     transition: 'background .08s ease, border-color .08s ease',
+    outline: 'none',
 }
 
 const expandButtonStyle: React.CSSProperties = {
@@ -483,8 +828,8 @@ const expandButtonStyle: React.CSSProperties = {
     color: '#5f6f86',
     fontSize: 11,
     lineHeight: 1,
-    cursor: 'pointer',
     padding: 0,
+    flexShrink: 0,
 }
 
 const kindBadgeStyle: React.CSSProperties = {
@@ -496,6 +841,19 @@ const kindBadgeStyle: React.CSSProperties = {
     justifyContent: 'center',
     fontSize: 11,
     fontWeight: 700,
+    flexShrink: 0,
+}
+
+const rowMenuButtonStyle: React.CSSProperties = {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    border: '1px solid #d7e1ef',
+    background: '#fff',
+    color: '#53657f',
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: 'pointer',
     flexShrink: 0,
 }
 
@@ -554,6 +912,7 @@ const stepRowStyle: React.CSSProperties = {
     background: '#ffffff',
     border: '1px solid #e8edf4',
     cursor: 'pointer',
+    outline: 'none',
 }
 
 const stepIndexStyle: React.CSSProperties = {

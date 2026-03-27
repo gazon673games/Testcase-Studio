@@ -7,12 +7,24 @@
 
 .editor-hero {
     display: grid;
-    gap: 10px;
-    margin-bottom: 14px;
-    padding: 16px;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 14px 16px;
     border: 1px solid #e3e9f3;
-    border-radius: 16px;
+    border-radius: 14px;
     background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+.editor-hero-bar {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.editor-hero-copy-block {
+    display: grid;
+    gap: 4px;
+    min-width: 220px;
 }
 .editor-hero-copy {
     font-size: 11px;
@@ -20,6 +32,11 @@
     letter-spacing: .05em;
     text-transform: uppercase;
     color: #71819a;
+}
+.editor-hero-caption {
+    color: #63728a;
+    font-size: 13px;
+    line-height: 1.45;
 }
 .editor-name-field { margin: 0; }
 .editor-name-input {
@@ -32,6 +49,10 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+}
+.editor-summary-row--compact {
+    justify-content: flex-end;
+    align-self: start;
 }
 .editor-summary-chip {
     display: inline-flex;
@@ -341,10 +362,57 @@
     justify-content: space-between;
     gap: 8px;
 }
+.shared-library-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+.shared-library-stat {
+    border: 1px solid #e5ebf5;
+    border-radius: 10px;
+    background: #f8fbff;
+    padding: 9px 10px;
+    display: grid;
+    gap: 2px;
+}
+.shared-library-stat-value {
+    color: #234168;
+    font-weight: 700;
+}
+.shared-library-stat-label {
+    color: #71809a;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
 .shared-library-title {
     font-size: 14px;
     font-weight: 700;
     color: #243b63;
+}
+.shared-library-controls {
+    display: grid;
+    gap: 10px;
+}
+.shared-library-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.shared-library-filter {
+    border: 1px solid #d6e2f5;
+    background: #f6f9ff;
+    color: #476180;
+    border-radius: 999px;
+    padding: 5px 9px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.shared-library-filter.active {
+    border-color: #9fb8ef;
+    background: #eaf1ff;
+    color: #214f95;
 }
 .shared-library-empty {
     color: #5a6780;
@@ -353,9 +421,16 @@
 .shared-library-empty.main {
     padding: 18px;
 }
+.shared-library-result-copy {
+    color: #6b7890;
+    font-size: 12px;
+}
 .shared-library-list {
     display: grid;
     gap: 8px;
+    max-height: 520px;
+    overflow: auto;
+    padding-right: 2px;
 }
 .shared-library-item {
     text-align: left;
@@ -382,6 +457,12 @@
     color: #6a7890;
     font-size: 11px;
 }
+.shared-library-item-preview {
+    margin-top: 8px;
+    color: #5f6e84;
+    line-height: 1.45;
+    font-size: 12px;
+}
 .shared-library-main {
     padding: 12px;
     display: grid;
@@ -396,6 +477,33 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+}
+.shared-library-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.shared-library-summary-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1px solid #dce6f9;
+    background: #f3f7ff;
+    color: #53627e;
+    font-size: 12px;
+    font-weight: 600;
+}
+.shared-library-summary-chip.ok {
+    border-color: #cfe8cf;
+    background: #edf8ed;
+    color: #2c6b39;
+}
+.shared-library-summary-chip.warning {
+    border-color: #f1d0c8;
+    background: #fff8f5;
+    color: #8a4332;
 }
 .shared-library-usage-card {
     border: 1px solid #e6ecf7;
@@ -519,6 +627,13 @@
 }
 
 @media (max-width: 980px) {
+    .editor-hero-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .editor-summary-row--compact {
+        justify-content: flex-start;
+    }
     .editor-links-grid {
         grid-template-columns: 1fr;
     }
@@ -540,6 +655,9 @@
         flex: 1 1 auto;
     }
     .shared-library {
+        grid-template-columns: 1fr;
+    }
+    .shared-library-stats {
         grid-template-columns: 1fr;
     }
     .shared-library-toolbar {

@@ -236,6 +236,71 @@ export function PreviewInfoPair({ label, value }: { label: string; value: string
     )
 }
 
+export function PreviewToolbar({
+    children,
+    className,
+}: {
+    children: React.ReactNode
+    className?: string
+}) {
+    return <div className={joinClasses('preview-dialog__toolbar', className)}>{children}</div>
+}
+
+export function PreviewToolbarGroup({
+    children,
+    className,
+    align = 'start',
+}: {
+    children: React.ReactNode
+    className?: string
+    align?: 'start' | 'end'
+}) {
+    return (
+        <div
+            className={joinClasses(
+                'preview-dialog__toolbar-group',
+                align === 'end' && 'preview-dialog__toolbar-group--end',
+                className
+            )}
+        >
+            {children}
+        </div>
+    )
+}
+
+export const PreviewFilterChip = React.forwardRef<
+    HTMLButtonElement,
+    React.ButtonHTMLAttributes<HTMLButtonElement> & {
+        active?: boolean
+        className?: string
+    }
+>(function PreviewFilterChip({ active = false, children, className, ...props }, ref) {
+    return (
+        <button
+            ref={ref}
+            type={props.type ?? 'button'}
+            {...props}
+            className={joinClasses(
+                'preview-dialog__filter-chip',
+                active && 'preview-dialog__filter-chip--active',
+                className
+            )}
+        >
+            {children}
+        </button>
+    )
+})
+
+export function PreviewStickyBar({
+    children,
+    className,
+}: {
+    children: React.ReactNode
+    className?: string
+}) {
+    return <div className={joinClasses('preview-dialog__sticky-bar', className)}>{children}</div>
+}
+
 export function PreviewEmptyState({
     title,
     children,

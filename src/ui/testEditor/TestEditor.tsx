@@ -51,7 +51,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     const [showMeta, setShowMeta] = useStoredToggle('test-editor.show-meta', false)
     const [showAttachments, setShowAttachments] = useStoredToggle('test-editor.show-attachments', false)
     const [showLinks, setShowLinks] = useStoredToggle('test-editor.show-links', false)
-    const [showSharedLibrary, setShowSharedLibrary] = useStoredToggle('test-editor.show-shared-library', true)
+    const [showSharedLibrary, setShowSharedLibrary] = useStoredToggle('test-editor.show-shared-library.v2', false)
     const [selectedSharedId, setSelectedSharedId] = React.useState<string | null>(sharedSteps[0]?.id ?? null)
     const [focusSharedStepId, setFocusSharedStepId] = React.useState<string | null>(null)
     const [activeEditorApi, setActiveEditorApi] = React.useState<MarkdownEditorApi | null>(null)
@@ -163,7 +163,19 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     return (
         <div className="test-editor">
             <div className="editor-hero">
-                <div className="editor-hero-copy">Test Case</div>
+                <div className="editor-hero-bar">
+                    <div className="editor-hero-copy-block">
+                        <div className="editor-hero-copy">Test Case</div>
+                        <div className="editor-hero-caption">Keep the testcase itself in focus. Shared steps, metadata and provider links stay below.</div>
+                    </div>
+                    <div className="editor-summary-row editor-summary-row--compact">
+                        {summaryItems.map((item) => (
+                            <span key={item} className="editor-summary-chip">
+                                {item}
+                            </span>
+                        ))}
+                    </div>
+                </div>
                 <div className="field editor-name-field">
                     <label className="label-sm">Name</label>
                     <input
@@ -172,13 +184,6 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                         className="input editor-name-input"
                         placeholder="Enter test name..."
                     />
-                </div>
-                <div className="editor-summary-row">
-                    {summaryItems.map((item) => (
-                        <span key={item} className="editor-summary-chip">
-                            {item}
-                        </span>
-                    ))}
                 </div>
             </div>
 

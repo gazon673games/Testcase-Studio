@@ -9,7 +9,11 @@ import {
     PreviewDialog,
     PreviewDialogSplit,
     PreviewEmptyState,
+    PreviewFilterChip,
     PreviewHint,
+    PreviewStickyBar,
+    PreviewToolbar,
+    PreviewToolbarGroup,
 } from './PreviewDialog'
 
 type PublishOutcome = ZephyrPublishResult & {
@@ -25,21 +29,31 @@ type Props = {
     onApply(preview: ZephyrPublishPreview): Promise<PublishOutcome>
 }
 
+type PublishStatusFilter = 'all' | ZephyrPublishPreviewItem['status']
+
 export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, onApply }: Props) {
     const loadButtonRef = React.useRef<HTMLButtonElement | null>(null)
+    const itemRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
     const [loading, setLoading] = React.useState(false)
     const [applying, setApplying] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [preview, setPreview] = React.useState<ZephyrPublishPreview | null>(null)
     const [publishMap, setPublishMap] = React.useState<Record<string, boolean>>({})
     const [confirmText, setConfirmText] = React.useState('')
+    const [statusFilter, setStatusFilter] = React.useState<PublishStatusFilter>('all')
+    const [showSkipped, setShowSkipped] = React.useState(false)
+    const [selectedOnly, setSelectedOnly] = React.useState(false)
 
     React.useEffect(() => {
         if (!open) return
+        itemRefs.current = {}
         setError(null)
         setPreview(null)
         setPublishMap({})
         setConfirmText('')
+        setStatusFilter('all')
+        setShowSkipped(false)
+        setSelectedOnly(false)
     }, [open, selectionLabel])
 
     async function handlePreview() {
@@ -47,8 +61,12 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
         setError(null)
         try {
             const nextPreview = await onPreview()
+            itemRefs.current = {}
             setPreview(nextPreview)
             setPublishMap(Object.fromEntries(nextPreview.items.map((item) => [item.id, item.publish])))
+            setStatusFilter('all')
+            setShowSkipped(false)
+            setSelectedOnly(false)
         } catch (err) {
             setPreview(null)
             setPublishMap({})
@@ -78,9 +96,46 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
         }
     }
 
-    const selectedCount = preview
-        ? preview.items.filter((item) => publishMap[item.id] ?? item.publish).length
-        : 0
+    function handleStatusFilterChange(nextFilter: PublishStatusFilter) {
+        if (nextFilter === 'skip') setShowSkipped(true)
+        setStatusFilter(nextFilter)
+    }
+
+    function handleShowSkippedChange(checked: boolean) {
+        setShowSkipped(checked)
+        if (!checked && statusFilter === 'skip') {
+            setStatusFilter('all')
+        }
+    }
+
+    function scrollToItem(itemId?: string) {
+        if (!itemId) return
+        const node = itemRefs.current[itemId]
+        node?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        node?.focus?.()
+    }
+
+    const items = preview?.items ?? []
+    const blockedItems = React.useMemo(
+        () => items.filter((item) => item.status === 'blocked'),
+        [items]
+    )
+    const visibleItems = React.useMemo(
+        () =>
+            items.filter((item) => {
+                if (statusFilter !== 'all' && item.status !== statusFilter) return false
+                if (!showSkipped && statusFilter !== 'skip' && item.status === 'skip') return false
+                if (selectedOnly && !(publishMap[item.id] ?? item.publish)) return false
+                return true
+            }),
+        [items, publishMap, selectedOnly, showSkipped, statusFilter]
+    )
+    const selectedCount = items.filter((item) => publishMap[item.id] ?? item.publish).length
+    const hiddenCount = items.length - visibleItems.length
+    const hiddenSkippedCount = items.filter(
+        (item) => item.status === 'skip' && (statusFilter !== 'skip' || !showSkipped)
+    ).length
+    const firstBlockedId = blockedItems[0]?.id
     const canApply = !!preview && !loading && !applying && confirmText === 'PUBLISH' && selectedCount > 0
 
     return (
@@ -156,22 +211,158 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                                     </div>
                                 </PreviewCard>
 
+                                {blockedItems.length > 0 ? (
+                                    <PreviewCard title="Blocked items to review first">
+                                        <PreviewToolbar>
+                                            <PreviewToolbarGroup>
+                                                <PreviewHint>
+                                                    {blockedItems.length} items cannot be published until their blockers are resolved.
+                                                </PreviewHint>
+                                            </PreviewToolbarGroup>
+                                            <PreviewToolbarGroup align="end">
+                                                <PreviewButton
+                                                    tone="soft"
+                                                    onClick={() => handleStatusFilterChange('blocked')}
+                                                >
+                                                    Only blocked
+                                                </PreviewButton>
+                                                <PreviewButton
+                                                    tone="ghost"
+                                                    onClick={() => scrollToItem(firstBlockedId)}
+                                                    disabled={!firstBlockedId}
+                                                >
+                                                    Jump to first blocked
+                                                </PreviewButton>
+                                            </PreviewToolbarGroup>
+                                        </PreviewToolbar>
+
+                                        <div className="preview-dialog__quick-list">
+                                            {blockedItems.slice(0, 4).map((item) => (
+                                                <button
+                                                    key={item.id}
+                                                    type="button"
+                                                    className="preview-dialog__quick-link"
+                                                    onClick={() => scrollToItem(item.id)}
+                                                >
+                                                    {item.testName}
+                                                </button>
+                                            ))}
+                                            {blockedItems.length > 4 ? (
+                                                <PreviewHint>+ {blockedItems.length - 4} more blocked items in this preview</PreviewHint>
+                                            ) : null}
+                                        </div>
+                                    </PreviewCard>
+                                ) : null}
+
+                                <PreviewCard title="Review filters">
+                                    <PreviewToolbar>
+                                        <PreviewToolbarGroup>
+                                            <PreviewFilterChip
+                                                active={statusFilter === 'all'}
+                                                onClick={() => handleStatusFilterChange('all')}
+                                            >
+                                                All {preview.summary.total}
+                                            </PreviewFilterChip>
+                                            <PreviewFilterChip
+                                                active={statusFilter === 'create'}
+                                                onClick={() => handleStatusFilterChange('create')}
+                                            >
+                                                Create {preview.summary.create}
+                                            </PreviewFilterChip>
+                                            <PreviewFilterChip
+                                                active={statusFilter === 'update'}
+                                                onClick={() => handleStatusFilterChange('update')}
+                                            >
+                                                Update {preview.summary.update}
+                                            </PreviewFilterChip>
+                                            <PreviewFilterChip
+                                                active={statusFilter === 'blocked'}
+                                                onClick={() => handleStatusFilterChange('blocked')}
+                                            >
+                                                Blocked {preview.summary.blocked}
+                                            </PreviewFilterChip>
+                                            <PreviewFilterChip
+                                                active={statusFilter === 'skip'}
+                                                onClick={() => handleStatusFilterChange('skip')}
+                                            >
+                                                Skip {preview.summary.skip}
+                                            </PreviewFilterChip>
+                                        </PreviewToolbarGroup>
+                                        <PreviewToolbarGroup align="end">
+                                            <label className="preview-dialog__toggle">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedOnly}
+                                                    onChange={(event) => setSelectedOnly(event.target.checked)}
+                                                />
+                                                Selected only
+                                            </label>
+                                            <label className="preview-dialog__toggle">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={showSkipped}
+                                                    onChange={(event) => handleShowSkippedChange(event.target.checked)}
+                                                />
+                                                Show skipped
+                                            </label>
+                                            {hiddenCount > 0 ? (
+                                                <PreviewBadge tone="muted">{hiddenCount} hidden</PreviewBadge>
+                                            ) : null}
+                                        </PreviewToolbarGroup>
+                                    </PreviewToolbar>
+                                </PreviewCard>
+
+                                {hiddenSkippedCount > 0 && !showSkipped && statusFilter !== 'skip' ? (
+                                    <PreviewCard className="preview-dialog__collapsed-note">
+                                        <PreviewHint>
+                                            {hiddenSkippedCount} skipped items are collapsed to keep the publish review focused.
+                                        </PreviewHint>
+                                    </PreviewCard>
+                                ) : null}
+
                                 <div style={listStyle}>
-                                    {preview.items.map((item) => (
-                                        <PublishItemCard
-                                            key={item.id}
-                                            item={item}
-                                            publish={publishMap[item.id] ?? item.publish}
-                                            onToggle={(value) => setPublishMap((current) => ({ ...current, [item.id]: value }))}
-                                        />
-                                    ))}
+                                    {visibleItems.length === 0 ? (
+                                        <PreviewEmptyState title="No items match the current filters">
+                                            Adjust the filters to continue reviewing this publish batch.
+                                        </PreviewEmptyState>
+                                    ) : (
+                                        visibleItems.map((item) => (
+                                            <PublishItemCard
+                                                key={item.id}
+                                                item={item}
+                                                publish={publishMap[item.id] ?? item.publish}
+                                                onToggle={(value) => setPublishMap((current) => ({ ...current, [item.id]: value }))}
+                                                containerRef={(node) => {
+                                                    itemRefs.current[item.id] = node
+                                                }}
+                                            />
+                                        ))
+                                    )}
                                 </div>
 
-                                <div className="preview-dialog__button-row">
-                                    <PreviewButton tone="danger" disabled={!canApply} onClick={handleApply}>
-                                        {applying ? 'Publishing...' : 'Publish to Zephyr'}
-                                    </PreviewButton>
-                                </div>
+                                <PreviewStickyBar>
+                                    <div className="preview-dialog__sticky-summary">
+                                        <span>{visibleItems.length} shown</span>
+                                        <PreviewBadge tone="info">{selectedCount} selected</PreviewBadge>
+                                        {hiddenCount > 0 ? <PreviewBadge tone="muted">{hiddenCount} hidden</PreviewBadge> : null}
+                                    </div>
+                                    <div className="preview-dialog__button-row">
+                                        <PreviewButton
+                                            tone="ghost"
+                                            onClick={() => {
+                                                setStatusFilter('all')
+                                                setShowSkipped(false)
+                                                setSelectedOnly(false)
+                                            }}
+                                            disabled={loading || applying}
+                                        >
+                                            Reset filters
+                                        </PreviewButton>
+                                        <PreviewButton tone="danger" disabled={!canApply} onClick={handleApply}>
+                                            {applying ? 'Publishing...' : 'Publish to Zephyr'}
+                                        </PreviewButton>
+                                    </div>
+                                </PreviewStickyBar>
                             </>
                         )}
                     </div>
@@ -186,10 +377,12 @@ function PublishItemCard({
     item,
     publish,
     onToggle,
+    containerRef,
 }: {
     item: ZephyrPublishPreviewItem
     publish: boolean
     onToggle(value: boolean): void
+    containerRef?: (node: HTMLDivElement | null) => void
 }) {
     const tone =
         item.status === 'create'
@@ -201,57 +394,59 @@ function PublishItemCard({
                     : 'muted'
 
     return (
-        <PreviewCard>
-            <div className="preview-dialog__summary-row">
-                <div style={{ minWidth: 0 }}>
-                    <div className="preview-dialog__card-title">{item.testName}</div>
-                    <div className="preview-dialog__subtitle">
-                        <span>{item.externalId ?? 'New testcase'}</span>
-                        {item.projectKey ? ` / ${item.projectKey}` : ''}
-                        {item.folder ? ` / ${item.folder}` : ''}
+        <div ref={containerRef} tabIndex={-1}>
+            <PreviewCard>
+                <div className="preview-dialog__summary-row">
+                    <div style={{ minWidth: 0 }}>
+                        <div className="preview-dialog__card-title">{item.testName}</div>
+                        <div className="preview-dialog__subtitle">
+                            <span>{item.externalId ?? 'New testcase'}</span>
+                            {item.projectKey ? ` / ${item.projectKey}` : ''}
+                            {item.folder ? ` / ${item.folder}` : ''}
+                        </div>
                     </div>
+                    <PreviewBadge tone={tone}>{item.status}</PreviewBadge>
                 </div>
-                <PreviewBadge tone={tone}>{item.status}</PreviewBadge>
-            </div>
 
-            <PreviewHint>{item.reason}</PreviewHint>
+                <PreviewHint>{item.reason}</PreviewHint>
 
-            <label style={checkboxLabelStyle}>
-                <input
-                    type="checkbox"
-                    checked={publish}
-                    disabled={item.status === 'blocked' || item.status === 'skip'}
-                    onChange={(event) => onToggle(event.target.checked)}
-                />
-                Include in publish run
-            </label>
+                <label style={checkboxLabelStyle}>
+                    <input
+                        type="checkbox"
+                        checked={publish}
+                        disabled={item.status === 'blocked' || item.status === 'skip'}
+                        onChange={(event) => onToggle(event.target.checked)}
+                    />
+                    Include in publish run
+                </label>
 
-            {item.attachmentWarnings.length > 0 ? (
-                <PreviewAlert tone="warning">
-                    {item.attachmentWarnings.map((warning) => (
-                        <div key={warning}>{warning}</div>
-                    ))}
-                </PreviewAlert>
-            ) : null}
+                {item.attachmentWarnings.length > 0 ? (
+                    <PreviewAlert tone="warning">
+                        {item.attachmentWarnings.map((warning) => (
+                            <div key={warning}>{warning}</div>
+                        ))}
+                    </PreviewAlert>
+                ) : null}
 
-            {item.diffs.length > 0 ? (
-                <div style={listStyle}>
-                    {item.diffs.map((diff) => (
-                        <PreviewDiffCard
-                            key={`${item.id}:${diff.field}`}
-                            title={diff.label}
-                            leftLabel="Remote"
-                            rightLabel="Local publish"
-                            leftText={diff.remote}
-                            rightText={diff.local}
-                            stepRows={diff.stepRows}
-                            leftSide="remote"
-                            rightSide="local"
-                        />
-                    ))}
-                </div>
-            ) : null}
-        </PreviewCard>
+                {item.diffs.length > 0 ? (
+                    <div style={listStyle}>
+                        {item.diffs.map((diff) => (
+                            <PreviewDiffCard
+                                key={`${item.id}:${diff.field}`}
+                                title={diff.label}
+                                leftLabel="Remote"
+                                rightLabel="Local publish"
+                                leftText={diff.remote}
+                                rightText={diff.local}
+                                stepRows={diff.stepRows}
+                                leftSide="remote"
+                                rightSide="local"
+                            />
+                        ))}
+                    </div>
+                ) : null}
+            </PreviewCard>
+        </div>
     )
 }
 

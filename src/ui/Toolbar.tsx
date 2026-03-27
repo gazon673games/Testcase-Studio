@@ -33,15 +33,14 @@ export function Toolbar(props: Props) {
             type={buttonProps.type ?? 'button'}
             {...buttonProps}
             style={{
-                padding: '6px 12px',
-                borderRadius: 8,
+                padding: '6px 11px',
+                borderRadius: 9,
                 border: toneStyles[tone].border,
                 background: toneStyles[tone].background,
                 color: toneStyles[tone].color,
                 cursor: buttonProps.disabled ? 'default' : 'pointer',
                 fontSize: 13,
                 fontWeight: toneStyles[tone].fontWeight,
-                transition: 'transform .06s ease, filter .06s ease',
                 opacity: buttonProps.disabled ? 0.45 : 1,
             }}
         />
@@ -52,30 +51,49 @@ export function Toolbar(props: Props) {
             style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
                 gap: 12,
-                padding: '10px 12px',
-                borderBottom: '1px solid #eee',
-                background: '#f7f8fb',
+                padding: '8px 12px',
+                borderBottom: '1px solid #edf1f6',
+                background: '#ffffff',
                 flexWrap: 'wrap',
             }}
         >
-            <ToolbarGroup
-                label="Workspace"
-                description={`Selected: ${props.selectionLabel}`}
+            <div
+                style={{
+                    minWidth: 0,
+                    maxWidth: 320,
+                    display: 'grid',
+                    gap: 2,
+                    paddingRight: 6,
+                }}
             >
-                <Btn onClick={props.onAddFolder}>New Folder</Btn>
-                <Btn onClick={props.onAddTest}>New Test</Btn>
-                <Btn onClick={props.onDelete} disabled={!props.canDelete}>
-                    Delete
-                </Btn>
-            </ToolbarGroup>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginLeft: 'auto' }}>
-                <ToolbarGroup
-                    label="Zephyr"
-                    description={`Import -> ${props.importDestinationLabel}`}
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: '#6e7d93' }}>
+                    Workspace
+                </div>
+                <div
+                    style={{
+                        fontSize: 13,
+                        color: '#2a4059',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                    }}
+                    title={props.selectionLabel}
                 >
+                    {props.selectionLabel}
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginLeft: 'auto' }}>
+                <ToolbarGroup label="Local">
+                    <Btn onClick={props.onAddFolder}>New Folder</Btn>
+                    <Btn onClick={props.onAddTest}>New Test</Btn>
+                    <Btn onClick={props.onDelete} disabled={!props.canDelete}>
+                        Delete
+                    </Btn>
+                </ToolbarGroup>
+
+                <ToolbarGroup label="Zephyr" meta={`Import -> ${props.importDestinationLabel}`}>
                     <Btn onClick={props.onImport} title="Import from Zephyr into local" tone="info">
                         Import...
                     </Btn>
@@ -94,11 +112,11 @@ export function Toolbar(props: Props) {
 
                 <ToolbarGroup
                     label="Publish"
-                    description={`${props.publishSelectionLabel} / ${props.publishCount} tests`}
+                    meta={props.publishCount > 0 ? `${props.publishCount} in scope` : 'Nothing in scope'}
                 >
                     <Btn
                         onClick={props.onPublish}
-                        title="Preview and publish local changes to Zephyr"
+                        title={`Preview and publish local changes to Zephyr for ${props.publishSelectionLabel}`}
                         tone="danger"
                         disabled={!props.canPublish}
                     >
@@ -106,7 +124,7 @@ export function Toolbar(props: Props) {
                     </Btn>
                 </ToolbarGroup>
 
-                <ToolbarGroup label="File" description="Local actions">
+                <ToolbarGroup label="File">
                     <Btn onClick={props.onExport} title="Export current test to JSON" disabled={!props.canExport}>
                         Export
                     </Btn>
@@ -124,29 +142,41 @@ export function Toolbar(props: Props) {
 
 function ToolbarGroup({
     label,
-    description,
+    meta,
     children,
 }: {
     label: string
-    description: string
+    meta?: string
     children: React.ReactNode
 }) {
     return (
         <div
             style={{
                 display: 'grid',
-                gap: 6,
-                padding: '8px 10px',
-                border: '1px solid #e4e8ef',
+                gap: 5,
+                padding: '7px 9px',
+                border: '1px solid #e7ebf2',
                 borderRadius: 12,
-                background: '#fff',
+                background: '#fbfcff',
             }}
         >
-            <div style={{ display: 'grid', gap: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: '#627086' }}>
                     {label}
                 </div>
-                <div style={{ fontSize: 12, color: '#6f7d92', lineHeight: 1.35 }}>{description}</div>
+                {meta ? (
+                    <div
+                        style={{
+                            fontSize: 11,
+                            color: '#6f7d92',
+                            background: '#f1f5fb',
+                            borderRadius: 999,
+                            padding: '2px 7px',
+                        }}
+                    >
+                        {meta}
+                    </div>
+                ) : null}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{children}</div>
         </div>

@@ -17,9 +17,13 @@ import {
     PreviewDialogSplit,
     PreviewEmptyState,
     PreviewField,
+    PreviewFilterChip,
     PreviewHint,
     PreviewInfoGrid,
     PreviewInfoPair,
+    PreviewStickyBar,
+    PreviewToolbar,
+    PreviewToolbarGroup,
 } from './PreviewDialog'
 
 type Props = {
@@ -29,6 +33,8 @@ type Props = {
     onPreview(request: Omit<ZephyrImportRequest, 'destinationFolderId'>): Promise<ZephyrImportPreview>
     onApply(preview: ZephyrImportPreview): Promise<ZephyrImportApplyResult>
 }
+
+type ImportStatusFilter = 'all' | ZephyrImportPreviewItem['status']
 
 const MODE_LABELS: Record<ZephyrImportMode, string> = {
     project: 'Project',
@@ -40,6 +46,7 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
     const projectInputRef = React.useRef<HTMLInputElement | null>(null)
     const folderInputRef = React.useRef<HTMLInputElement | null>(null)
     const refsInputRef = React.useRef<HTMLTextAreaElement | null>(null)
+    const itemRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
     const [mode, setMode] = React.useState<ZephyrImportMode>('project')
     const [projectKey, setProjectKey] = React.useState('')
     const [folder, setFolder] = React.useState('')
@@ -52,12 +59,17 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
     const [error, setError] = React.useState<string | null>(null)
     const [preview, setPreview] = React.useState<ZephyrImportPreview | null>(null)
     const [strategies, setStrategies] = React.useState<Record<string, ZephyrImportStrategy>>({})
+    const [statusFilter, setStatusFilter] = React.useState<ImportStatusFilter>('all')
+    const [showUnchanged, setShowUnchanged] = React.useState(false)
 
     React.useEffect(() => {
         if (!open) return
+        itemRefs.current = {}
         setError(null)
         setPreview(null)
         setStrategies({})
+        setStatusFilter('all')
+        setShowUnchanged(false)
     }, [open, destinationLabel])
 
     const refs = React.useMemo(
@@ -82,14 +94,57 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
         [folder, maxResults, mirrorRemoteFolders, mode, projectKey, rawQuery, refs]
     )
 
+    const items = preview?.items ?? []
+    const conflictItems = React.useMemo(
+        () => items.filter((item) => item.status === 'conflict'),
+        [items]
+    )
+    const replaceCount = React.useMemo(
+        () =>
+            items.filter((item) => {
+                if (item.status === 'unchanged') return false
+                return (strategies[item.id] ?? item.strategy) === 'replace'
+            }).length,
+        [items, strategies]
+    )
+    const strategySummary = React.useMemo(() => {
+        const counts: Record<ZephyrImportStrategy, number> = {
+            replace: 0,
+            skip: 0,
+            'merge-locally-later': 0,
+        }
+        for (const item of conflictItems) {
+            const strategy = strategies[item.id] ?? item.strategy
+            counts[strategy] += 1
+        }
+        return counts
+    }, [conflictItems, strategies])
+    const visibleItems = React.useMemo(
+        () =>
+            items.filter((item) => {
+                if (statusFilter !== 'all' && item.status !== statusFilter) return false
+                if (!showUnchanged && statusFilter !== 'unchanged' && item.status === 'unchanged') return false
+                return true
+            }),
+        [items, showUnchanged, statusFilter]
+    )
+    const hiddenCount = items.length - visibleItems.length
+    const hiddenUnchangedCount = items.filter(
+        (item) => item.status === 'unchanged' && (statusFilter !== 'unchanged' || !showUnchanged)
+    ).length
+    const firstConflictId = conflictItems[0]?.id
+
     async function handlePreview(event?: React.FormEvent) {
         event?.preventDefault()
         setLoading(true)
         setError(null)
         try {
             const nextPreview = await onPreview(request)
+            itemRefs.current = {}
             setPreview(nextPreview)
             setStrategies(Object.fromEntries(nextPreview.items.map((item) => [item.id, item.strategy])))
+            setStatusFilter('all')
+            setShowUnchanged(false)
         } catch (err) {
             setPreview(null)
             setStrategies({})
@@ -117,6 +172,25 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
         } finally {
             setApplying(false)
         }
+    }
+
+    function handleStatusFilterChange(nextFilter: ImportStatusFilter) {
+        if (nextFilter === 'unchanged') setShowUnchanged(true)
+        setStatusFilter(nextFilter)
+    }
+
+    function handleShowUnchangedChange(checked: boolean) {
+        setShowUnchanged(checked)
+        if (!checked && statusFilter === 'unchanged') {
+            setStatusFilter('all')
+        }
+    }
+
+    function scrollToItem(itemId?: string) {
+        if (!itemId) return
+        const node = itemRefs.current[itemId]
+        node?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        node?.focus?.()
     }
 
     const canPreview =
@@ -270,13 +344,126 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                                     </div>
                                 </PreviewCard>
 
+                                {conflictItems.length > 0 ? (
+                                    <PreviewCard title="Conflicts to review first">
+                                        <PreviewToolbar>
+                                            <PreviewToolbarGroup>
+                                                <PreviewHint>
+                                                    {conflictItems.length} remote cases match local tests. Review these before running replace.
+                                                </PreviewHint>
+                                            </PreviewToolbarGroup>
+                                            <PreviewToolbarGroup align="end">
+                                                <PreviewButton
+                                                    tone="soft"
+                                                    onClick={() => handleStatusFilterChange('conflict')}
+                                                >
+                                                    Only conflicts
+                                                </PreviewButton>
+                                                <PreviewButton
+                                                    tone="ghost"
+                                                    onClick={() => scrollToItem(firstConflictId)}
+                                                    disabled={!firstConflictId}
+                                                >
+                                                    Jump to first conflict
+                                                </PreviewButton>
+                                            </PreviewToolbarGroup>
+                                        </PreviewToolbar>
+
+                                        <div className="preview-dialog__badge-row">
+                                            <PreviewBadge tone="info">{strategySummary.replace} replace</PreviewBadge>
+                                            <PreviewBadge tone="muted">{strategySummary.skip} skip</PreviewBadge>
+                                            <PreviewBadge tone="warn">
+                                                {strategySummary['merge-locally-later']} merge later
+                                            </PreviewBadge>
+                                        </div>
+
+                                        <div className="preview-dialog__quick-list">
+                                            {conflictItems.slice(0, 4).map((item) => (
+                                                <button
+                                                    key={item.id}
+                                                    type="button"
+                                                    className="preview-dialog__quick-link"
+                                                    onClick={() => scrollToItem(item.id)}
+                                                >
+                                                    {item.remoteName}
+                                                </button>
+                                            ))}
+                                            {conflictItems.length > 4 ? (
+                                                <PreviewHint>+ {conflictItems.length - 4} more conflicts in this preview</PreviewHint>
+                                            ) : null}
+                                        </div>
+                                    </PreviewCard>
+                                ) : null}
+
+                                <PreviewCard title="Review filters">
+                                    <PreviewToolbar>
+                                        <PreviewToolbarGroup>
+                                            <PreviewFilterChip
+                                                active={statusFilter === 'all'}
+                                                onClick={() => handleStatusFilterChange('all')}
+                                            >
+                                                All {preview.summary.total}
+                                            </PreviewFilterChip>
+                                            <PreviewFilterChip
+                                                active={statusFilter === 'new'}
+                                                onClick={() => handleStatusFilterChange('new')}
+                                            >
+                                                New {preview.summary.created}
+                                            </PreviewFilterChip>
+                                            <PreviewFilterChip
+                                                active={statusFilter === 'update'}
+                                                onClick={() => handleStatusFilterChange('update')}
+                                            >
+                                                Updates {preview.summary.updates}
+                                            </PreviewFilterChip>
+                                            <PreviewFilterChip
+                                                active={statusFilter === 'conflict'}
+                                                onClick={() => handleStatusFilterChange('conflict')}
+                                            >
+                                                Conflicts {preview.summary.conflicts}
+                                            </PreviewFilterChip>
+                                            <PreviewFilterChip
+                                                active={statusFilter === 'unchanged'}
+                                                onClick={() => handleStatusFilterChange('unchanged')}
+                                            >
+                                                Unchanged {preview.summary.unchanged}
+                                            </PreviewFilterChip>
+                                        </PreviewToolbarGroup>
+                                        <PreviewToolbarGroup align="end">
+                                            <label className="preview-dialog__toggle">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={showUnchanged}
+                                                    onChange={(event) => handleShowUnchangedChange(event.target.checked)}
+                                                />
+                                                Show unchanged
+                                            </label>
+                                            {hiddenCount > 0 ? (
+                                                <PreviewBadge tone="muted">{hiddenCount} hidden</PreviewBadge>
+                                            ) : null}
+                                        </PreviewToolbarGroup>
+                                    </PreviewToolbar>
+                                </PreviewCard>
+
+                                {hiddenUnchangedCount > 0 && !showUnchanged && statusFilter !== 'unchanged' ? (
+                                    <PreviewCard className="preview-dialog__collapsed-note">
+                                        <PreviewHint>
+                                            {hiddenUnchangedCount} unchanged items are collapsed to keep the review focused.
+                                        </PreviewHint>
+                                    </PreviewCard>
+                                ) : null}
+
                                 <div style={listStyle}>
-                                    {preview.items.length === 0 ? (
+                                    {items.length === 0 ? (
                                         <PreviewEmptyState title="No test cases found">
                                             The preview finished successfully, but Zephyr returned an empty set for this scope.
                                         </PreviewEmptyState>
+                                    ) : visibleItems.length === 0 ? (
+                                        <PreviewEmptyState title="No items match the current filters">
+                                            Adjust the status filters to continue reviewing this batch.
+                                        </PreviewEmptyState>
                                     ) : (
-                                        preview.items.map((item) => (
+                                        visibleItems.map((item) => (
                                             <PreviewItemCard
                                                 key={item.id}
                                                 item={item}
@@ -284,20 +471,40 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                                                 onChangeStrategy={(value) =>
                                                     setStrategies((current) => ({ ...current, [item.id]: value }))
                                                 }
+                                                containerRef={(node) => {
+                                                    itemRefs.current[item.id] = node
+                                                }}
                                             />
                                         ))
                                     )}
                                 </div>
 
-                                <div className="preview-dialog__button-row">
-                                    <PreviewButton
-                                        tone="primary"
-                                        disabled={applying || loading || preview.items.length === 0}
-                                        onClick={handleApply}
-                                    >
-                                        {applying ? 'Applying...' : 'Apply import'}
-                                    </PreviewButton>
-                                </div>
+                                <PreviewStickyBar>
+                                    <div className="preview-dialog__sticky-summary">
+                                        <span>{visibleItems.length} shown</span>
+                                        <PreviewBadge tone="info">{replaceCount} replace</PreviewBadge>
+                                        {hiddenCount > 0 ? <PreviewBadge tone="muted">{hiddenCount} hidden</PreviewBadge> : null}
+                                    </div>
+                                    <div className="preview-dialog__button-row">
+                                        <PreviewButton
+                                            tone="ghost"
+                                            onClick={() => {
+                                                setStatusFilter('all')
+                                                setShowUnchanged(false)
+                                            }}
+                                            disabled={applying || loading}
+                                        >
+                                            Reset filters
+                                        </PreviewButton>
+                                        <PreviewButton
+                                            tone="primary"
+                                            disabled={applying || loading || items.length === 0}
+                                            onClick={handleApply}
+                                        >
+                                            {applying ? 'Applying...' : 'Apply import'}
+                                        </PreviewButton>
+                                    </div>
+                                </PreviewStickyBar>
                             </>
                         )}
                     </div>
@@ -311,10 +518,12 @@ function PreviewItemCard({
     item,
     strategy,
     onChangeStrategy,
+    containerRef,
 }: {
     item: ZephyrImportPreviewItem
     strategy: ZephyrImportStrategy
     onChangeStrategy(value: ZephyrImportStrategy): void
+    containerRef?: (node: HTMLDivElement | null) => void
 }) {
     const statusTone =
         item.status === 'new'
@@ -332,60 +541,62 @@ function PreviewItemCard({
     ]
 
     return (
-        <PreviewCard>
-            <div className="preview-dialog__summary-row">
-                <div style={{ minWidth: 0 }}>
-                    <div className="preview-dialog__card-title">{item.remoteName}</div>
-                    <div className="preview-dialog__subtitle">
-                        <span>{item.remoteId}</span>
-                        {item.remoteFolder ? ` / ${item.remoteFolder}` : ''}
+        <div ref={containerRef} tabIndex={-1}>
+            <PreviewCard>
+                <div className="preview-dialog__summary-row">
+                    <div style={{ minWidth: 0 }}>
+                        <div className="preview-dialog__card-title">{item.remoteName}</div>
+                        <div className="preview-dialog__subtitle">
+                            <span>{item.remoteId}</span>
+                            {item.remoteFolder ? ` / ${item.remoteFolder}` : ''}
+                        </div>
                     </div>
+                    <PreviewBadge tone={statusTone}>{item.status}</PreviewBadge>
                 </div>
-                <PreviewBadge tone={statusTone}>{item.status}</PreviewBadge>
-            </div>
 
-            <PreviewHint>{item.reason}</PreviewHint>
+                <PreviewHint>{item.reason}</PreviewHint>
 
-            <PreviewInfoGrid>
-                <PreviewInfoPair label="Local test" value={item.localName ?? 'Will be created'} />
-                <PreviewInfoPair label="Local folder" value={item.localFolder ?? '-'} />
-                <PreviewInfoPair label="Import into" value={item.targetFolderLabel} />
-                <PreviewInfoPair label="Matches" value={String(item.localMatchIds.length || 0)} />
-            </PreviewInfoGrid>
+                <PreviewInfoGrid>
+                    <PreviewInfoPair label="Local test" value={item.localName ?? 'Will be created'} />
+                    <PreviewInfoPair label="Local folder" value={item.localFolder ?? '-'} />
+                    <PreviewInfoPair label="Import into" value={item.targetFolderLabel} />
+                    <PreviewInfoPair label="Matches" value={String(item.localMatchIds.length || 0)} />
+                </PreviewInfoGrid>
 
-            {item.diffs.length > 0 ? (
-                <div style={listStyle}>
-                    {item.diffs.map((diff) => (
-                        <PreviewDiffCard
-                            key={`${item.id}:${diff.field}`}
-                            title={diff.label}
-                            leftLabel="Local"
-                            rightLabel="Remote"
-                            leftText={diff.local}
-                            rightText={diff.remote}
-                            stepRows={diff.stepRows}
-                            leftSide="local"
-                            rightSide="remote"
-                        />
-                    ))}
-                </div>
-            ) : null}
+                {item.diffs.length > 0 ? (
+                    <div style={listStyle}>
+                        {item.diffs.map((diff) => (
+                            <PreviewDiffCard
+                                key={`${item.id}:${diff.field}`}
+                                title={diff.label}
+                                leftLabel="Local"
+                                rightLabel="Remote"
+                                leftText={diff.local}
+                                rightText={diff.remote}
+                                stepRows={diff.stepRows}
+                                leftSide="local"
+                                rightSide="remote"
+                            />
+                        ))}
+                    </div>
+                ) : null}
 
-            <PreviewField label="Conflict strategy">
-                <select
-                    className="preview-dialog__select"
-                    value={strategy}
-                    onChange={(event) => onChangeStrategy(event.target.value as ZephyrImportStrategy)}
-                    disabled={item.status === 'unchanged'}
-                >
-                    {options.map((option) => (
-                        <option key={option.value} value={option.value}>
-                            {option.label}
-                        </option>
-                    ))}
-                </select>
-            </PreviewField>
-        </PreviewCard>
+                <PreviewField label="Conflict strategy">
+                    <select
+                        className="preview-dialog__select"
+                        value={strategy}
+                        onChange={(event) => onChangeStrategy(event.target.value as ZephyrImportStrategy)}
+                        disabled={item.status === 'unchanged'}
+                    >
+                        {options.map((option) => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
+                </PreviewField>
+            </PreviewCard>
+        </div>
     )
 }
 

@@ -202,13 +202,15 @@ function AppShell() {
                 canExport={canExport}
             />
 
-            <ScopeStrip
-                selectionLabel={selectionSummary.pathLabel}
-                selectionKind={selectionSummary.kind}
-                importDestinationLabel={importDestination.label}
-                publishSelectionLabel={publishSelection.label}
-                publishCount={publishSelection.tests.length}
-            />
+            {selectionSummary.kind !== 'test' && (
+                <ScopeStrip
+                    selectionLabel={selectionSummary.pathLabel}
+                    selectionKind={selectionSummary.kind}
+                    importDestinationLabel={importDestination.label}
+                    publishSelectionLabel={publishSelection.label}
+                    publishCount={publishSelection.tests.length}
+                />
+            )}
 
             <div
                 style={{
@@ -300,8 +302,14 @@ function ScopeStrip({
             <ScopeCard
                 label="Publish scope"
                 value={publishSelectionLabel}
-                hint={publishCount === 1 ? 'One testcase will be compared' : `${publishCount} tests will be compared`}
-                tone={publishCount > 1 ? 'warn' : 'danger'}
+                hint={
+                    publishCount === 0
+                        ? 'Nothing will be published from this scope yet'
+                        : publishCount === 1
+                            ? 'One testcase will be compared'
+                            : `${publishCount} tests will be compared`
+                }
+                tone={publishCount === 0 ? 'neutral' : publishCount > 1 ? 'warn' : 'danger'}
             />
         </div>
     )
@@ -449,13 +457,15 @@ function ScopeOverviewPanel({
                     label="Publish to Zephyr"
                     title={publishSelectionLabel}
                     description={
-                        publishCount === 1
+                        publishCount === 0
+                            ? 'There are no testcases in the current publish scope yet.'
+                            : publishCount === 1
                             ? 'One testcase is currently in publish scope.'
                             : `${publishCount} tests are currently in publish scope.`
                     }
-                    tone={publishCount > 1 ? 'warn' : 'danger'}
+                    tone={publishCount === 0 ? 'neutral' : publishCount > 1 ? 'warn' : 'danger'}
                     actionLabel="Open publish..."
-                    onAction={onOpenPublish}
+                    onAction={publishCount > 0 ? onOpenPublish : undefined}
                 />
                 <ActionCard
                     label="Local editing"
@@ -469,22 +479,6 @@ function ScopeOverviewPanel({
                         </div>
                     )}
                 />
-            </div>
-
-            <div
-                style={{
-                    border: '1px solid #e7edf6',
-                    borderRadius: 18,
-                    background: '#fff',
-                    padding: 18,
-                    display: 'grid',
-                    gap: 8,
-                }}
-            >
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#23384f' }}>Why this screen changed</div>
-                <div style={{ color: '#617087', lineHeight: 1.6, fontSize: 14 }}>
-                    Folder and root selections now show the real batch scope instead of an empty panel, so the impact of import and publish is visible before you open their dialogs.
-                </div>
             </div>
         </div>
     )
