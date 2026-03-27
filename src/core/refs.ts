@@ -329,15 +329,16 @@ function getStepRefValue(step: Step, kind: RefKind, partId?: string): string | n
     if (partId) {
         const part = findPart(step.internal?.parts?.[kind], partId)
         if (!part) return null
-        return trimPreview(part.text)
+        const text = String(part.text ?? '').trim()
+        return text.length ? text : null
     }
     const parts = step.internal?.parts?.[kind] ?? []
     const topLevel = kind === 'action' ? step.action ?? step.text ?? '' : (step as any)[kind] ?? ''
     const value = parts.length
         ? [String(topLevel ?? '').trim(), ...parts.map((part) => String(part.text ?? '').trim())].filter(Boolean).join('\n')
         : String(topLevel ?? '')
-    const preview = trimPreview(String(value ?? ''))
-    return preview.length ? preview : null
+    const text = String(value ?? '').trim()
+    return text.length ? text : null
 }
 
 function findPart(parts: PartItem[] | undefined, partId: string): PartItem | undefined {
