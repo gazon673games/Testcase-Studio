@@ -2,7 +2,7 @@
 import type { IpcMain } from 'electron'
 import { CHANNELS } from './channels.js'
 import type { RootState } from '@core/domain'
-import { loadFromFs, saveToFs } from '../../electron/repo.js'
+import { loadFromFs, saveToFs, writePublishLog, writeStateSnapshot } from '../../electron/repo.js'
 import {
     loadSettings as loadUserSettings,
     saveSettings as saveUserSettings,
@@ -22,6 +22,16 @@ export function registerHandlers(ipcMain: IpcMain) {
     })
     ipcMain.handle(CHANNELS.SAVE_STATE, async (_e, state: RootState) => {
         await saveToFs(state); return true
+    })
+    ipcMain.handle(CHANNELS.WRITE_STATE_SNAPSHOT, async (_e, payload: {
+        state: RootState
+        kind?: string
+        meta?: Record<string, unknown>
+    }) => {
+        return await writeStateSnapshot(payload.state, payload.kind, payload.meta)
+    })
+    ipcMain.handle(CHANNELS.WRITE_PUBLISH_LOG, async (_e, payload: Record<string, unknown>) => {
+        return await writePublishLog(payload)
     })
 
     ipcMain.handle(CHANNELS.LOAD_SETTINGS, async () => {
@@ -107,6 +117,46 @@ export function registerHandlers(ipcMain: IpcMain) {
             }
 
             return await res.json()
+        }
+    )
+
+    ipcMain.handle(
+        CHANNELS.ZEPHYR_UPSERT_TESTCASE,
+        async (_e, payload: { body: unknown; ref?: string }) => {
+            const settings = await loadUserSettings()
+            const login = settings.login || ''
+            const baseUrl = cleanBaseUrl(settings.baseUrl || '')
+            if (!login) throw new Error('Atlassian login is empty in settings')
+            if (!baseUrl) throw new Error('Atlassian baseUrl is empty in settings')
+
+            const password = (await getSecretMain(login)) || ''
+            if (!password) throw new Error('Atlassian password is not stored in keychain')
+
+            const ref = typeof payload.ref === 'string' && payload.ref.trim() ? payload.ref.trim() : ''
+            const url = ref
+                ? `${baseUrl}/rest/atm/1.0/testcase/${encodeURIComponent(ref)}`
+                : `${baseUrl}/rest/atm/1.0/testcase`
+
+            const auth = `Basic ${b64(`${login}:${password}`)}`
+            const res = await fetch(url, {
+                method: ref ? 'PUT' : 'POST',
+                headers: {
+                    Authorization: auth,
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload.body ?? {}),
+            })
+
+            if (!res.ok) {
+                const text = await res.text().catch(() => '')
+                throw new Error(
+                    `Zephyr(upsert) ${res.status} ${res.statusText}` +
+                    (text ? ` – ${text.slice(0, 400)}` : '')
+                )
+            }
+
+            return await res.json().catch(() => ({}))
         }
     )
 }

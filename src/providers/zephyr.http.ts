@@ -6,6 +6,7 @@ type ZephyrTestCaseResponse = {
     key?: string
     name?: string
     description?: string | null
+    labels?: string[]
     updatedOn?: string
     owner?: string
     updatedBy?: string
@@ -84,6 +85,7 @@ export class ZephyrHttpProvider implements ITestProvider {
             parameters: json.parameters ?? { variables: [], entries: [] },
             objective: json.objective ?? null,
             preconditions: json.precondition ?? null,
+            labels: json.labels ?? [],
         }
 
         return {
@@ -125,7 +127,10 @@ export class ZephyrHttpProvider implements ITestProvider {
     }
 
     async upsertTest(payload: ProviderTest): Promise<{ externalId: string }> {
-        return { externalId: payload.id || '' }
+        const ref = parseRef(payload.id).by === 'key' ? parseRef(payload.id).ref : ''
+        const body = buildUpsertBody(payload)
+        const json = await apiClient.zephyrUpsertTestCase(body, ref || undefined)
+        return { externalId: safeStr(json?.key).trim() || ref || payload.id || '' }
     }
     async attach() {}
     async deleteAttachment() {}
@@ -178,4 +183,42 @@ function normalizeSearchItem(raw: any): ProviderTestRef | null {
 function toNumber(value: unknown): number | undefined {
     const next = Number(value)
     return Number.isFinite(next) ? next : undefined
+}
+
+function buildUpsertBody(payload: ProviderTest) {
+    const extras = payload.extras ?? {}
+    const body: Record<string, unknown> = {
+        name: safeStr(payload.name),
+    }
+
+    const projectKey = safeStr(extras.projectKey).trim()
+    if (projectKey) body.projectKey = projectKey
+
+    const description = safeStr(payload.description).trim()
+    if (description) body.description = description
+
+    const folder = safeStr(extras.folder).trim()
+    if (folder) body.folder = folder
+
+    const objective = safeStr(extras.objective).trim()
+    if (objective) body.objective = objective
+
+    const preconditions = safeStr(extras.preconditions).trim()
+    if (preconditions) body.precondition = preconditions
+
+    const labels = Array.isArray(extras.labels)
+        ? extras.labels.map((item) => safeStr(item).trim()).filter(Boolean)
+        : []
+    if (labels.length) body.labels = labels
+
+    body.testScript = {
+        type: 'STEP_BY_STEP',
+        steps: (payload.steps ?? []).map((step) => ({
+            description: safeStr(step.action || step.text).trim(),
+            testData: safeStr(step.data).trim(),
+            expectedResult: safeStr(step.expected).trim(),
+        })),
+    }
+
+    return body
 }

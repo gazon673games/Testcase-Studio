@@ -3,88 +3,111 @@ import { createRoot } from 'react-dom/client'
 import { useAppState } from './ui/useAppState'
 import { Tree } from './ui/Tree'
 import { Toolbar } from './ui/Toolbar'
-import { isFolder, findNode } from '@core/tree'
 import { SettingsModal } from './ui/Settings'
 import { UiKit, useToast } from './ui/UiKit'
-import { buildExport } from '@core/export' // 🔹 добавили импорт
+import { ZephyrImportModal } from './ui/ZephyrImportModal'
+import { ZephyrPublishModal } from './ui/ZephyrPublishModal'
+import { isFolder, findNode } from '@core/tree'
+import { buildExport } from '@core/export'
+import type { ZephyrImportPreview } from '@core/zephyrImport'
+import type { ZephyrPublishPreview } from '@core/zephyrPublish'
 
 const TestEditor = React.lazy(() =>
-    import('./ui/testEditor/TestEditor').then((m) => ({ default: m.TestEditor })),
+    import('./ui/testEditor/TestEditor').then((module) => ({ default: module.TestEditor }))
 )
 import type { TestEditorHandle } from './ui/testEditor/TestEditor'
 
 function AppShell() {
-    const a = useAppState()
-    const [settingsOpen, setSettingsOpen] = React.useState(false)
+    const app = useAppState()
     const editorRef = React.useRef<TestEditorHandle | null>(null)
     const { push } = useToast()
+    const [settingsOpen, setSettingsOpen] = React.useState(false)
+    const [importOpen, setImportOpen] = React.useState(false)
+    const [publishOpen, setPublishOpen] = React.useState(false)
 
-    // Ctrl/Cmd+S — сохранение
-    React.useEffect(() => {
-        const onKey = (e: KeyboardEvent) => {
-            const isMac = navigator.platform.toLowerCase().includes('mac')
-            const cmd = isMac ? e.metaKey : e.ctrlKey
-            if (cmd && e.key.toLowerCase() === 's') {
-                e.preventDefault()
-                handleSave()
-            }
-        }
-        window.addEventListener('keydown', onKey)
-        return () => window.removeEventListener('keydown', onKey)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
-
-    // 💾 сохранение
     const handleSave = React.useCallback(async () => {
         editorRef.current?.commit?.()
-        await a.save()
-        push({ kind: 'success', text: 'Изменения сохранены', ttl: 2200 })
-    }, [a, push])
+        await app.save()
+        push({ kind: 'success', text: 'Changes saved', ttl: 2200 })
+    }, [app, push])
 
-    // 📤 экспорт
+    React.useEffect(() => {
+        const onKey = (event: KeyboardEvent) => {
+            const isMac = navigator.platform.toLowerCase().includes('mac')
+            const modifier = isMac ? event.metaKey : event.ctrlKey
+            if (modifier && event.key.toLowerCase() === 's') {
+                event.preventDefault()
+                void handleSave()
+            }
+        }
+
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [handleSave])
+
     const handleExport = React.useCallback(async () => {
         editorRef.current?.commit?.()
 
-        if (!a.state || !a.selectedId) {
-            push({ kind: 'error', text: 'Нет выбранного теста для экспорта', ttl: 2500 })
+        if (!app.state || !app.selectedId) {
+            push({ kind: 'error', text: 'Select a test before export', ttl: 2500 })
             return
         }
 
-        const node = findNode(a.state.root, a.selectedId)
+        const node = findNode(app.state.root, app.selectedId)
         if (!node || isFolder(node)) {
-            push({ kind: 'error', text: 'Выбран не тест, а папка', ttl: 2500 })
+            push({ kind: 'error', text: 'Export works only for a test case', ttl: 2500 })
             return
         }
 
-        // 1️⃣ собираем канонический экспорт
-        const exp = buildExport(node, a.state)
-
-        // 2️⃣ создаём JSON
-        const blob = new Blob([JSON.stringify(exp, null, 2)], { type: 'application/json' })
+        const exported = buildExport(node, app.state)
+        const blob = new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' })
         const url = URL.createObjectURL(blob)
-
-        // 3️⃣ инициируем скачивание
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `test-${node.name || node.id}.json`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+        const anchor = document.createElement('a')
+        anchor.href = url
+        anchor.download = `test-${node.name || node.id}.json`
+        document.body.appendChild(anchor)
+        anchor.click()
+        document.body.removeChild(anchor)
         URL.revokeObjectURL(url)
 
-        push({ kind: 'success', text: 'Тест экспортирован в JSON', ttl: 2500 })
-    }, [a, push])
+        push({ kind: 'success', text: 'Test exported to JSON', ttl: 2500 })
+    }, [app, push])
 
-    // переключение тестов с коммитом драфта
+    const handleApplyImport = React.useCallback(
+        async (preview: ZephyrImportPreview) => {
+            const result = await app.applyZephyrImport(preview)
+            push({
+                kind: 'success',
+                text: `Import applied: ${result.created} created, ${result.updated} updated, ${result.drafts} drafts, ${result.skipped} skipped`,
+                ttl: 3200,
+            })
+            return result
+        },
+        [app, push]
+    )
+
+    const handleApplyPublish = React.useCallback(
+        async (preview: ZephyrPublishPreview) => {
+            const result = await app.publishZephyr(preview)
+            push({
+                kind: result.failed ? 'error' : 'success',
+                text: `Publish finished: ${result.created} created, ${result.updated} updated, ${result.failed} failed. Snapshot: ${result.snapshotPath}. Log: ${result.logPath}`,
+                ttl: 5200,
+            })
+            return result
+        },
+        [app, push]
+    )
+
     const selectWithCommit = React.useCallback(
         (id: string) => {
             editorRef.current?.commit?.()
-            a.select(id)
+            app.select(id)
         },
-        [a],
+        [app]
     )
 
-    if (!a.state) {
+    if (!app.state) {
         return (
             <div style={{ padding: 16, fontFamily: 'system-ui' }}>
                 <h1>Loading…</h1>
@@ -92,8 +115,11 @@ function AppShell() {
         )
     }
 
-    const selected = a.selectedId ? findNode(a.state.root, a.selectedId) : null
-    const allTests = a.mapAllTests()
+    const selected = app.selectedId ? findNode(app.state.root, app.selectedId) : null
+    const allTests = app.mapAllTests()
+    const importDestination = app.getImportDestination()
+    const publishSelection = app.getPublishSelection()
+
     const rightPane =
         !selected || isFolder(selected as any) ? (
             <EmptyPanel />
@@ -102,17 +128,17 @@ function AppShell() {
                 <TestEditor
                     ref={editorRef}
                     test={selected as any}
-                    onChange={(p: any) => a.updateTest((selected as any).id, p)}
-                    focusStepId={a.focusStepId}
+                    onChange={(patch: any) => app.updateTest((selected as any).id, patch)}
+                    focusStepId={app.focusStepId}
                     allTests={allTests}
-                    sharedSteps={a.state.sharedSteps}
-                    onAddSharedStep={a.addSharedStep}
-                    onAddSharedStepFromStep={a.addSharedStepFromStep}
-                    onUpdateSharedStep={a.updateSharedStep}
-                    onDeleteSharedStep={a.deleteSharedStep}
-                    onInsertSharedReference={(sharedId: string) => a.insertSharedReference((selected as any).id, sharedId)}
-                    onOpenStep={a.openStep}
-                    onOpenTest={a.select}
+                    sharedSteps={app.state.sharedSteps}
+                    onAddSharedStep={app.addSharedStep}
+                    onAddSharedStepFromStep={app.addSharedStepFromStep}
+                    onUpdateSharedStep={app.updateSharedStep}
+                    onDeleteSharedStep={app.deleteSharedStep}
+                    onInsertSharedReference={(sharedId: string) => app.insertSharedReference((selected as any).id, sharedId)}
+                    onOpenStep={app.openStep}
+                    onOpenTest={app.select}
                 />
             </React.Suspense>
         )
@@ -127,14 +153,15 @@ function AppShell() {
             }}
         >
             <Toolbar
-                onAddFolder={a.addFolder}
-                onAddTest={a.addTest}
-                onDelete={a.removeSelected}
-                onSave={handleSave}
-                onPull={a.pull}
-                onPush={a.push}
-                onSyncAll={a.syncAll}
-                onExport={handleExport} // ✅ экспорт теперь работает
+                onAddFolder={app.addFolder}
+                onAddTest={app.addTest}
+                onDelete={app.removeSelected}
+                onSave={() => void handleSave()}
+                onImport={() => setImportOpen(true)}
+                onPull={() => void app.pull()}
+                onPublish={() => setPublishOpen(true)}
+                onSyncAll={() => void app.syncAll()}
+                onExport={() => void handleExport()}
                 onOpenSettings={() => setSettingsOpen(true)}
             />
 
@@ -148,21 +175,35 @@ function AppShell() {
             >
                 <div style={{ borderRight: '1px solid #eee', overflow: 'auto' }}>
                     <Tree
-                        root={a.state.root}
-                        selectedId={a.selectedId}
+                        root={app.state.root}
+                        selectedId={app.selectedId}
                         onSelect={selectWithCommit}
-                        onMove={a.moveNode}
-                        onCreateFolderAt={a.addFolderAt}
-                        onCreateTestAt={a.addTestAt}
-                        onRename={a.renameNode}
-                        onDelete={a.deleteNodeById}
-                        onOpenStep={a.openStep}
+                        onMove={app.moveNode}
+                        onCreateFolderAt={app.addFolderAt}
+                        onCreateTestAt={app.addTestAt}
+                        onRename={app.renameNode}
+                        onDelete={app.deleteNodeById}
+                        onOpenStep={app.openStep}
                     />
                 </div>
                 <div style={{ overflow: 'auto' }}>{rightPane}</div>
             </div>
 
             <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+            <ZephyrImportModal
+                open={importOpen}
+                destinationLabel={importDestination.label}
+                onClose={() => setImportOpen(false)}
+                onPreview={(request) => app.previewZephyrImport(request)}
+                onApply={handleApplyImport}
+            />
+            <ZephyrPublishModal
+                open={publishOpen}
+                selectionLabel={publishSelection.label}
+                onClose={() => setPublishOpen(false)}
+                onPreview={() => app.previewZephyrPublish()}
+                onApply={handleApplyPublish}
+            />
         </div>
     )
 }
@@ -176,11 +217,7 @@ function App() {
 }
 
 function EmptyPanel() {
-    return (
-        <div style={{ padding: 16, color: '#666' }}>
-            Выберите тест в дереве, чтобы редактировать.
-        </div>
-    )
+    return <div style={{ padding: 16, color: '#666' }}>Select a test in the tree to edit it.</div>
 }
 
 createRoot(document.getElementById('root')!).render(<App />)

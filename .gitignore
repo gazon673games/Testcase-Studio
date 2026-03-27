@@ -19,6 +19,8 @@ bower_components/
 # Build output
 dist/
 build/
+tests_repo/.snapshots/
+tests_repo/.publish-logs/
 
 # IDE and system files
 .vscode/

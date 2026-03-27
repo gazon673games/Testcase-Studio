@@ -10,6 +10,13 @@ import {
     type ZephyrImportPreview,
     type ZephyrImportRequest,
 } from './zephyrImport'
+import {
+    applyPublishSuccess,
+    buildZephyrPublishPreview,
+    type ZephyrPublishPreview,
+    type ZephyrPublishResult,
+} from './zephyrPublish'
+import { findNode, isFolder } from './tree'
 
 export class SyncEngine {
     constructor(private providers: Record<ProviderKind, ITestProvider>) {}
@@ -56,6 +63,97 @@ export class SyncEngine {
 
     applyZephyrImport(state: RootState, preview: ZephyrImportPreview): ZephyrImportApplyResult {
         return applyZephyrImportPreview(state, preview)
+    }
+
+    async previewZephyrPublish(
+        state: RootState,
+        tests: TestCase[],
+        selectionLabel: string
+    ): Promise<ZephyrPublishPreview> {
+        const zephyr = this.providerBy('zephyr')
+        const remoteIds = [...new Set(
+            tests
+                .map((test) => test.links.find((link) => link.provider === 'zephyr')?.externalId ?? test.meta?.params?.key ?? '')
+                .map((item) => String(item).trim())
+                .filter(Boolean)
+        )]
+
+        const remoteMap = new Map<string, ProviderTest | Error>()
+        await Promise.all(
+            remoteIds.map(async (externalId) => {
+                try {
+                    remoteMap.set(externalId, await zephyr.getTestDetails(externalId, { includeAttachments: true }))
+                } catch (error) {
+                    remoteMap.set(externalId, error instanceof Error ? error : new Error(String(error)))
+                }
+            })
+        )
+
+        return buildZephyrPublishPreview(state, tests, remoteMap, selectionLabel)
+    }
+
+    async publishZephyrPreview(state: RootState, preview: ZephyrPublishPreview): Promise<ZephyrPublishResult> {
+        const provider = this.providerBy('zephyr')
+        const result: ZephyrPublishResult = { created: 0, updated: 0, skipped: 0, failed: 0, blocked: 0, logItems: [] }
+
+        for (const item of preview.items) {
+            if (item.status === 'blocked') {
+                result.blocked += 1
+                result.logItems.push({
+                    testId: item.testId,
+                    testName: item.testName,
+                    status: 'blocked',
+                    externalId: item.externalId,
+                    reason: item.reason,
+                    attachmentWarnings: item.attachmentWarnings,
+                })
+                continue
+            }
+
+            if (!item.publish || item.status === 'skip') {
+                result.skipped += 1
+                result.logItems.push({
+                    testId: item.testId,
+                    testName: item.testName,
+                    status: 'skipped',
+                    externalId: item.externalId,
+                    reason: item.reason,
+                    attachmentWarnings: item.attachmentWarnings,
+                })
+                continue
+            }
+
+            try {
+                const response = await provider.upsertTest(item.payload, { pushAttachments: false })
+                const externalId = response.externalId || item.externalId || item.payload.id || ''
+                const node = findNode(state.root, item.testId)
+                if (node && !isFolder(node)) applyPublishSuccess(node, externalId, item.payload)
+
+                if (item.status === 'create') result.created += 1
+                else result.updated += 1
+
+                result.logItems.push({
+                    testId: item.testId,
+                    testName: item.testName,
+                    status: item.status === 'create' ? 'created' : 'updated',
+                    externalId,
+                    reason: item.reason,
+                    attachmentWarnings: item.attachmentWarnings,
+                })
+            } catch (error) {
+                result.failed += 1
+                result.logItems.push({
+                    testId: item.testId,
+                    testName: item.testName,
+                    status: 'failed',
+                    externalId: item.externalId,
+                    error: error instanceof Error ? error.message : String(error),
+                    attachmentWarnings: item.attachmentWarnings,
+                })
+            }
+        }
+
+        return result
     }
 
     async twoWaySync(state: RootState): Promise<void> {

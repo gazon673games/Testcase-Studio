@@ -1,5 +1,6 @@
 // src/ipc/client.ts
 import { CHANNELS } from './channels'
+import type { RootState } from '@core/domain'
 import type { AtlassianSettings } from '@core/settings'
 
 export const apiClient = {
@@ -19,4 +20,13 @@ export const apiClient = {
 
     zephyrSearchTestCases: (query: string, startAt = 0, maxResults = 100) =>
         window.api.invoke<any>(CHANNELS.ZEPHYR_SEARCH_TESTCASES, { query, startAt, maxResults }),
+
+    zephyrUpsertTestCase: (body: unknown, ref?: string) =>
+        window.api.invoke<any>(CHANNELS.ZEPHYR_UPSERT_TESTCASE, { body, ref }),
+
+    writeStateSnapshot: (state: RootState, kind = 'snapshot', meta?: Record<string, unknown>) =>
+        window.api.invoke<string>(CHANNELS.WRITE_STATE_SNAPSHOT, { state, kind, meta }),
+
+    writePublishLog: (payload: Record<string, unknown>) =>
+        window.api.invoke<string>(CHANNELS.WRITE_PUBLISH_LOG, payload),
 }

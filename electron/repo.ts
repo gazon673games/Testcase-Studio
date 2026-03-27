@@ -15,6 +15,8 @@ const REPO_DIR = 'tests_repo'
 const ROOT_DIR = 'root'
 const FOLDER_META_FILE = 'folder.json'
 const SHARED_STEPS_FILE = 'shared_steps.json'
+const SNAPSHOTS_DIR = '.snapshots'
+const PUBLISH_LOGS_DIR = '.publish-logs'
 
 function getBaseDir() {
     return app.isPackaged ? path.dirname(app.getPath('exe')) : process.cwd()
@@ -144,4 +146,44 @@ export async function saveToFs(state: RootState) {
         JSON.stringify(normalized.sharedSteps, null, 2),
         'utf-8'
     )
+}
+
+export async function writeStateSnapshot(
+    state: RootState,
+    kind = 'snapshot',
+    meta?: Record<string, unknown>
+): Promise<string> {
+    const normalized = normalizeRootState(state)
+    const baseDir = path.join(getBaseDir(), REPO_DIR, SNAPSHOTS_DIR)
+    await ensureDir(baseDir)
+    const filePath = path.join(baseDir, `${kind}-${timestampLabel()}.json`)
+    await fsp.writeFile(
+        filePath,
+        JSON.stringify({ createdAt: new Date().toISOString(), kind, meta: meta ?? {}, state: normalized }, null, 2),
+        'utf-8'
+    )
+    return filePath
+}
+
+export async function writePublishLog(payload: Record<string, unknown>): Promise<string> {
+    const baseDir = path.join(getBaseDir(), REPO_DIR, PUBLISH_LOGS_DIR)
+    await ensureDir(baseDir)
+    const filePath = path.join(baseDir, `publish-${timestampLabel()}.json`)
+    await fsp.writeFile(filePath, JSON.stringify(payload, null, 2), 'utf-8')
+    return filePath
+}
+
+function timestampLabel() {
+    const now = new Date()
+    const date = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0'),
+    ].join('')
+    const time = [
+        String(now.getHours()).padStart(2, '0'),
+        String(now.getMinutes()).padStart(2, '0'),
+        String(now.getSeconds()).padStart(2, '0'),
+    ].join('-')
+    return `${date}-${time}`
 }

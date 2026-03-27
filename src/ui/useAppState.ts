@@ -23,9 +23,17 @@ import {
     moveNode as moveTreeNode,
 } from '@core/tree'
 import { SyncEngine } from '@core/syncEngine'
+import {
+    describeFolderPath,
+    type ZephyrImportApplyResult,
+    type ZephyrImportPreview,
+    type ZephyrImportRequest,
+} from '@core/zephyrImport'
+import type { ZephyrPublishPreview, ZephyrPublishResult } from '@core/zephyrPublish'
 import { ZephyrHttpProvider } from '@providers/zephyr.http'
 import { AllureStubProvider } from '@providers/allure.stub'
 import { fromProviderPayload } from '@providers/mappers'
+import { apiClient } from '@ipc/client'
 
 type Node = Folder | TestCase
 
@@ -75,6 +83,32 @@ export function useAppState() {
     function select(id: ID) {
         setSelectedId(id)
         setFocusStepId(null)
+    }
+
+    function getImportDestination() {
+        if (!state) return { folderId: '', label: 'Root' }
+        const selected = getSelected()
+        const folder =
+            !selected
+                ? state.root
+                : isFolder(selected)
+                    ? selected
+                    : findParentFolder(state.root, selected.id) ?? state.root
+        return {
+            folderId: folder.id,
+            label: describeFolderPath(state.root, folder.id),
+        }
+    }
+
+    function getPublishSelection() {
+        if (!state) return { label: 'Root', tests: [] as TestCase[] }
+        const selected = getSelected()
+        if (!selected) return { label: describeFolderPath(state.root, state.root.id), tests: mapTests(state.root) }
+        if (!isFolder(selected)) return { label: selected.name, tests: [selected] }
+        return {
+            label: describeFolderPath(state.root, selected.id),
+            tests: mapTests(selected),
+        }
     }
 
     async function addFolderAt(parentId: ID) {
@@ -276,6 +310,70 @@ export function useAppState() {
         await persist(next)
     }
 
+    async function previewZephyrImport(
+        request: Omit<ZephyrImportRequest, 'destinationFolderId'> & { destinationFolderId?: string }
+    ): Promise<ZephyrImportPreview> {
+        if (!state) throw new Error('State is not loaded yet')
+        const destinationFolderId = request.destinationFolderId || getImportDestination().folderId || state.root.id
+        return sync.previewZephyrImport(state, { ...request, destinationFolderId })
+    }
+
+    async function applyZephyrImport(preview: ZephyrImportPreview): Promise<ZephyrImportApplyResult> {
+        if (!state) throw new Error('State is not loaded yet')
+        const next = structuredClone(state)
+        const result = sync.applyZephyrImport(next, preview)
+        await persist(next)
+        return result
+    }
+
+    async function previewZephyrPublish(): Promise<ZephyrPublishPreview> {
+        if (!state) throw new Error('State is not loaded yet')
+        const selection = getPublishSelection()
+        return sync.previewZephyrPublish(state, selection.tests, selection.label)
+    }
+
+    async function publishZephyr(preview: ZephyrPublishPreview): Promise<ZephyrPublishResult & {
+        snapshotPath: string
+        logPath: string
+    }> {
+        if (!state) throw new Error('State is not loaded yet')
+        const snapshotPath = await apiClient.writeStateSnapshot(state, 'publish', {
+            selectionLabel: preview.selectionLabel,
+            generatedAt: preview.generatedAt,
+            summary: preview.summary,
+        })
+
+        const next = structuredClone(state)
+        const result = await sync.publishZephyrPreview(next, preview)
+        await persist(next)
+
+        const logPath = await apiClient.writePublishLog({
+            kind: 'zephyr-publish',
+            createdAt: nowISO(),
+            snapshotPath,
+            preview: {
+                selectionLabel: preview.selectionLabel,
+                generatedAt: preview.generatedAt,
+                summary: preview.summary,
+                items: preview.items.map((item) => ({
+                    testId: item.testId,
+                    testName: item.testName,
+                    externalId: item.externalId,
+                    status: item.status,
+                    publish: item.publish,
+                    reason: item.reason,
+                    projectKey: item.projectKey,
+                    folder: item.folder,
+                    diffs: item.diffs,
+                    attachmentWarnings: item.attachmentWarnings,
+                })),
+            },
+            result,
+        })
+
+        return { ...result, snapshotPath, logPath }
+    }
+
     function openStep(testId: string, stepId: string) {
         setSelectedId(testId)
         setFocusStepId(stepId)
@@ -298,6 +396,12 @@ export function useAppState() {
         pull,
         push,
         syncAll,
+        getImportDestination,
+        getPublishSelection,
+        previewZephyrImport,
+        applyZephyrImport,
+        previewZephyrPublish,
+        publishZephyr,
         addFolderAt,
         addTestAt,
         renameNode,
