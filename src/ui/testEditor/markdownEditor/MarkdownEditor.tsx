@@ -534,8 +534,8 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     const [anchor, setAnchor] = React.useState<{ top: number; left: number } | null>(null)
     const [range, setRange] = React.useState<{ from: number; to: number } | null>(null)
 
-    const updateSuggestions = React.useCallback((el: HTMLTextAreaElement, text = value) => {
-        const caret = el.selectionStart
+    const updateSuggestions = React.useCallback((el: HTMLTextAreaElement, text = value, caretOverride?: number) => {
+        const caret = caretOverride ?? el.selectionStart
         const before = text.slice(0, caret)
         const start = before.lastIndexOf('[[')
         const close = before.lastIndexOf(']]')
@@ -584,13 +584,19 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         const left = value.slice(0, range.from)
         const right = value.slice(range.to)
         const nextValue = `${left}[[${item.insert}]]${right}`
+        const continueToSteps = item.insert.endsWith('#')
         onChange(nextValue)
-        setAcOpen(false)
         requestAnimationFrame(() => {
-            const pos = (left + '[[' + item.insert + ']]').length
             el.focus()
+            const pos = continueToSteps
+                ? left.length + 2 + item.insert.length
+                : (left + '[[' + item.insert + ']]').length
             el.selectionStart = el.selectionEnd = pos
-            if (item.insert.endsWith('#')) updateSuggestions(el, nextValue)
+            if (continueToSteps) {
+                updateSuggestions(el, nextValue, pos)
+            } else {
+                setAcOpen(false)
+            }
         })
     }
 
