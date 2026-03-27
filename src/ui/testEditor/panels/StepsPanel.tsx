@@ -5,6 +5,7 @@ import type { Attachment, PartItem, SharedStep, Step, TestCase } from '@core/dom
 import type { MarkdownEditorApi } from '../markdownEditor/MarkdownEditor'
 import { MarkdownEditor } from '../markdownEditor/MarkdownEditor'
 import StepAttachmentsPanel from './StepAttachmentsPanel'
+import { useUiPreferences } from '../../preferences'
 
 type OwnerContext = { type: 'test' | 'shared'; id: string }
 
@@ -87,6 +88,7 @@ export default function StepsPanel({
     onOpenShared,
     onInsertText,
 }: Props) {
+    const { t } = useUiPreferences()
     const [open, setOpen] = React.useState(true)
     const [globalPreview, setGlobalPreview] = React.useState(false)
     const [isNarrow, setIsNarrow] = React.useState(false)
@@ -111,7 +113,7 @@ export default function StepsPanel({
             const element = stepRefs.current[focusStepId]
             element?.scrollIntoView({ block: 'center', behavior: 'smooth' })
             if (!element) return
-            element.style.outline = '2px solid #8ab4f8'
+            element.style.outline = '2px solid var(--accent-border)'
             setTimeout(() => {
                 if (element) element.style.outline = 'none'
             }, 900)
@@ -225,26 +227,26 @@ export default function StepsPanel({
             <div className="section-header" data-spoiler data-nopress>
                 <button type="button" onClick={() => setOpen((current) => !current)}>
                     <span style={{ width: 14, textAlign: 'center' }}>{open ? '▾' : '▸'}</span>
-                    <span>Steps{typeof steps.length === 'number' ? ` (${steps.length})` : ''}</span>
+                    <span>{t('steps.title')}{typeof steps.length === 'number' ? ` (${steps.length})` : ''}</span>
                 </button>
                 <span className="spacer" />
                 <div className="section-header-right steps-toolbar">
                     {previewMode == null ? (
                         <>
-                            <span className="muted">View:</span>
+                            <span className="muted">{t('steps.view')}</span>
                             <button type="button" onClick={() => setGlobalPreview((current) => !current)} className="btn-small">
-                                {globalPreview ? 'Raw' : 'Preview'}
+                                {globalPreview ? t('details.raw') : t('details.preview')}
                             </button>
                         </>
                     ) : (
-                        <span className="muted">{previewEnabled ? 'Preview all' : 'Raw all'}</span>
+                        <span className="muted">{previewEnabled ? t('steps.previewAll') : t('steps.rawAll')}</span>
                     )}
                     <button type="button" onClick={() => addStepAfter(Math.max(steps.length - 1, -1))} className="btn-small">
-                        + Add step
+                        {t('steps.add')}
                     </button>
                     {onApply && (
                         <button type="button" onClick={onApply} className="btn-small">
-                            Apply
+                            {t('steps.apply')}
                         </button>
                     )}
                 </div>
@@ -254,12 +256,10 @@ export default function StepsPanel({
                 <div className="steps">
                     {steps.length === 0 ? (
                         <div className="steps-empty">
-                            <div className="steps-empty-title">No steps yet</div>
-                            <div className="steps-empty-text">
-                                Add the first step and start composing action, data and expected result.
-                            </div>
+                            <div className="steps-empty-title">{t('steps.emptyTitle')}</div>
+                            <div className="steps-empty-text">{t('steps.emptyText')}</div>
                             <button type="button" className="btn-small" onClick={() => addStepAfter(-1)}>
-                                + Add first step
+                                {t('steps.addFirst')}
                             </button>
                         </div>
                     ) : (
@@ -312,6 +312,7 @@ export default function StepsPanel({
 }
 
 const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(props, ref) {
+    const { t } = useUiPreferences()
     const { owner, index, step, preview, isNarrow, sharedById } = props
 
     const getTopFieldValue = (kind: 'action' | 'data' | 'expected') =>
@@ -325,26 +326,26 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
 
     const normalActions: OverflowAction[] = [
         ...(owner.type === 'test' && props.onCreateSharedFromStep
-            ? [{ label: 'Save as shared', onClick: () => void props.onCreateSharedFromStep?.(step) }]
+            ? [{ label: t('steps.saveAsShared'), onClick: () => void props.onCreateSharedFromStep?.(step) }]
             : []),
-        { label: 'Clone step', onClick: props.onClone },
-        { label: 'Add step below', onClick: props.onAddNext },
-        { label: 'Remove step', onClick: props.onRemove, danger: true },
+        { label: t('steps.clone'), onClick: props.onClone },
+        { label: t('steps.addBelow'), onClick: props.onAddNext },
+        { label: t('steps.remove'), onClick: props.onRemove, danger: true },
     ]
 
     if (step.usesShared) {
         const shared = sharedById.get(step.usesShared)
         const previewLines = shared?.steps.slice(0, 3).map((item, itemIndex) => ({
             id: item.id,
-            text: item.action || item.text || `Step ${itemIndex + 1}`,
+            text: item.action || item.text || t('steps.stepNumber', { index: itemIndex + 1 }),
         })) ?? []
         const sharedActions: OverflowAction[] = [
             ...(shared && props.onOpenShared
-                ? [{ label: 'Open shared', onClick: () => props.onOpenShared?.(shared.id) }]
+                ? [{ label: t('steps.openShared'), onClick: () => props.onOpenShared?.(shared.id) }]
                 : []),
-            { label: 'Clone step', onClick: props.onClone },
-            { label: 'Add step below', onClick: props.onAddNext },
-            { label: 'Remove step', onClick: props.onRemove, danger: true },
+            { label: t('steps.clone'), onClick: props.onClone },
+            { label: t('steps.addBelow'), onClick: props.onAddNext },
+            { label: t('steps.remove'), onClick: props.onRemove, danger: true },
         ]
 
         return (
@@ -359,7 +360,7 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                 <div className="step-header">
                     <div
                         className="drag"
-                        title="Drag to reorder"
+                        title={t('steps.dragToReorder')}
                         draggable
                         onDragStart={props.onHandleDragStart}
                         onDragEnd={props.onHandleDragEnd}
@@ -367,10 +368,10 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                         ≡
                     </div>
                     <div className="step-title-wrap">
-                        <div className="step-title">{shared ? `Shared: ${shared.name}` : 'Missing shared step'}</div>
+                        <div className="step-title">{shared ? t('steps.sharedTitle', { name: shared.name }) : t('steps.sharedMissing')}</div>
                         <div className="step-meta">
-                            {shared ? <span className="step-chip">{shared.steps.length} steps</span> : <span className="step-chip step-chip-broken">Broken link</span>}
-                            <span className="step-chip">Step {index + 1}</span>
+                            {shared ? <span className="step-chip">{t('steps.sharedStepsCount', { count: shared.steps.length })}</span> : <span className="step-chip step-chip-broken">{t('steps.brokenLink')}</span>}
+                            <span className="step-chip">{t('steps.stepNumber', { index: index + 1 })}</span>
                         </div>
                     </div>
                     <span className="spacer" />
@@ -380,7 +381,7 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                 <div className="shared-ref-body">
                     {shared ? (
                         <>
-                            <div className="shared-ref-copy">This step expands from the shared library on export and sync.</div>
+                            <div className="shared-ref-copy">{t('steps.sharedExportHint')}</div>
                             <div className="shared-ref-preview">
                                 {previewLines.map((line) => (
                                     <button
@@ -395,7 +396,7 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                             </div>
                         </>
                     ) : (
-                        <div className="shared-ref-copy broken">The referenced shared step no longer exists in the library.</div>
+                        <div className="shared-ref-copy broken">{t('steps.sharedMissingHint')}</div>
                     )}
                 </div>
             </div>
@@ -416,12 +417,12 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
     const BlockAddButton = ({ kind }: { kind: 'action' | 'data' | 'expected' }) => (
         <div className="cell-actions">
             {props.onInsertText && (
-                <button type="button" className="btn-icon" title={`Insert ${kind} link`} onClick={() => insertLink(kind)}>
-                    Link
+                <button type="button" className="btn-icon" title={t('steps.insertLink', { kind: t(`steps.${kind}`) })} onClick={() => insertLink(kind)}>
+                    {t('steps.sharedRef')}
                 </button>
             )}
-            <button type="button" title={`Add ${kind} block`} onClick={() => props.onAddPart(index, kind)} className="add-part-btn">
-                Add block
+            <button type="button" title={t('steps.addBlock')} onClick={() => props.onAddPart(index, kind)} className="add-part-btn">
+                {t('steps.addBlock')}
             </button>
         </div>
     )
@@ -437,7 +438,7 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                 <div className="cell-head">
                     <div className="cell-head-main">
                         <div className="cell-title">{label}</div>
-                        {parts.length > 0 && <span className="cell-chip">{blockCount} blocks</span>}
+                        {parts.length > 0 && <span className="cell-chip">{t('steps.blocks', { count: blockCount })}</span>}
                     </div>
                     <BlockAddButton kind={kind} />
                 </div>
@@ -460,7 +461,7 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                         {parts.map((part, partIndex) => (
                             <PartItemRow
                                 key={part.id}
-                                label={`${label} block ${partIndex + 1}`}
+                                label={`${label} ${t('steps.addBlock').toLowerCase()} ${partIndex + 1}`}
                                 value={part.text}
                                 preview={preview}
                                 allTests={props.allTests}
@@ -492,7 +493,7 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
             <div className="step-header">
                 <div
                     className="drag"
-                    title="Drag to reorder"
+                    title={t('steps.dragToReorder')}
                     draggable
                     onDragStart={props.onHandleDragStart}
                     onDragEnd={props.onHandleDragEnd}
@@ -500,11 +501,11 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                     ≡
                 </div>
                 <div className="step-title-wrap">
-                    <div className="step-title">Step {index + 1}</div>
+                    <div className="step-title">{t('steps.stepNumber', { index: index + 1 })}</div>
                     <div className="step-meta">
-                        {blockCount > 0 && <span className="step-chip">{blockCount} blocks</span>}
-                        {attachments.length > 0 && <span className="step-chip">{attachments.length} files</span>}
-                        {preview && <span className="step-chip step-chip-preview">Preview</span>}
+                        {blockCount > 0 && <span className="step-chip">{t('steps.blocks', { count: blockCount })}</span>}
+                        {attachments.length > 0 && <span className="step-chip">{t('steps.files', { count: attachments.length })}</span>}
+                        {preview && <span className="step-chip step-chip-preview">{t('details.preview')}</span>}
                     </div>
                 </div>
                 <span className="spacer" />
@@ -517,9 +518,9 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                         <div className="step-num-badge">{index + 1}</div>
                     </div>
                 )}
-                <div>{renderCell('action', 'Action')}</div>
-                <div>{renderCell('data', 'Data')}</div>
-                <div>{renderCell('expected', 'Expected result')}</div>
+                <div>{renderCell('action', t('steps.action'))}</div>
+                <div>{renderCell('data', t('steps.data'))}</div>
+                <div>{renderCell('expected', t('steps.expected'))}</div>
             </div>
 
             <div className="step-footer" style={{ padding: isNarrow ? 10 : '10px 10px 12px' }}>
@@ -563,15 +564,16 @@ function PartItemRow({
     onRemove(): void
     onInsertLink?: () => void
 }) {
+    const { t } = useUiPreferences()
     return (
         <div className="part-row">
             <div className="part-row-toolbar">
                 {onInsertLink && (
-                    <button type="button" className="btn-icon" title="Insert link to this block" onClick={onInsertLink}>
-                        Link
+                    <button type="button" className="btn-icon" title={t('steps.sharedRef')} onClick={onInsertLink}>
+                        {t('steps.sharedRef')}
                     </button>
                 )}
-                <button type="button" className="btn-icon" title="Remove block" onClick={onRemove}>
+                <button type="button" className="btn-icon" title={t('steps.remove')} onClick={onRemove}>
                     x
                 </button>
             </div>
@@ -593,6 +595,7 @@ function PartItemRow({
 }
 
 function StepOverflowMenu({ actions }: { actions: OverflowAction[] }) {
+    const { t } = useUiPreferences()
     const [open, setOpen] = React.useState(false)
     const containerRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -626,10 +629,10 @@ function StepOverflowMenu({ actions }: { actions: OverflowAction[] }) {
                 aria-expanded={open}
                 onClick={() => setOpen((current) => !current)}
             >
-                More
+                {t('steps.more')}
             </button>
             {open && (
-                <div className="step-overflow-menu" role="menu" aria-label="Step actions">
+                <div className="step-overflow-menu" role="menu" aria-label={t('steps.more')}>
                     {actions.map((action) => (
                         <button
                             key={action.label}

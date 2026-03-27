@@ -512,3 +512,97 @@
         justify-content: flex-start;
     }
 }
+
+:root[data-theme='dark'] .preview-dialog__backdrop {
+    background: var(--bg-overlay-strong);
+}
+
+:root[data-theme='dark'] .preview-dialog__surface,
+:root[data-theme='dark'] .preview-dialog__sidebar,
+:root[data-theme='dark'] .preview-dialog__content,
+:root[data-theme='dark'] .preview-dialog__card,
+:root[data-theme='dark'] .preview-dialog__button,
+:root[data-theme='dark'] .preview-dialog__filter-chip,
+:root[data-theme='dark'] .preview-dialog__step-entry,
+:root[data-theme='dark'] .preview-dialog__diff-card,
+:root[data-theme='dark'] .preview-dialog__info-pair,
+:root[data-theme='dark'] .preview-dialog__quick-link,
+:root[data-theme='dark'] .preview-dialog__sticky-bar {
+    background: var(--bg-elevated);
+    color: var(--text);
+    border-color: var(--border);
+    box-shadow: var(--shadow-soft);
+}
+
+:root[data-theme='dark'] .preview-dialog__header,
+:root[data-theme='dark'] .preview-dialog__sidebar,
+:root[data-theme='dark'] .preview-dialog__sticky-bar {
+    border-color: var(--border-soft);
+}
+
+:root[data-theme='dark'] .preview-dialog__title,
+:root[data-theme='dark'] .preview-dialog__card-title,
+:root[data-theme='dark'] .preview-dialog__diff-title,
+:root[data-theme='dark'] .preview-dialog__info-value,
+:root[data-theme='dark'] .preview-dialog__step-summary,
+:root[data-theme='dark'] .preview-dialog__step-field-value {
+    color: var(--text-strong);
+}
+
+:root[data-theme='dark'] .preview-dialog__subtitle,
+:root[data-theme='dark'] .preview-dialog__label,
+:root[data-theme='dark'] .preview-dialog__hint,
+:root[data-theme='dark'] .preview-dialog__info-label,
+:root[data-theme='dark'] .preview-dialog__step-field-label,
+:root[data-theme='dark'] .preview-dialog__sticky-summary {
+    color: var(--text-muted);
+}
+
+:root[data-theme='dark'] .preview-dialog__input,
+:root[data-theme='dark'] .preview-dialog__textarea,
+:root[data-theme='dark'] .preview-dialog__select {
+    background: var(--bg-soft);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+:root[data-theme='dark'] .preview-dialog__button--primary,
+:root[data-theme='dark'] .preview-dialog__button--soft,
+:root[data-theme='dark'] .preview-dialog__filter-chip--active,
+:root[data-theme='dark'] .preview-dialog__quick-link {
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    border-color: var(--accent-border);
+}
+
+:root[data-theme='dark'] .preview-dialog__button--danger {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+    border-color: var(--danger-border);
+}
+
+:root[data-theme='dark'] .preview-dialog__badge--ok,
+:root[data-theme='dark'] .preview-dialog__alert--warning {
+    background: var(--success-bg);
+    color: var(--success-text);
+    border-color: var(--success-border);
+}
+
+:root[data-theme='dark'] .preview-dialog__badge--warn,
+:root[data-theme='dark'] .preview-dialog__alert--error {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+    border-color: var(--danger-border);
+}
+
+:root[data-theme='dark'] .preview-dialog__badge--info,
+:root[data-theme='dark'] .preview-dialog__badge--neutral,
+:root[data-theme='dark'] .preview-dialog__badge--muted {
+    background: var(--bg-soft);
+    color: var(--text-muted);
+    border-color: var(--border);
+}
+
+:root[data-theme='dark'] .preview-dialog__step-row[data-changed='true'] {
+    background: var(--bg-muted);
+}

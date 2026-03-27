@@ -25,6 +25,7 @@ import {
     PreviewToolbar,
     PreviewToolbarGroup,
 } from './PreviewDialog'
+import { useUiPreferences } from './preferences'
 
 type Props = {
     open: boolean
@@ -36,13 +37,8 @@ type Props = {
 
 type ImportStatusFilter = 'all' | ZephyrImportPreviewItem['status']
 
-const MODE_LABELS: Record<ZephyrImportMode, string> = {
-    project: 'Project',
-    folder: 'Folder',
-    keys: 'Key set',
-}
-
 export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, onApply }: Props) {
+    const { t } = useUiPreferences()
     const projectInputRef = React.useRef<HTMLInputElement | null>(null)
     const folderInputRef = React.useRef<HTMLInputElement | null>(null)
     const refsInputRef = React.useRef<HTMLTextAreaElement | null>(null)
@@ -148,7 +144,7 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
         } catch (err) {
             setPreview(null)
             setStrategies({})
-            setError(err instanceof Error ? err.message : 'Failed to load import preview')
+            setError(err instanceof Error ? err.message : t('import.previewError'))
         } finally {
             setLoading(false)
         }
@@ -168,7 +164,7 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
             })
             onClose()
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to apply import')
+            setError(err instanceof Error ? err.message : t('import.applyError'))
         } finally {
             setApplying(false)
         }
@@ -209,8 +205,8 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
     return (
         <PreviewDialog
             open={open}
-            title="Import From Zephyr"
-            subtitle={`Destination: ${destinationLabel}`}
+            title={t('import.title')}
+            subtitle={t('import.subtitle', { label: destinationLabel })}
             onClose={onClose}
             initialFocusRef={initialFocusRef}
             canDismiss={!loading && !applying}
@@ -218,22 +214,22 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
             <PreviewDialogSplit
                 sidebar={(
                     <form style={columnStyle} onSubmit={handlePreview}>
-                        <PreviewCard title="Scope">
+                        <PreviewCard title={t('import.scope')}>
                             <div style={tabRowStyle}>
-                                {(Object.keys(MODE_LABELS) as ZephyrImportMode[]).map((value) => (
+                                {(['project', 'folder', 'keys'] as ZephyrImportMode[]).map((value) => (
                                     <button
                                         key={value}
                                         type="button"
                                         style={value === mode ? { ...tabButtonStyle, ...tabButtonActiveStyle } : tabButtonStyle}
                                         onClick={() => setMode(value)}
                                     >
-                                        {MODE_LABELS[value]}
+                                        {t(`import.mode.${value}`)}
                                     </button>
                                 ))}
                             </div>
 
                             {mode !== 'keys' && (
-                                <PreviewField label="Project key">
+                                <PreviewField label={t('import.projectKey')}>
                                     <input
                                         ref={projectInputRef}
                                         className="preview-dialog__input"
@@ -245,7 +241,7 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                             )}
 
                             {mode === 'folder' && (
-                                <PreviewField label="Folder path">
+                                <PreviewField label={t('import.folderPath')}>
                                     <input
                                         ref={folderInputRef}
                                         className="preview-dialog__input"
@@ -257,7 +253,7 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                             )}
 
                             {mode === 'keys' && (
-                                <PreviewField label="Zephyr keys or ids">
+                                <PreviewField label={t('import.keysOrIds')}>
                                     <textarea
                                         ref={refsInputRef}
                                         className="preview-dialog__textarea"
@@ -269,19 +265,19 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                                 </PreviewField>
                             )}
 
-                            <PreviewField label="Raw query override">
+                            <PreviewField label={t('import.rawQuery')}>
                                 <textarea
                                     className="preview-dialog__textarea"
                                     value={rawQuery}
                                     onChange={(event) => setRawQuery(event.target.value)}
-                                    placeholder={'Optional. Example: projectKey = "PROD" AND folder = "/CORE/Auth"'}
+                                    placeholder={t('import.rawQueryPlaceholder')}
                                     rows={4}
                                 />
                             </PreviewField>
 
                             <div style={inlineRowStyle}>
                                 <div style={{ flex: 1, minWidth: 140 }}>
-                                    <PreviewField label="Max results">
+                                    <PreviewField label={t('import.maxResults')}>
                                         <input
                                             className="preview-dialog__input"
                                             value={maxResults}
@@ -297,12 +293,12 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                                         checked={mirrorRemoteFolders}
                                         onChange={(event) => setMirrorRemoteFolders(event.target.checked)}
                                     />
-                                    Mirror Zephyr folders
+                                    {t('import.mirrorFolders')}
                                 </label>
                             </div>
 
                             <PreviewHint>
-                                Project and folder scopes use the Zephyr search API. Key-set scope fetches each case directly.
+                                {t('import.scopeHint')}
                             </PreviewHint>
                         </PreviewCard>
 
@@ -310,10 +306,10 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
 
                         <div className="preview-dialog__button-row">
                             <PreviewButton type="submit" tone="primary" disabled={!canPreview}>
-                                {loading ? 'Loading preview...' : 'Load preview'}
+                                {loading ? t('import.loadingPreview') : t('import.loadPreview')}
                             </PreviewButton>
                             <PreviewButton type="button" tone="ghost" onClick={onClose} disabled={loading || applying}>
-                                Close
+                                {t('import.close')}
                             </PreviewButton>
                         </div>
                     </form>
@@ -321,35 +317,35 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                 content={(
                     <div style={columnStyle}>
                         {!preview ? (
-                            <PreviewEmptyState title="Preview">
-                                Select the import scope, load the preview, then review diffs before anything touches local tests.
+                            <PreviewEmptyState title={t('import.previewEmptyTitle')}>
+                                {t('import.previewEmptyText')}
                             </PreviewEmptyState>
                         ) : (
                             <>
                                 <PreviewCard>
                                     <div className="preview-dialog__summary-row">
                                         <div>
-                                            <div className="preview-dialog__card-title">Preview</div>
+                                            <div className="preview-dialog__card-title">{t('import.previewTitle')}</div>
                                             <div className="preview-dialog__subtitle">
-                                                Query: <code>{preview.query || 'direct key lookup'}</code>
+                                                {t('import.query')}: <code>{preview.query || t('import.directLookup')}</code>
                                             </div>
                                         </div>
                                         <div className="preview-dialog__badge-row">
-                                            <PreviewBadge tone="neutral">{preview.summary.total} total</PreviewBadge>
-                                            <PreviewBadge tone="ok">{preview.summary.created} new</PreviewBadge>
-                                            <PreviewBadge tone="info">{preview.summary.updates} updates</PreviewBadge>
-                                            <PreviewBadge tone="warn">{preview.summary.conflicts} conflicts</PreviewBadge>
-                                            <PreviewBadge tone="muted">{preview.summary.unchanged} unchanged</PreviewBadge>
+                                            <PreviewBadge tone="neutral">{t('import.total', { count: preview.summary.total })}</PreviewBadge>
+                                            <PreviewBadge tone="ok">{t('import.new', { count: preview.summary.created })}</PreviewBadge>
+                                            <PreviewBadge tone="info">{t('import.updates', { count: preview.summary.updates })}</PreviewBadge>
+                                            <PreviewBadge tone="warn">{t('import.conflicts', { count: preview.summary.conflicts })}</PreviewBadge>
+                                            <PreviewBadge tone="muted">{t('import.unchanged', { count: preview.summary.unchanged })}</PreviewBadge>
                                         </div>
                                     </div>
                                 </PreviewCard>
 
                                 {conflictItems.length > 0 ? (
-                                    <PreviewCard title="Conflicts to review first">
+                                    <PreviewCard title={t('import.conflictsTitle')}>
                                         <PreviewToolbar>
                                             <PreviewToolbarGroup>
                                                 <PreviewHint>
-                                                    {conflictItems.length} remote cases match local tests. Review these before running replace.
+                                                    {t('import.conflictsHint')}
                                                 </PreviewHint>
                                             </PreviewToolbarGroup>
                                             <PreviewToolbarGroup align="end">
@@ -357,24 +353,22 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                                                     tone="soft"
                                                     onClick={() => handleStatusFilterChange('conflict')}
                                                 >
-                                                    Only conflicts
+                                                    {t('import.onlyConflicts')}
                                                 </PreviewButton>
                                                 <PreviewButton
                                                     tone="ghost"
                                                     onClick={() => scrollToItem(firstConflictId)}
                                                     disabled={!firstConflictId}
                                                 >
-                                                    Jump to first conflict
+                                                    {t('import.jumpFirstConflict')}
                                                 </PreviewButton>
                                             </PreviewToolbarGroup>
                                         </PreviewToolbar>
 
                                         <div className="preview-dialog__badge-row">
-                                            <PreviewBadge tone="info">{strategySummary.replace} replace</PreviewBadge>
-                                            <PreviewBadge tone="muted">{strategySummary.skip} skip</PreviewBadge>
-                                            <PreviewBadge tone="warn">
-                                                {strategySummary['merge-locally-later']} merge later
-                                            </PreviewBadge>
+                                            <PreviewBadge tone="info">{t('import.replaceCount', { count: strategySummary.replace })}</PreviewBadge>
+                                            <PreviewBadge tone="muted">{t('import.skipCount', { count: strategySummary.skip })}</PreviewBadge>
+                                            <PreviewBadge tone="warn">{t('import.mergeLaterCount', { count: strategySummary['merge-locally-later'] })}</PreviewBadge>
                                         </div>
 
                                         <div className="preview-dialog__quick-list">
@@ -389,44 +383,44 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                                                 </button>
                                             ))}
                                             {conflictItems.length > 4 ? (
-                                                <PreviewHint>+ {conflictItems.length - 4} more conflicts in this preview</PreviewHint>
+                                                <PreviewHint>{t('import.moreConflicts', { count: conflictItems.length - 4 })}</PreviewHint>
                                             ) : null}
                                         </div>
                                     </PreviewCard>
                                 ) : null}
 
-                                <PreviewCard title="Review filters">
+                                <PreviewCard title={t('import.reviewFilters')}>
                                     <PreviewToolbar>
                                         <PreviewToolbarGroup>
                                             <PreviewFilterChip
                                                 active={statusFilter === 'all'}
                                                 onClick={() => handleStatusFilterChange('all')}
                                             >
-                                                All {preview.summary.total}
+                                                {t('import.filter.all', { count: preview.summary.total })}
                                             </PreviewFilterChip>
                                             <PreviewFilterChip
                                                 active={statusFilter === 'new'}
                                                 onClick={() => handleStatusFilterChange('new')}
                                             >
-                                                New {preview.summary.created}
+                                                {t('import.filter.new', { count: preview.summary.created })}
                                             </PreviewFilterChip>
                                             <PreviewFilterChip
                                                 active={statusFilter === 'update'}
                                                 onClick={() => handleStatusFilterChange('update')}
                                             >
-                                                Updates {preview.summary.updates}
+                                                {t('import.filter.updates', { count: preview.summary.updates })}
                                             </PreviewFilterChip>
                                             <PreviewFilterChip
                                                 active={statusFilter === 'conflict'}
                                                 onClick={() => handleStatusFilterChange('conflict')}
                                             >
-                                                Conflicts {preview.summary.conflicts}
+                                                {t('import.filter.conflicts', { count: preview.summary.conflicts })}
                                             </PreviewFilterChip>
                                             <PreviewFilterChip
                                                 active={statusFilter === 'unchanged'}
                                                 onClick={() => handleStatusFilterChange('unchanged')}
                                             >
-                                                Unchanged {preview.summary.unchanged}
+                                                {t('import.filter.unchanged', { count: preview.summary.unchanged })}
                                             </PreviewFilterChip>
                                         </PreviewToolbarGroup>
                                         <PreviewToolbarGroup align="end">
@@ -436,10 +430,10 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                                                     checked={showUnchanged}
                                                     onChange={(event) => handleShowUnchangedChange(event.target.checked)}
                                                 />
-                                                Show unchanged
+                                                {t('import.showUnchanged')}
                                             </label>
                                             {hiddenCount > 0 ? (
-                                                <PreviewBadge tone="muted">{hiddenCount} hidden</PreviewBadge>
+                                                <PreviewBadge tone="muted">{t('import.hidden', { count: hiddenCount })}</PreviewBadge>
                                             ) : null}
                                         </PreviewToolbarGroup>
                                     </PreviewToolbar>
@@ -448,19 +442,19 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                                 {hiddenUnchangedCount > 0 && !showUnchanged && statusFilter !== 'unchanged' ? (
                                     <PreviewCard className="preview-dialog__collapsed-note">
                                         <PreviewHint>
-                                            {hiddenUnchangedCount} unchanged items are collapsed to keep the review focused.
+                                            {t('import.collapsedUnchanged', { count: hiddenUnchangedCount })}
                                         </PreviewHint>
                                     </PreviewCard>
                                 ) : null}
 
                                 <div style={listStyle}>
                                     {items.length === 0 ? (
-                                        <PreviewEmptyState title="No test cases found">
-                                            The preview finished successfully, but Zephyr returned an empty set for this scope.
+                                        <PreviewEmptyState title={t('import.emptyFound')}>
+                                            {t('import.emptyFoundText')}
                                         </PreviewEmptyState>
                                     ) : visibleItems.length === 0 ? (
-                                        <PreviewEmptyState title="No items match the current filters">
-                                            Adjust the status filters to continue reviewing this batch.
+                                        <PreviewEmptyState title={t('import.emptyFilters')}>
+                                            {t('import.emptyFiltersText')}
                                         </PreviewEmptyState>
                                     ) : (
                                         visibleItems.map((item) => (
@@ -481,9 +475,9 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
 
                                 <PreviewStickyBar>
                                     <div className="preview-dialog__sticky-summary">
-                                        <span>{visibleItems.length} shown</span>
-                                        <PreviewBadge tone="info">{replaceCount} replace</PreviewBadge>
-                                        {hiddenCount > 0 ? <PreviewBadge tone="muted">{hiddenCount} hidden</PreviewBadge> : null}
+                                        <span>{t('import.shown', { count: visibleItems.length })}</span>
+                                        <PreviewBadge tone="info">{t('import.replaceCount', { count: replaceCount })}</PreviewBadge>
+                                        {hiddenCount > 0 ? <PreviewBadge tone="muted">{t('import.hidden', { count: hiddenCount })}</PreviewBadge> : null}
                                     </div>
                                     <div className="preview-dialog__button-row">
                                         <PreviewButton
@@ -494,14 +488,14 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                                             }}
                                             disabled={applying || loading}
                                         >
-                                            Reset filters
+                                            {t('import.resetFilters')}
                                         </PreviewButton>
                                         <PreviewButton
                                             tone="primary"
                                             disabled={applying || loading || items.length === 0}
                                             onClick={handleApply}
                                         >
-                                            {applying ? 'Applying...' : 'Apply import'}
+                                            {applying ? t('import.applying') : t('import.apply')}
                                         </PreviewButton>
                                     </div>
                                 </PreviewStickyBar>
@@ -525,6 +519,7 @@ function PreviewItemCard({
     onChangeStrategy(value: ZephyrImportStrategy): void
     containerRef?: (node: HTMLDivElement | null) => void
 }) {
+    const { t } = useUiPreferences()
     const statusTone =
         item.status === 'new'
             ? 'ok'
@@ -535,9 +530,9 @@ function PreviewItemCard({
                     : 'muted'
 
     const options: Array<{ value: ZephyrImportStrategy; label: string }> = [
-        ...(!item.replaceDisabled ? [{ value: 'replace' as const, label: 'Replace local' }] : []),
-        { value: 'skip' as const, label: 'Skip' },
-        { value: 'merge-locally-later' as const, label: 'Merge locally later' },
+        ...(!item.replaceDisabled ? [{ value: 'replace' as const, label: t('import.strategy.replace') }] : []),
+        { value: 'skip' as const, label: t('import.strategy.skip') },
+        { value: 'merge-locally-later' as const, label: t('import.strategy.mergeLater') },
     ]
 
     return (
@@ -551,16 +546,16 @@ function PreviewItemCard({
                             {item.remoteFolder ? ` / ${item.remoteFolder}` : ''}
                         </div>
                     </div>
-                    <PreviewBadge tone={statusTone}>{item.status}</PreviewBadge>
+                    <PreviewBadge tone={statusTone}>{t(`import.status.${item.status}`)}</PreviewBadge>
                 </div>
 
                 <PreviewHint>{item.reason}</PreviewHint>
 
                 <PreviewInfoGrid>
-                    <PreviewInfoPair label="Local test" value={item.localName ?? 'Will be created'} />
-                    <PreviewInfoPair label="Local folder" value={item.localFolder ?? '-'} />
-                    <PreviewInfoPair label="Import into" value={item.targetFolderLabel} />
-                    <PreviewInfoPair label="Matches" value={String(item.localMatchIds.length || 0)} />
+                    <PreviewInfoPair label={t('import.localTest')} value={item.localName ?? t('import.willBeCreated')} />
+                    <PreviewInfoPair label={t('import.localFolder')} value={item.localFolder ?? '-'} />
+                    <PreviewInfoPair label={t('import.importInto')} value={item.targetFolderLabel} />
+                    <PreviewInfoPair label={t('import.matches')} value={String(item.localMatchIds.length || 0)} />
                 </PreviewInfoGrid>
 
                 {item.diffs.length > 0 ? (
@@ -569,8 +564,8 @@ function PreviewItemCard({
                             <PreviewDiffCard
                                 key={`${item.id}:${diff.field}`}
                                 title={diff.label}
-                                leftLabel="Local"
-                                rightLabel="Remote"
+                                leftLabel={t('import.localTest')}
+                                rightLabel={t('preview.remote')}
                                 leftText={diff.local}
                                 rightText={diff.remote}
                                 stepRows={diff.stepRows}
@@ -581,7 +576,7 @@ function PreviewItemCard({
                     </div>
                 ) : null}
 
-                <PreviewField label="Conflict strategy">
+                <PreviewField label={t('import.conflictStrategy')}>
                     <select
                         className="preview-dialog__select"
                         value={strategy}
@@ -618,19 +613,19 @@ const tabRowStyle: React.CSSProperties = {
 }
 
 const tabButtonStyle: React.CSSProperties = {
-    border: '1px solid #d7e1ef',
-    background: '#f6f9ff',
+    border: '1px solid var(--border)',
+    background: 'var(--bg-soft)',
     borderRadius: 999,
     padding: '7px 12px',
     cursor: 'pointer',
-    color: '#39557e',
+    color: 'var(--text)',
     fontWeight: 600,
 }
 
 const tabButtonActiveStyle: React.CSSProperties = {
-    background: '#e8f0ff',
-    borderColor: '#9db7ef',
-    color: '#1f4f95',
+    background: 'var(--accent-bg)',
+    borderColor: 'var(--accent-border)',
+    color: 'var(--accent-text)',
 }
 
 const inlineRowStyle: React.CSSProperties = {
@@ -645,5 +640,5 @@ const checkboxLabelStyle: React.CSSProperties = {
     alignItems: 'center',
     gap: 8,
     fontSize: 13,
-    color: '#40506a',
+    color: 'var(--text-muted)',
 }

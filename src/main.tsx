@@ -9,9 +9,12 @@ import { Toolbar } from './ui/Toolbar'
 import { SettingsModal } from './ui/Settings'
 import { Tree } from './ui/Tree'
 import { UiKit, useToast } from './ui/UiKit'
+import { UiPreferencesProvider, useUiPreferences } from './ui/preferences'
 import { useAppState } from './ui/useAppState'
 import { ZephyrImportModal } from './ui/ZephyrImportModal'
 import { ZephyrPublishModal } from './ui/ZephyrPublishModal'
+import { useStoredToggle } from './ui/useStoredToggle'
+import './ui/theme.css'
 
 const TestEditor = React.lazy(() =>
     import('./ui/testEditor/TestEditor').then((module) => ({ default: module.TestEditor }))
@@ -32,10 +35,12 @@ function AppShell() {
     const app = useAppState()
     const editorRef = React.useRef<TestEditorHandle | null>(null)
     const { push } = useToast()
+    const { t } = useUiPreferences()
     const [settingsOpen, setSettingsOpen] = React.useState(false)
     const [importOpen, setImportOpen] = React.useState(false)
     const [publishOpen, setPublishOpen] = React.useState(false)
     const [syncCenterOpen, setSyncCenterOpen] = React.useState(false)
+    const [previewAll, setPreviewAll] = useStoredToggle('test-editor.preview-all', false)
     const [compactWorkspace, setCompactWorkspace] = React.useState(() =>
         typeof window !== 'undefined' ? window.innerWidth < 980 : false
     )
@@ -43,8 +48,8 @@ function AppShell() {
     const handleSave = React.useCallback(async () => {
         editorRef.current?.commit?.()
         await app.save()
-        push({ kind: 'success', text: 'Changes saved', ttl: 2200 })
-    }, [app, push])
+        push({ kind: 'success', text: t('toast.changesSaved'), ttl: 2200 })
+    }, [app, push, t])
 
     React.useEffect(() => {
         const onKey = (event: KeyboardEvent) => {
@@ -70,13 +75,13 @@ function AppShell() {
         editorRef.current?.commit?.()
 
         if (!app.state || !app.selectedId) {
-            push({ kind: 'error', text: 'Select a case before export', ttl: 2500 })
+            push({ kind: 'error', text: t('toast.selectCaseBeforeExport'), ttl: 2500 })
             return
         }
 
         const node = findNode(app.state.root, app.selectedId)
         if (!node || isFolder(node)) {
-            push({ kind: 'error', text: 'Export works only for a test case', ttl: 2500 })
+            push({ kind: 'error', text: t('toast.exportOnlyForCase'), ttl: 2500 })
             return
         }
 
@@ -91,8 +96,8 @@ function AppShell() {
         document.body.removeChild(anchor)
         URL.revokeObjectURL(url)
 
-        push({ kind: 'success', text: 'Case exported to JSON', ttl: 2500 })
-    }, [app, push])
+        push({ kind: 'success', text: t('toast.caseExported'), ttl: 2500 })
+    }, [app, push, t])
 
     const handleApplyImport = React.useCallback(
         async (preview: ZephyrImportPreview) => {
@@ -100,12 +105,12 @@ function AppShell() {
             const result = await app.applyZephyrImport(preview)
             push({
                 kind: 'success',
-                text: `Import applied: ${result.created} created, ${result.updated} updated, ${result.drafts} drafts, ${result.skipped} skipped`,
+                text: t('toast.importApplied', result),
                 ttl: 3200,
             })
             return result
         },
-        [app, push]
+        [app, push, t]
     )
 
     const handleApplyPublish = React.useCallback(
@@ -114,12 +119,12 @@ function AppShell() {
             const result = await app.publishZephyr(preview)
             push({
                 kind: result.failed ? 'error' : 'success',
-                text: `Publish finished: ${result.created} created, ${result.updated} updated, ${result.failed} failed. Snapshot: ${result.snapshotPath}. Log: ${result.logPath}`,
+                text: t('toast.publishFinished', result),
                 ttl: 5200,
             })
             return result
         },
-        [app, push]
+        [app, push, t]
     )
 
     const selectWithCommit = React.useCallback(
@@ -133,7 +138,7 @@ function AppShell() {
     if (!app.state) {
         return (
             <div style={{ padding: 16, fontFamily: 'system-ui' }}>
-                <h1>Loading...</h1>
+                <h1>{t('app.loading')}</h1>
             </div>
         )
     }
@@ -143,7 +148,7 @@ function AppShell() {
     const allTests = app.mapAllTests()
     const importDestination = app.getImportDestination()
     const publishSelection = app.getPublishSelection()
-    const selectionSummary = buildSelectionSummary(app.state.root, selected)
+    const selectionSummary = buildSelectionSummary(app.state.root, selected, t)
 
     const canDelete = !!selected && selected.id !== app.state.root.id
     const canExport = !!selectedTest
@@ -152,7 +157,7 @@ function AppShell() {
     const canSyncAll = allTests.some((test) => (test.links?.length ?? 0) > 0)
 
     const rightPane = selectedTest ? (
-        <React.Suspense fallback={<div style={{ padding: 16 }}>Loading editor...</div>}>
+        <React.Suspense fallback={<div style={{ padding: 16 }}>{t('app.loadingEditor')}</div>}>
             <TestEditor
                 ref={editorRef}
                 test={selectedTest}
@@ -167,6 +172,7 @@ function AppShell() {
                 onInsertSharedReference={(sharedId: string) => app.insertSharedReference(selectedTest.id, sharedId)}
                 onOpenStep={app.openStep}
                 onOpenTest={app.select}
+                previewMode={previewAll ? 'preview' : 'raw'}
             />
         </React.Suspense>
     ) : (
@@ -175,6 +181,7 @@ function AppShell() {
             importDestinationLabel={importDestination.label}
             publishSelectionLabel={publishSelection.label}
             publishCount={publishSelection.tests.length}
+            t={t}
             onOpenImport={() => setImportOpen(true)}
             onOpenPublish={() => setPublishOpen(true)}
             onAddFolder={app.addFolder}
@@ -203,9 +210,12 @@ function AppShell() {
                 onExport={() => void handleExport()}
                 onOpenSettings={() => setSettingsOpen(true)}
                 onToggleSyncCenter={() => setSyncCenterOpen((current) => !current)}
+                onTogglePreviewMode={selectedTest ? () => setPreviewAll((current) => !current) : undefined}
                 syncCenterOpen={syncCenterOpen}
                 canDelete={canDelete}
                 canExport={canExport}
+                canTogglePreview={!!selectedTest}
+                previewMode={previewAll ? 'preview' : 'raw'}
             />
 
             <div
@@ -219,9 +229,10 @@ function AppShell() {
             >
                 <div
                     style={{
-                        borderRight: compactWorkspace ? 'none' : '1px solid #eee',
-                        borderBottom: compactWorkspace ? '1px solid #eee' : 'none',
+                        borderRight: compactWorkspace ? 'none' : '1px solid var(--border)',
+                        borderBottom: compactWorkspace ? '1px solid var(--border)' : 'none',
                         overflow: 'auto',
+                        background: 'var(--bg-soft)',
                     }}
                 >
                     <Tree
@@ -240,7 +251,7 @@ function AppShell() {
                     style={{
                         position: 'relative',
                         overflow: 'hidden',
-                        background: '#f8fafc',
+                        background: 'var(--bg)',
                     }}
                 >
                     <div style={{ height: '100%', overflow: 'auto' }}>{rightPane}</div>
@@ -257,6 +268,7 @@ function AppShell() {
                                 importDestinationLabel={importDestination.label}
                                 publishSelectionLabel={publishSelection.label}
                                 publishCount={publishSelection.tests.length}
+                                t={t}
                                 canPull={canPull}
                                 canPublish={canPublish}
                                 canSyncAll={canSyncAll}
@@ -292,9 +304,11 @@ function AppShell() {
 
 function App() {
     return (
-        <UiKit>
-            <AppShell />
-        </UiKit>
+        <UiPreferencesProvider>
+            <UiKit>
+                <AppShell />
+            </UiKit>
+        </UiPreferencesProvider>
     )
 }
 
@@ -303,6 +317,7 @@ function ScopeOverviewPanel({
     importDestinationLabel,
     publishSelectionLabel,
     publishCount,
+    t,
     onOpenImport,
     onOpenPublish,
     onAddFolder,
@@ -312,6 +327,7 @@ function ScopeOverviewPanel({
     importDestinationLabel: string
     publishSelectionLabel: string
     publishCount: number
+    t: (key: any, params?: Record<string, string | number>) => string
     onOpenImport(): void
     onOpenPublish(): void
     onAddFolder(): void
@@ -332,17 +348,17 @@ function ScopeOverviewPanel({
                     gap: 6,
                     padding: 18,
                     borderRadius: 18,
-                    border: '1px solid #e3e8f0',
-                    background: '#ffffff',
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-elevated)',
                 }}
             >
                 <div style={eyebrowStyle}>
-                    {summary.kind === 'root' ? 'Workspace' : summary.kind === 'folder' ? 'Folder' : 'Selection'}
+                    {summary.kind === 'root' ? t('overview.zephyrWorkspace') : summary.kind === 'folder' ? t('tree.folder') : t('toolbar.editor')}
                 </div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: '#20354f' }}>{summary.title}</div>
-                <div style={{ color: '#5f6e84', fontSize: 14, lineHeight: 1.5 }}>{summary.subtitle}</div>
-                <div style={{ color: '#6f7d93', fontSize: 13 }}>
-                    Path: <code>{summary.pathLabel}</code>
+                <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-strong)' }}>{summary.title}</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 14, lineHeight: 1.5 }}>{summary.subtitle}</div>
+                <div style={{ color: 'var(--text-dim)', fontSize: 13 }}>
+                    <code>{summary.pathLabel}</code>
                 </div>
             </div>
 
@@ -353,9 +369,9 @@ function ScopeOverviewPanel({
                     gap: 12,
                 }}
             >
-                <OverviewStat label="Folders in scope" value={String(summary.folderCount)} hint="Nested local folders" />
-                <OverviewStat label="Cases in scope" value={String(summary.testCount)} hint="Will participate in batch publish" />
-                <OverviewStat label="Direct children" value={String(summary.directChildrenCount)} hint="Immediate items in current node" />
+                <OverviewStat label={t('tree.folder')} value={String(summary.folderCount)} hint={t('tree.itemCount', { count: summary.folderCount })} />
+                <OverviewStat label={t('overview.casesInScope')} value={String(summary.testCount)} hint={t('overview.casesInScopeHint')} />
+                <OverviewStat label={t('tree.cases')} value={String(summary.directChildrenCount)} hint={t('tree.itemCount', { count: summary.directChildrenCount })} />
             </div>
 
             <div
@@ -366,36 +382,36 @@ function ScopeOverviewPanel({
                 }}
             >
                 <ActionCard
-                    label="Import from Zephyr"
+                    label={t('overview.importFromZephyr')}
                     title={importDestinationLabel}
-                    description="Preview-first import will create or replace local cases inside this destination."
+                    description={t('overview.importFromZephyrDescription')}
                     tone="info"
-                    actionLabel="Open import..."
+                    actionLabel={t('overview.openImport')}
                     onAction={onOpenImport}
                 />
                 <ActionCard
-                    label="Publish to Zephyr"
+                    label={t('overview.publishToZephyr')}
                     title={publishSelectionLabel}
                     description={
                         publishCount === 0
-                            ? 'There are no test cases in the current publish scope yet.'
+                            ? t('toolbar.publishScopeEmpty')
                             : publishCount === 1
-                            ? 'One test case is currently in publish scope.'
-                            : `${publishCount} test cases are currently in publish scope.`
+                                ? t('toolbar.publishScopeLabel', { label: publishSelectionLabel })
+                                : t('toolbar.publishScopeCount', { count: publishCount })
                     }
                     tone={publishCount === 0 ? 'neutral' : publishCount > 1 ? 'warn' : 'danger'}
-                    actionLabel="Open publish..."
+                    actionLabel={t('overview.openPublish')}
                     onAction={publishCount > 0 ? onOpenPublish : undefined}
                 />
                 <ActionCard
-                    label="Local editing"
-                    title="Create content"
-                    description="Use the current folder as the destination for new cases and nested folders."
+                    label={t('toolbar.local')}
+                    title={t('toolbar.editor')}
+                    description={t('overview.zephyrWorkspace')}
                     tone="neutral"
                     extra={(
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            <QuickActionButton onClick={onAddFolder}>New Folder</QuickActionButton>
-                            <QuickActionButton onClick={onAddTest}>New Case</QuickActionButton>
+                            <QuickActionButton onClick={onAddFolder}>{t('overview.newFolder')}</QuickActionButton>
+                            <QuickActionButton onClick={onAddTest}>{t('overview.newCase')}</QuickActionButton>
                         </div>
                     )}
                 />
@@ -408,17 +424,17 @@ function OverviewStat({ label, value, hint }: { label: string; value: string; hi
     return (
         <div
             style={{
-                border: '1px solid #e3e8f0',
+                border: '1px solid var(--border)',
                 borderRadius: 14,
-                background: '#fff',
+                background: 'var(--bg-elevated)',
                 padding: '14px 16px',
                 display: 'grid',
                 gap: 4,
             }}
         >
             <div style={eyebrowStyle}>{label}</div>
-            <div style={{ fontSize: 30, lineHeight: 1, fontWeight: 800, color: '#22384f' }}>{value}</div>
-            <div style={{ fontSize: 12, lineHeight: 1.45, color: '#68778e' }}>{hint}</div>
+            <div style={{ fontSize: 30, lineHeight: 1, fontWeight: 800, color: 'var(--text-strong)' }}>{value}</div>
+            <div style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--text-muted)' }}>{hint}</div>
         </div>
     )
 }
@@ -442,19 +458,19 @@ function ActionCard({
 }) {
     const accents =
         tone === 'info'
-            ? { border: '#cfe0ff', background: '#f6f9ff', label: '#2d5fa9' }
+            ? { border: 'var(--accent-border)', background: 'var(--accent-bg)', label: 'var(--accent-text)' }
             : tone === 'warn'
-                ? { border: '#edd9b2', background: '#fffaf1', label: '#8b6408' }
+                ? { border: 'var(--warning-border)', background: 'var(--warning-bg)', label: 'var(--warning-text)' }
                 : tone === 'danger'
-                    ? { border: '#e8c7c0', background: '#fff6f3', label: '#944332' }
-                    : { border: '#e3e8f0', background: '#ffffff', label: '#5f6f84' }
+                    ? { border: 'var(--danger-border)', background: 'var(--danger-bg)', label: 'var(--danger-text)' }
+                    : { border: 'var(--border)', background: 'var(--bg-elevated)', label: 'var(--text-muted)' }
 
     return (
         <div
             style={{
                 border: `1px solid ${accents.border}`,
                 borderRadius: 14,
-                background: '#fff',
+                background: accents.background,
                 padding: 16,
                 display: 'grid',
                 gap: 8,
@@ -462,8 +478,8 @@ function ActionCard({
             }}
         >
             <div style={{ ...eyebrowStyle, color: accents.label }}>{label}</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#20354f' }}>{title}</div>
-            <div style={{ fontSize: 14, lineHeight: 1.55, color: '#5f6e84' }}>{description}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-strong)' }}>{title}</div>
+            <div style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--text-muted)' }}>{description}</div>
             {actionLabel && onAction ? <QuickActionButton onClick={onAction}>{actionLabel}</QuickActionButton> : null}
             {extra}
         </div>
@@ -482,9 +498,9 @@ function QuickActionButton({
             type="button"
             onClick={onClick}
             style={{
-                border: '1px solid #cad7ea',
-                background: '#fff',
-                color: '#264a76',
+                border: '1px solid var(--accent-border)',
+                background: 'var(--bg-elevated)',
+                color: 'var(--accent-text)',
                 borderRadius: 10,
                 padding: '8px 12px',
                 fontWeight: 700,
@@ -501,6 +517,7 @@ function SyncCenterPanel({
     importDestinationLabel,
     publishSelectionLabel,
     publishCount,
+    t,
     canPull,
     canPublish,
     canSyncAll,
@@ -514,6 +531,7 @@ function SyncCenterPanel({
     importDestinationLabel: string
     publishSelectionLabel: string
     publishCount: number
+    t: (key: any, params?: Record<string, string | number>) => string
     canPull: boolean
     canPublish: boolean
     canSyncAll: boolean
@@ -524,34 +542,34 @@ function SyncCenterPanel({
     onSyncAll(): void
 }) {
     return (
-        <aside style={syncPanelStyle} aria-label="Sync center">
+        <aside style={syncPanelStyle} aria-label={t('toolbar.syncCenter')}>
             <div style={syncPanelHeaderStyle}>
                 <div style={{ display: 'grid', gap: 4 }}>
-                    <div style={eyebrowStyle}>Sync Center</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: '#20354f' }}>Zephyr workspace</div>
-                    <div style={{ fontSize: 13, lineHeight: 1.5, color: '#64748b' }}>
-                        Sync is kept separate from editing so the current case stays front and center.
+                    <div style={eyebrowStyle}>{t('toolbar.syncCenter')}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-strong)' }}>{t('overview.zephyrWorkspace')}</div>
+                    <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-muted)' }}>
+                        {t('toolbar.syncCenterTitle')}
                     </div>
                 </div>
                 <button type="button" onClick={onClose} style={syncPanelCloseStyle}>
-                    Close
+                    {t('sync.close')}
                 </button>
             </div>
 
             <div style={syncPanelBodyStyle}>
-                <SyncInfoCard label="Current selection" value={selectionLabel} hint="This is the active local context in the editor." />
-                <SyncInfoCard label="Import target" value={importDestinationLabel} hint="Imported cases land here unless you change scope." />
+                <SyncInfoCard label={t('toolbar.editor')} value={selectionLabel} hint={selectionLabel} />
+                <SyncInfoCard label={t('sync.importTarget')} value={importDestinationLabel} hint={t('sync.importTargetHint')} />
                 <SyncInfoCard
-                    label="Publish scope"
-                    value={publishCount === 0 ? 'Nothing to publish' : publishCount === 1 ? publishSelectionLabel : `${publishCount} cases`}
-                    hint="Preview first, then replace the matching content in Zephyr."
+                    label={t('sync.publishScope')}
+                    value={publishCount === 0 ? t('toolbar.publishScopeEmpty') : publishCount === 1 ? publishSelectionLabel : t('toolbar.publishScopeCount', { count: publishCount })}
+                    hint={t('sync.publishScopeHint')}
                     tone={publishCount > 0 ? 'warn' : 'neutral'}
                 />
 
                 <div style={syncActionGroupStyle}>
-                    <div style={syncActionGroupTitleStyle}>Planned sync</div>
+                    <div style={syncActionGroupTitleStyle}>{t('toolbar.panels')}</div>
                     <button type="button" onClick={onOpenImport} style={syncPrimaryButtonStyle}>
-                        Import from Zephyr
+                        {t('sync.importFromZephyr')}
                     </button>
                     <button
                         type="button"
@@ -563,12 +581,12 @@ function SyncCenterPanel({
                             cursor: canPublish ? 'pointer' : 'default',
                         }}
                     >
-                        Publish to Zephyr
+                        {t('sync.publishToZephyr')}
                     </button>
                 </div>
 
                 <div style={syncActionGroupStyle}>
-                    <div style={syncActionGroupTitleStyle}>Fast actions</div>
+                    <div style={syncActionGroupTitleStyle}>{t('toolbar.more')}</div>
                     <button
                         type="button"
                         onClick={onPull}
@@ -579,7 +597,7 @@ function SyncCenterPanel({
                             cursor: canPull ? 'pointer' : 'default',
                         }}
                     >
-                        Pull current case
+                        {t('sync.pullCurrent')}
                     </button>
                     <button
                         type="button"
@@ -591,7 +609,7 @@ function SyncCenterPanel({
                             cursor: canSyncAll ? 'pointer' : 'default',
                         }}
                     >
-                        Quick sync linked cases
+                        {t('sync.quickSync')}
                     </button>
                 </div>
             </div>
@@ -613,27 +631,31 @@ function SyncInfoCard({
     return (
         <div
             style={{
-                border: `1px solid ${tone === 'warn' ? '#ecd8b4' : '#e5ebf2'}`,
+                border: `1px solid ${tone === 'warn' ? 'var(--warning-border)' : 'var(--border-soft)'}`,
                 borderRadius: 14,
-                background: '#fff',
+                background: 'var(--bg-elevated)',
                 padding: 14,
                 display: 'grid',
                 gap: 6,
             }}
         >
             <div style={eyebrowStyle}>{label}</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#21364e' }}>{value}</div>
-            <div style={{ fontSize: 12, lineHeight: 1.45, color: '#6b7a90' }}>{hint}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>{value}</div>
+            <div style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--text-muted)' }}>{hint}</div>
         </div>
     )
 }
 
-function buildSelectionSummary(root: Folder, selected: Folder | TestCase | null): SelectionSummary {
+function buildSelectionSummary(
+    root: Folder,
+    selected: Folder | TestCase | null,
+    t: (key: any, params?: Record<string, string | number>) => string
+): SelectionSummary {
     if (!selected) {
         return {
             kind: 'none',
-            title: 'Nothing selected',
-            subtitle: 'Select a case to edit it or pick a folder to review the batch scope.',
+            title: t('toolbar.editor'),
+            subtitle: t('toolbar.syncCenterTitle'),
             pathLabel: describeFolderPath(root, root.id),
             folderCount: countNestedFolders(root),
             testCount: countTests(root),
@@ -645,10 +667,8 @@ function buildSelectionSummary(root: Folder, selected: Folder | TestCase | null)
         const isRoot = selected.id === root.id
         return {
             kind: isRoot ? 'root' : 'folder',
-            title: isRoot ? 'Root workspace' : selected.name,
-            subtitle: isRoot
-                ? 'Use this workspace view to review batch scope before opening sync actions.'
-                : 'Use this folder view to review local scope before import or publish.',
+            title: isRoot ? t('overview.zephyrWorkspace') : selected.name,
+            subtitle: isRoot ? t('overview.importFromZephyrDescription') : t('sync.publishScopeHint'),
             pathLabel: describeFolderPath(root, selected.id),
             folderCount: countNestedFolders(selected),
             testCount: countTests(selected),
@@ -660,7 +680,7 @@ function buildSelectionSummary(root: Folder, selected: Folder | TestCase | null)
     return {
         kind: 'test',
         title: selected.name,
-        subtitle: 'A single test case is selected for editing.',
+        subtitle: t('editor.testCase'),
         pathLabel: `${describeFolderPath(root, parentId)} / ${selected.name}`,
         folderCount: 0,
         testCount: 1,
@@ -692,14 +712,14 @@ const eyebrowStyle: React.CSSProperties = {
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '.05em',
-    color: '#738198',
+    color: 'var(--text-dim)',
 }
 
 const syncBackdropStyle: React.CSSProperties = {
     position: 'absolute',
     inset: 0,
     border: 'none',
-    background: 'rgba(15, 23, 42, 0.08)',
+    background: 'var(--bg-overlay)',
     cursor: 'pointer',
 }
 
@@ -713,10 +733,10 @@ const syncPanelStyle: React.CSSProperties = {
     gridTemplateRows: 'auto 1fr',
     gap: 14,
     padding: 16,
-    border: '1px solid #e1e8f1',
+    border: '1px solid var(--border)',
     borderRadius: 18,
-    background: 'rgba(255,255,255,0.98)',
-    boxShadow: '0 24px 60px rgba(15, 23, 42, 0.16)',
+    background: 'color-mix(in srgb, var(--bg-elevated) 92%, transparent)',
+    boxShadow: 'var(--shadow-strong)',
     zIndex: 5,
     backdropFilter: 'blur(10px)',
 }
@@ -729,9 +749,9 @@ const syncPanelHeaderStyle: React.CSSProperties = {
 }
 
 const syncPanelCloseStyle: React.CSSProperties = {
-    border: '1px solid #d7dfeb',
-    background: '#fff',
-    color: '#41556f',
+    border: '1px solid var(--border)',
+    background: 'var(--bg-elevated)',
+    color: 'var(--text)',
     borderRadius: 10,
     padding: '7px 10px',
     fontWeight: 700,
@@ -750,23 +770,23 @@ const syncActionGroupStyle: React.CSSProperties = {
     display: 'grid',
     gap: 8,
     padding: 14,
-    border: '1px solid #e5ebf2',
+    border: '1px solid var(--border-soft)',
     borderRadius: 14,
-    background: '#fff',
+    background: 'var(--bg-elevated)',
 }
 
 const syncActionGroupTitleStyle: React.CSSProperties = {
     fontSize: 12,
     fontWeight: 700,
-    color: '#68788f',
+    color: 'var(--text-muted)',
     textTransform: 'uppercase',
     letterSpacing: '.05em',
 }
 
 const syncPrimaryButtonStyle: React.CSSProperties = {
-    border: '1px solid #c8d9ff',
-    background: '#f4f8ff',
-    color: '#2b5ca8',
+    border: '1px solid var(--accent-border)',
+    background: 'var(--accent-bg)',
+    color: 'var(--accent-text)',
     borderRadius: 12,
     padding: '10px 12px',
     fontWeight: 700,
@@ -774,18 +794,18 @@ const syncPrimaryButtonStyle: React.CSSProperties = {
 }
 
 const syncDangerButtonStyle: React.CSSProperties = {
-    border: '1px solid #ebcec8',
-    background: '#fff6f3',
-    color: '#934130',
+    border: '1px solid var(--danger-border)',
+    background: 'var(--danger-bg)',
+    color: 'var(--danger-text)',
     borderRadius: 12,
     padding: '10px 12px',
     fontWeight: 700,
 }
 
 const syncSecondaryButtonStyle: React.CSSProperties = {
-    border: '1px solid #d6deea',
-    background: '#fff',
-    color: '#31475f',
+    border: '1px solid var(--border)',
+    background: 'var(--bg-elevated)',
+    color: 'var(--text)',
     borderRadius: 12,
     padding: '10px 12px',
     fontWeight: 700,

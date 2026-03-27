@@ -1,6 +1,7 @@
 import * as React from 'react'
 import type { Folder, Step, TestCase } from '@core/domain'
 import { isFolder } from '@core/tree'
+import { translate, useUiPreferences } from './preferences'
 
 type Props = {
     root: Folder
@@ -51,6 +52,7 @@ const PUBLISH_AT_KEY = '__zephyrPublish.publishedAt'
 const PUBLISH_REMOTE_KEY = '__zephyrPublish.remoteKey'
 
 export function Tree(props: Props) {
+    const { t } = useUiPreferences()
     const [expanded, setExpanded] = React.useState<Set<string>>(() => new Set([props.root.id]))
     const [menu, setMenu] = React.useState<ContextMenuState>(null)
     const [editing, setEditing] = React.useState<EditingState>(null)
@@ -230,13 +232,13 @@ export function Tree(props: Props) {
 
     return (
         <div style={treeShellStyle}>
-            <div style={treeHeaderStyle}>
-                <div style={treeHeaderEyebrowStyle}>Navigator</div>
-                <div style={treeHeaderTitleStyle}>Cases</div>
-                <div style={treeHeaderHintStyle}>Arrows move focus, Enter opens, Shift+F10 shows actions.</div>
+                <div style={treeHeaderStyle}>
+                <div style={treeHeaderEyebrowStyle}>{t('tree.navigator')}</div>
+                <div style={treeHeaderTitleStyle}>{t('tree.cases')}</div>
+                <div style={treeHeaderHintStyle}>{t('tree.keyboardHint')}</div>
             </div>
 
-            <div role="tree" aria-label="Tests navigator">
+            <div role="tree" aria-label={t('tree.navigator')}>
                 <NodeView
                     node={props.root}
                     depth={0}
@@ -262,6 +264,7 @@ export function Tree(props: Props) {
                     commitRename={commitRename}
                     cancelRename={cancelRename}
                     onOpenStep={props.onOpenStep}
+                    t={t}
                 />
             </div>
 
@@ -271,6 +274,7 @@ export function Tree(props: Props) {
                     y={menu.y}
                     isRoot={menu.targetId === props.root.id}
                     isFolder={menu.targetIsFolder}
+                    t={t}
                     onClose={closeMenu}
                     onNewFolder={() => props.onCreateFolderAt(menu.targetId)}
                     onNewTest={() => props.onCreateTestAt(menu.targetId)}
@@ -309,6 +313,7 @@ type NodeViewProps = {
     commitRename(): void
     cancelRename(): void
     onOpenStep(testId: string, stepId: string): void
+    t(key: string, params?: Record<string, string | number>): string
 }
 
 function NodeView(props: NodeViewProps) {
@@ -330,6 +335,7 @@ function NodeView(props: NodeViewProps) {
         commitRename,
         cancelRename,
         onOpenStep,
+        t,
     } = props
 
     const id = node.id
@@ -345,8 +351,8 @@ function NodeView(props: NodeViewProps) {
     const hasChildren = isDir ? node.children.length > 0 : node.steps.length > 0
     const itemCount = isDir ? node.children.length : node.steps.length
     const itemLabel = isDir
-        ? `${itemCount} item${itemCount === 1 ? '' : 's'}`
-        : `${itemCount} step${itemCount === 1 ? '' : 's'}`
+        ? t('tree.itemCount', { count: itemCount })
+        : t('tree.stepCount', { count: itemCount })
     const syncStatus = resolveNodeSyncStatus(node)
     const item: VisibleItem = {
         key,
@@ -412,18 +418,18 @@ function NodeView(props: NodeViewProps) {
                     ...treeRowStyle,
                     marginLeft: offset,
                     background: selected
-                        ? '#eaf2ff'
+                        ? 'var(--accent-bg-strong)'
                         : hoverDrop
-                            ? '#f5f8ff'
+                            ? 'var(--accent-bg)'
                             : focused
-                                ? '#f7faff'
+                                ? 'var(--bg-muted)'
                                 : isDir
-                                    ? '#fcfdff'
+                                    ? 'var(--bg-soft)'
                                     : 'transparent',
-                    borderColor: selected ? '#bfd2f7' : hoverDrop ? '#d5e2fb' : focused ? '#d7e4fb' : 'transparent',
-                    boxShadow: selected ? 'inset 0 0 0 1px #d7e4ff' : focused ? 'inset 0 0 0 1px #e2ebfa' : undefined,
+                    borderColor: selected ? 'var(--accent-border)' : hoverDrop ? 'var(--accent-border)' : focused ? 'var(--border)' : 'transparent',
+                    boxShadow: selected ? 'inset 0 0 0 1px var(--accent-border)' : focused ? 'inset 0 0 0 1px var(--border-soft)' : undefined,
                 }}
-                title={isDir ? 'Folder' : 'Test case'}
+                title={isDir ? t('tree.folderTitle') : t('tree.caseTitle')}
             >
                 <button
                     type="button"
@@ -436,7 +442,7 @@ function NodeView(props: NodeViewProps) {
                         opacity: hasChildren ? 1 : 0.45,
                         cursor: hasChildren ? 'pointer' : 'default',
                     }}
-                    aria-label={hasChildren ? (isOpen ? 'Collapse' : 'Expand') : 'No nested items'}
+                    aria-label={hasChildren ? (isOpen ? t('tree.collapse') : t('tree.expand')) : t('tree.noNestedItems')}
                     disabled={!hasChildren}
                 >
                     <ChevronIcon open={isOpen} />
@@ -446,11 +452,11 @@ function NodeView(props: NodeViewProps) {
                     aria-hidden
                     style={{
                         ...kindBadgeStyle,
-                        background: isDir ? '#eef5ff' : '#f3f5f8',
-                        color: isDir ? '#2b5ca6' : '#5a6678',
+                        background: isDir ? 'var(--accent-bg)' : 'var(--bg-muted)',
+                        color: isDir ? 'var(--accent-text)' : 'var(--text-muted)',
                     }}
                 >
-                    {isDir ? 'Folder' : 'Case'}
+                    {isDir ? t('tree.folder') : t('tree.case')}
                 </span>
 
                 {!isEditing ? (
@@ -459,15 +465,15 @@ function NodeView(props: NodeViewProps) {
                             <div style={treeNameStyle}>{node.name}</div>
                             {!isDir && (
                                 <div style={treeSecondaryStyle}>
-                                    {summarizeStepHeadline(node.steps)}
+                                    {summarizeStepHeadline(node.steps, t)}
                                 </div>
                             )}
                         </div>
-                        {renderSyncStatusBadge(syncStatus)}
+                        {renderSyncStatusBadge(syncStatus, t)}
                         <span style={treeMetaPillStyle}>{itemLabel}</span>
                         <button
                             type="button"
-                            aria-label={`Open actions for ${node.name}`}
+                            aria-label={t('tree.openActions', { name: node.name })}
                             aria-haspopup="menu"
                             onClick={(event) => props.onMenuButtonOpen(event, id, isDir, node.name)}
                             style={rowMenuButtonStyle}
@@ -486,7 +492,7 @@ function NodeView(props: NodeViewProps) {
                             else if (event.key === 'Escape') cancelRename()
                         }}
                         onBlur={commitRename}
-                        placeholder="Rename..."
+                        placeholder={t('tree.renamePlaceholder')}
                         style={renameInputStyle}
                     />
                 )}
@@ -522,6 +528,7 @@ function NodeView(props: NodeViewProps) {
                                     commitRename={commitRename}
                                     cancelRename={cancelRename}
                                     onOpenStep={onOpenStep}
+                                    t={t}
                                 />
                             ))}
                         </div>
@@ -537,6 +544,7 @@ function NodeView(props: NodeViewProps) {
                             onTreeKeyDown={onTreeKeyDown}
                             registerRowRef={registerRowRef}
                             onOpenStep={onOpenStep}
+                            t={t}
                         />
                     )
             )}
@@ -554,6 +562,7 @@ function StepsList({
     onTreeKeyDown,
     registerRowRef,
     onOpenStep,
+    t,
 }: {
     testId: string
     parentKey: string
@@ -564,6 +573,7 @@ function StepsList({
     onTreeKeyDown(event: React.KeyboardEvent<HTMLElement>, item: VisibleItem): void
     registerRowRef(key: string, element: HTMLElement | null): void
     onOpenStep: (testId: string, stepId: string) => void
+    t: (key: string, params?: Record<string, string | number>) => string
 }) {
     const offset = 24 + depth * 14
 
@@ -571,9 +581,9 @@ function StepsList({
         <div role="group" style={{ marginLeft: offset, marginTop: 4, display: 'grid', gap: 4, paddingBottom: 6 }}>
             {steps.map((step, index) => {
                 const details = [
-                    step.usesShared ? 'shared ref' : '',
-                    step.subSteps?.length ? `${step.subSteps.length} sub` : '',
-                    step.attachments?.length ? `${step.attachments.length} file` : '',
+                    step.usesShared ? t('tree.sharedRef') : '',
+                    step.subSteps?.length ? t('tree.subCount', { count: step.subSteps.length }) : '',
+                    step.attachments?.length ? t('tree.fileCount', { count: step.attachments.length }) : '',
                 ].filter(Boolean)
                 const key = makeStepKey(testId, step.id)
                 const item: VisibleItem = {
@@ -598,11 +608,11 @@ function StepsList({
                         tabIndex={focused ? 0 : -1}
                         style={{
                             ...stepRowStyle,
-                            background: focused ? '#f5f8ff' : '#ffffff',
-                            borderColor: focused ? '#d5e2fb' : '#e8edf4',
-                            boxShadow: focused ? 'inset 0 0 0 1px #e1eafb' : undefined,
+                            background: focused ? 'var(--bg-muted)' : 'var(--bg-elevated)',
+                            borderColor: focused ? 'var(--accent-border)' : 'var(--border-soft)',
+                            boxShadow: focused ? 'inset 0 0 0 1px var(--accent-border)' : undefined,
                         }}
-                        title="Open this step in the editor"
+                        title={t('tree.openStepTitle')}
                         onFocus={() => onFocusItem(key)}
                         onKeyDown={(event) => onTreeKeyDown(event, item)}
                         onClick={(event) => {
@@ -613,7 +623,7 @@ function StepsList({
                     >
                         <span style={stepIndexStyle}>{index + 1}</span>
                         <div style={{ minWidth: 0, display: 'grid', gap: 2 }}>
-                            <div style={stepLabelStyle}>{summarizeStepLabel(step)}</div>
+                            <div style={stepLabelStyle}>{summarizeStepLabel(step, t)}</div>
                             {details.length ? <div style={stepMetaStyle}>{details.join(' / ')}</div> : null}
                         </div>
                     </div>
@@ -623,19 +633,29 @@ function StepsList({
     )
 }
 
-function summarizeStepHeadline(steps: Step[]): string {
-    if (!steps.length) return 'No steps yet'
-    const first = summarizePlainText(steps[0].action || steps[0].text || 'Untitled step', 42)
-    return steps.length === 1 ? first : `${first} +${steps.length - 1} more`
+function summarizeStepHeadline(
+    steps: Step[],
+    t: (key: string, params?: Record<string, string | number>) => string = translate
+): string {
+    if (!steps.length) return t('tree.noSteps')
+    const first = summarizePlainText(steps[0].action || steps[0].text || t('tree.untitledStep'), 42, t)
+    return steps.length === 1 ? first : `${first} +${steps.length - 1}`
 }
 
-function summarizeStepLabel(step: Step): string {
-    return summarizePlainText(step.action || step.text || 'Untitled step', 68)
+function summarizeStepLabel(
+    step: Step,
+    t: (key: string, params?: Record<string, string | number>) => string = translate
+): string {
+    return summarizePlainText(step.action || step.text || t('tree.untitledStep'), 68, t)
 }
 
-function summarizePlainText(value: string, maxLength: number): string {
+function summarizePlainText(
+    value: string,
+    maxLength: number,
+    t: (key: string, params?: Record<string, string | number>) => string = translate
+): string {
     const text = value.replace(/\s+/g, ' ').trim()
-    if (!text) return 'Untitled'
+    if (!text) return t('tree.untitled')
     return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text
 }
 
@@ -644,6 +664,7 @@ function Menu({
     y,
     isRoot,
     isFolder,
+    t,
     onClose,
     onNewFolder,
     onNewTest,
@@ -654,6 +675,7 @@ function Menu({
     y: number
     isRoot: boolean
     isFolder: boolean
+    t: (key: string, params?: Record<string, string | number>) => string
     onClose(): void
     onNewFolder(): void
     onNewTest(): void
@@ -672,19 +694,19 @@ function Menu({
         <div
             id="tree-context-menu"
             role="menu"
-            aria-label="Tree actions"
+            aria-label={t('tree.treeActions')}
             style={menuStyle(left, top)}
             onMouseDown={(event) => event.stopPropagation()}
         >
             {isFolder && (
                 <>
-                    <MenuItem ref={firstItemRef} label="New Folder" onClick={() => { onNewFolder(); onClose() }} />
-                    <MenuItem label="New Case" onClick={() => { onNewTest(); onClose() }} />
+                    <MenuItem ref={firstItemRef} label={t('tree.newFolder')} onClick={() => { onNewFolder(); onClose() }} />
+                    <MenuItem label={t('tree.newCase')} onClick={() => { onNewTest(); onClose() }} />
                 </>
             )}
-            {!isFolder && <MenuItem ref={firstItemRef} label="Rename" disabled={isRoot} onClick={() => { onRename(); onClose() }} />}
-            {isFolder && <MenuItem label="Rename" disabled={isRoot} onClick={() => { onRename(); onClose() }} />}
-            <MenuItem label="Delete" disabled={isRoot} danger onClick={() => { onDelete(); onClose() }} />
+            {!isFolder && <MenuItem ref={firstItemRef} label={t('tree.rename')} disabled={isRoot} onClick={() => { onRename(); onClose() }} />}
+            {isFolder && <MenuItem label={t('tree.rename')} disabled={isRoot} onClick={() => { onRename(); onClose() }} />}
+            <MenuItem label={t('tree.delete')} disabled={isRoot} danger onClick={() => { onDelete(); onClose() }} />
         </div>
     )
 }
@@ -709,12 +731,12 @@ const MenuItem = React.forwardRef<
             disabled={disabled}
             style={{
                 ...menuItemStyle,
-                color: danger ? '#a13323' : '#20354f',
+                color: danger ? 'var(--danger-text)' : 'var(--text-strong)',
                 opacity: disabled ? 0.5 : 1,
                 cursor: disabled ? 'default' : 'pointer',
             }}
             onMouseEnter={(event) => {
-                if (!disabled) event.currentTarget.style.background = '#f4f7fc'
+                if (!disabled) event.currentTarget.style.background = 'var(--bg-muted)'
             }}
             onMouseLeave={(event) => {
                 event.currentTarget.style.background = 'transparent'
@@ -758,7 +780,7 @@ function flattenVisibleItems(root: Folder, expanded: Set<string>) {
                     depth: depth + 1,
                     hasChildren: false,
                     expanded: false,
-                    name: summarizeStepLabel(step),
+                    name: summarizeStepLabel(step, t),
                 })
             }
         }
@@ -800,23 +822,29 @@ function resolveTestSyncStatus(test: TestCase): SyncStatus | null {
     return parseTimestamp(test.updatedAt) <= baselineAt ? 'synced' : 'dirty'
 }
 
-function formatSyncStatusLabel(status: SyncStatus): string {
-    return status === 'conflict' ? 'Conflict' : status === 'dirty' ? 'Dirty' : 'Synced'
+function formatSyncStatusLabel(
+    status: SyncStatus,
+    t: (key: string, params?: Record<string, string | number>) => string
+): string {
+    return status === 'conflict' ? t('tree.sync.conflict') : t('tree.sync.synced')
 }
 
-function renderSyncStatusBadge(status: SyncStatus | null) {
+function renderSyncStatusBadge(
+    status: SyncStatus | null,
+    t: (key: string, params?: Record<string, string | number>) => string
+) {
     if (!status) return null
     if (status === 'dirty') {
         return (
             <span
-                aria-label="Local changes are not synced"
-                title="Local changes are not synced"
+                aria-label={t('tree.sync.dirtyTitle')}
+                title={t('tree.sync.dirtyTitle')}
                 style={treeDirtyIndicatorStyle}
             />
         )
     }
 
-    return <span style={treeStatusPillStyle(status)}>{formatSyncStatusLabel(status)}</span>
+    return <span style={treeStatusPillStyle(status)}>{formatSyncStatusLabel(status, t)}</span>
 }
 
 function ChevronIcon({ open }: { open: boolean }) {
@@ -878,8 +906,8 @@ const treeShellStyle: React.CSSProperties = {
     padding: '10px 10px 14px',
     fontFamily: '"Segoe UI", system-ui, sans-serif',
     fontSize: 13,
-    color: '#22384f',
-    background: '#f9fbfd',
+    color: 'var(--text-strong)',
+    background: 'var(--bg-soft)',
 }
 
 const treeHeaderStyle: React.CSSProperties = {
@@ -893,17 +921,17 @@ const treeHeaderEyebrowStyle: React.CSSProperties = {
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '.05em',
-    color: '#74839b',
+    color: 'var(--text-dim)',
 }
 
 const treeHeaderTitleStyle: React.CSSProperties = {
     fontSize: 18,
     fontWeight: 800,
-    color: '#20354f',
+    color: 'var(--text-strong)',
 }
 
 const treeHeaderHintStyle: React.CSSProperties = {
-    color: '#728097',
+    color: 'var(--text-muted)',
     fontSize: 12,
     lineHeight: 1.45,
 }
@@ -926,9 +954,9 @@ const expandButtonStyle: React.CSSProperties = {
     width: 20,
     height: 20,
     borderRadius: 6,
-    border: '1px solid #dce3ee',
-    background: '#fff',
-    color: '#5f6f86',
+    border: '1px solid var(--border)',
+    background: 'var(--bg-elevated)',
+    color: 'var(--text-muted)',
     padding: 0,
     flexShrink: 0,
     display: 'inline-flex',
@@ -958,18 +986,18 @@ const treeStatusPillStyle = (status: SyncStatus): React.CSSProperties => ({
     fontWeight: 700,
     flexShrink: 0,
     ...(status === 'conflict'
-        ? { background: '#fff2f1', color: '#9a3928' }
+        ? { background: 'var(--danger-bg)', color: 'var(--danger-text)' }
         : status === 'dirty'
-            ? { background: '#fff8e8', color: '#896009' }
-            : { background: '#eef8ef', color: '#2e6a3a' }),
+            ? { background: 'var(--warning-bg)', color: 'var(--warning-text)' }
+            : { background: 'var(--success-bg)', color: 'var(--success-text)' }),
 })
 
 const treeDirtyIndicatorStyle: React.CSSProperties = {
     width: 10,
     height: 10,
     borderRadius: 999,
-    background: '#f0b429',
-    boxShadow: '0 0 0 3px rgba(240, 180, 41, 0.18)',
+    background: 'var(--warning-text)',
+    boxShadow: '0 0 0 3px color-mix(in srgb, var(--warning-text) 22%, transparent)',
     flexShrink: 0,
 }
 
@@ -977,9 +1005,9 @@ const rowMenuButtonStyle: React.CSSProperties = {
     width: 28,
     height: 28,
     borderRadius: 8,
-    border: '1px solid #d7e1ef',
-    background: '#fff',
-    color: '#53657f',
+    border: '1px solid var(--border)',
+    background: 'var(--bg-elevated)',
+    color: 'var(--text-muted)',
     fontSize: 12,
     fontWeight: 700,
     cursor: 'pointer',
@@ -1001,7 +1029,7 @@ const treeNameStyle: React.CSSProperties = {
 }
 
 const treeSecondaryStyle: React.CSSProperties = {
-    color: '#75839a',
+    color: 'var(--text-dim)',
     fontSize: 12,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
@@ -1014,8 +1042,8 @@ const treeMetaPillStyle: React.CSSProperties = {
     minHeight: 22,
     padding: '0 8px',
     borderRadius: 999,
-    background: '#f2f5f9',
-    color: '#66758c',
+    background: 'var(--bg-muted)',
+    color: 'var(--text-muted)',
     fontSize: 11,
     fontWeight: 700,
     flexShrink: 0,
@@ -1024,8 +1052,8 @@ const treeMetaPillStyle: React.CSSProperties = {
 const renameInputStyle: React.CSSProperties = {
     flex: 1,
     minWidth: 60,
-    border: '1px solid #8ab4f8',
-    background: '#eef5ff',
+    border: '1px solid var(--accent-border)',
+    background: 'var(--accent-bg)',
     padding: '6px 8px',
     borderRadius: 8,
     font: 'inherit',
@@ -1038,8 +1066,8 @@ const stepRowStyle: React.CSSProperties = {
     alignItems: 'start',
     padding: '6px 8px',
     borderRadius: 10,
-    background: '#ffffff',
-    border: '1px solid #e8edf4',
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border-soft)',
     cursor: 'pointer',
     outline: 'none',
 }
@@ -1048,8 +1076,8 @@ const stepIndexStyle: React.CSSProperties = {
     width: 22,
     height: 22,
     borderRadius: 999,
-    background: '#eef4ff',
-    color: '#2c5ea8',
+    background: 'var(--accent-bg)',
+    color: 'var(--accent-text)',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1058,12 +1086,12 @@ const stepIndexStyle: React.CSSProperties = {
 }
 
 const stepLabelStyle: React.CSSProperties = {
-    color: '#334b65',
+    color: 'var(--text)',
     lineHeight: 1.4,
 }
 
 const stepMetaStyle: React.CSSProperties = {
-    color: '#78869b',
+    color: 'var(--text-dim)',
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: '.03em',
@@ -1084,10 +1112,10 @@ const menuStyle = (x: number, y: number): React.CSSProperties => ({
     left: x,
     top: y,
     zIndex: 100,
-    background: '#fff',
-    border: '1px solid #dbe3ee',
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border)',
     borderRadius: 12,
-    boxShadow: '0 14px 40px rgba(18, 35, 58, .16)',
+    boxShadow: 'var(--shadow-soft)',
     minWidth: 180,
     padding: 6,
     pointerEvents: 'auto',

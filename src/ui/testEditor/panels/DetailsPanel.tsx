@@ -4,6 +4,7 @@ import type { ResolvedWikiRef } from '@core/refs'
 import type { MarkdownEditorApi } from '../markdownEditor/MarkdownEditor'
 import { MarkdownEditor } from '../markdownEditor/MarkdownEditor'
 import './DetailsPanel.css'
+import { useUiPreferences } from '../../preferences'
 
 type Props = {
     description: string
@@ -41,6 +42,7 @@ export function DetailsPanel({
     onActivateEditorApi,
     previewMode,
 }: Props) {
+    const { t } = useUiPreferences()
     const [preview, setPreview] = React.useState({
         description: false,
         objective: false,
@@ -72,17 +74,17 @@ export function DetailsPanel({
         <div className="details-panel card-box">
             <div className="field">
                 <div className="details-head">
-                    <label className="label-sm">Description</label>
+                    <label className="label-sm">{t('details.description')}</label>
                     {!isControlledPreview && (
                         <div className="md-view">
-                            <span className="muted">View:</span>{' '}
+                            <span className="muted">{t('details.view')}</span>{' '}
                             <button
                                 className="btn-icon"
                                 onClick={() => setPreview((current) => ({ ...current, description: !current.description }))}
-                                title="Toggle preview"
+                                title={t('details.togglePreview')}
                                 type="button"
                             >
-                                {preview.description ? 'Raw' : 'Preview'}
+                                {preview.description ? t('details.raw') : t('details.preview')}
                             </button>
                         </div>
                     )}
@@ -99,17 +101,17 @@ export function DetailsPanel({
 
             <div className="field">
                 <div className="details-head">
-                    <label className="label-sm">Test Objective</label>
+                    <label className="label-sm">{t('details.objective')}</label>
                     {!isControlledPreview && (
                         <div className="md-view">
-                            <span className="muted">View:</span>{' '}
+                            <span className="muted">{t('details.view')}</span>{' '}
                             <button
                                 className="btn-icon"
                                 onClick={() => setPreview((current) => ({ ...current, objective: !current.objective }))}
-                                title="Toggle preview"
+                                title={t('details.togglePreview')}
                                 type="button"
                             >
-                                {preview.objective ? 'Raw' : 'Preview'}
+                                {preview.objective ? t('details.raw') : t('details.preview')}
                             </button>
                         </div>
                     )}
@@ -126,17 +128,17 @@ export function DetailsPanel({
 
             <div className="field">
                 <div className="details-head">
-                    <label className="label-sm">Preconditions</label>
+                    <label className="label-sm">{t('details.preconditions')}</label>
                     {!isControlledPreview && (
                         <div className="md-view">
-                            <span className="muted">View:</span>{' '}
+                            <span className="muted">{t('details.view')}</span>{' '}
                             <button
                                 className="btn-icon"
                                 onClick={() => setPreview((current) => ({ ...current, preconditions: !current.preconditions }))}
-                                title="Toggle preview"
+                                title={t('details.togglePreview')}
                                 type="button"
                             >
-                                {preview.preconditions ? 'Raw' : 'Preview'}
+                                {preview.preconditions ? t('details.raw') : t('details.preview')}
                             </button>
                         </div>
                     )}

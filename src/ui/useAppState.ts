@@ -34,6 +34,7 @@ import { ZephyrHttpProvider } from '@providers/zephyr.http'
 import { AllureStubProvider } from '@providers/allure.stub'
 import { fromProviderPayload } from '@providers/mappers'
 import { apiClient } from '@ipc/client'
+import { translate } from './preferences'
 
 type Node = Folder | TestCase
 
@@ -114,7 +115,7 @@ export function useAppState() {
     async function addFolderAt(parentId: ID) {
         if (!state) return
         const next = structuredClone(state)
-        const folder = mkFolder('New Folder')
+        const folder = mkFolder(translate('defaults.newFolder'))
         insertChild(next.root, parentId, folder)
         await persist(next)
         setSelectedId(folder.id)
@@ -122,8 +123,8 @@ export function useAppState() {
 
     async function addTestAt(parentId: ID) {
         if (!state) return
-        const test = mkTest('New Case', '')
-        const first = mkStep('Step 1', '', '')
+        const test = mkTest(translate('defaults.newCase'), '')
+        const first = mkStep(translate('defaults.firstStep'), '', '')
         test.steps.push(first)
 
         const next = structuredClone(state)
@@ -223,7 +224,7 @@ export function useAppState() {
         await persist(next)
     }
 
-    async function addSharedStep(name = 'New Shared Step', steps: Step[] = []) {
+    async function addSharedStep(name = translate('defaults.sharedStep'), steps: Step[] = []) {
         if (!state) return null
         const next = structuredClone(state)
         const shared = mkShared(name, steps.length ? structuredClone(steps) : [mkStep()])
@@ -233,7 +234,7 @@ export function useAppState() {
     }
 
     async function addSharedStepFromStep(step: Step, name?: string) {
-        const baseName = (step.action || step.text || 'Shared Step').trim() || 'Shared Step'
+        const baseName = (step.action || step.text || translate('defaults.sharedStep')).trim() || translate('defaults.sharedStep')
         return addSharedStep(name ?? baseName, [structuredClone(step)])
     }
 

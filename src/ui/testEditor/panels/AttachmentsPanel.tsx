@@ -1,44 +1,42 @@
 import * as React from 'react'
 import type { Attachment } from '@core/domain'
 import './AttachmentsPanel.css'
+import { useUiPreferences } from '../../preferences'
 
 type Props = {
     attachments: Attachment[]
     onChange(next: Attachment[]): void
-    /** Кастомный аплоадер: сохраняет файлы и возвращает готовые Attachment (c id, name, pathOrDataUrl). Необязателен. */
     onUploadFiles?: (files: File[]) => Promise<Attachment[]>
-    /** Ограничение типов (опционально) */
     accept?: string
 }
 
 export function AttachmentsPanel({ attachments, onChange, onUploadFiles, accept = '*/*' }: Props) {
+    const { t } = useUiPreferences()
     const inputRef = React.useRef<HTMLInputElement | null>(null)
     const [loading, setLoading] = React.useState(false)
 
     async function fallbackReadAsDataUrl(files: File[]): Promise<Attachment[]> {
-        // Локальный фоллбек: читаем файлы в data URL и возвращаем Attachment[]
-        const toDataUrl = (f: File) =>
+        const toDataUrl = (file: File) =>
             new Promise<Attachment>((resolve, reject) => {
                 const reader = new FileReader()
-                reader.onload = () => resolve({
-                    id: crypto.randomUUID(),
-                    name: f.name,
-                    pathOrDataUrl: reader.result as string,
-                })
+                reader.onload = () =>
+                    resolve({
+                        id: crypto.randomUUID(),
+                        name: file.name,
+                        pathOrDataUrl: reader.result as string,
+                    })
                 reader.onerror = reject
-                reader.readAsDataURL(f)
+                reader.readAsDataURL(file)
             })
         return Promise.all(files.map(toDataUrl))
     }
 
-    async function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
-        const files = Array.from(e.target.files ?? [])
+    async function onFilePicked(event: React.ChangeEvent<HTMLInputElement>) {
+        const files = Array.from(event.target.files ?? [])
         if (!files.length) return
         setLoading(true)
         try {
-            const created = onUploadFiles
-                ? await onUploadFiles(files)
-                : await fallbackReadAsDataUrl(files)
+            const created = onUploadFiles ? await onUploadFiles(files) : await fallbackReadAsDataUrl(files)
             onChange([...(attachments ?? []), ...created])
         } finally {
             setLoading(false)
@@ -47,16 +45,16 @@ export function AttachmentsPanel({ attachments, onChange, onUploadFiles, accept 
     }
 
     function remove(id: string) {
-        onChange((attachments ?? []).filter(a => a.id !== id))
+        onChange((attachments ?? []).filter((attachment) => attachment.id !== id))
     }
 
     return (
         <div className="attachments-panel meta-card">
             <div className="attachments-head">
-                <label className="label-sm">Attachments</label>
+                <label className="label-sm">{t('attachments.title')}</label>
                 <div className="attachments-actions">
                     <button type="button" className="btn-small" onClick={() => inputRef.current?.click()} disabled={loading}>
-                        {loading ? 'Uploading…' : '+ Upload'}
+                        {loading ? t('attachments.uploading') : t('attachments.upload')}
                     </button>
                     <input
                         ref={inputRef}
@@ -70,29 +68,29 @@ export function AttachmentsPanel({ attachments, onChange, onUploadFiles, accept 
             </div>
 
             {(attachments ?? []).length === 0 ? (
-                <div className="muted">No attachments yet.</div>
+                <div className="muted">{t('attachments.none')}</div>
             ) : (
                 <ul className="attachments-list">
-                    {attachments.map(a => (
-                        <li key={a.id} className="attachment-item">
+                    {attachments.map((attachment) => (
+                        <li key={attachment.id} className="attachment-item">
                             <a
                                 className="file-name"
-                                href={a.pathOrDataUrl}
+                                href={attachment.pathOrDataUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                title={a.name}
-                                download={a.name}
+                                title={attachment.name}
+                                download={attachment.name}
                             >
-                                {a.name}
+                                {attachment.name}
                             </a>
                             <button
                                 type="button"
                                 className="btn-small remove-btn"
-                                title="Remove attachment"
-                                onClick={() => remove(a.id)}
+                                title={t('attachments.remove')}
+                                onClick={() => remove(attachment.id)}
                                 disabled={loading}
                             >
-                                ×
+                                x
                             </button>
                         </li>
                     ))}

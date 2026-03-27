@@ -10,15 +10,16 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     visibility: hidden;
     z-index: -1;
     pointer-events: none;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     padding: 10px 12px;
 }
 
 .md-editor .md-measure.text {
     padding: 10px 12px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: #fff;
+    background: var(--bg-elevated);
+    color: var(--text);
     white-space: pre-wrap;      /* как у textarea */
     word-break: break-word;     /* перестраховка для очень длинных токенов */
     overflow-wrap: anywhere;
@@ -48,8 +49,9 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     font-size: 14px;
     line-height: 1.45;
     border-radius: 8px;
-    border: 1px solid #ccc;
-    background: #fff;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
     outline: none;
     box-sizing: border-box;
 
@@ -69,12 +71,12 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 }
 .md-editor .md-textarea.scrollable::-webkit-scrollbar-thumb {
     border-radius: 8px;
-    background: rgba(0,0,0,.2);
+    background: var(--border-strong);
 }
 .md-editor .md-textarea.scrollable::-webkit-scrollbar-track {
     background: transparent;
 }
-.md-editor .md-textarea:focus { border-color:#9bb7ff; box-shadow:0 0 0 3px rgba(77,107,220,.12); }
+.md-editor .md-textarea:focus { border-color:var(--accent-border); box-shadow:0 0 0 3px var(--focus-ring); }
 .md-editor .md-textarea::-webkit-resizer { display: none; }
 
 .md-editor.is-preview .md-textarea {
@@ -88,8 +90,9 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     inset: 0;
     padding: 8px 10px;
     border-radius: 8px;
-    border: 1px solid #ddd;
-    background: #fff;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     box-sizing: border-box;
@@ -112,7 +115,7 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 
 /* инлайн-код */
 .md-editor .code-inline {
-    background: #f2f2f2;
+    background: var(--bg-muted);
     padding: 0 3px;
     border-radius: 4px;
 }
@@ -127,20 +130,21 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 
 /* кнопки тулбара */
 .md-editor .md-btn {
-    border: 1px solid #ddd;
-    background: #fff;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
     border-radius: 6px;
     padding: 2px 6px;
     cursor: pointer;
     font-size: 12px;
     line-height: 1.1;
 }
-.md-editor .md-btn:hover { background:#f6f8ff; border-color:#cfd8ff; }
+.md-editor .md-btn:hover { background:var(--accent-bg); border-color:var(--accent-border); }
 
 .md-editor .divider {
     width: 1px;
     height: 16px;
-    background: #e6e6e6;
+    background: var(--border-soft);
     margin: 0 2px;
 }
 
@@ -148,10 +152,10 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 .md-editor .autocomplete {
     position: fixed; z-index: 9999;
     width: min(380px, calc(100vw - 24px)); max-height: 260px; overflow: auto;
-    background: #fff; border: 1px solid #ddd; border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0,0,0,.15);
+    background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: var(--shadow-soft);
 }
-.md-editor .autocomplete-empty { padding: 8px; color: #888; }
+.md-editor .autocomplete-empty { padding: 8px; color: var(--text-dim); }
 .md-editor .autocomplete-item {
     padding: 6px 10px;
     cursor: pointer;
@@ -160,10 +164,10 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     overflow: hidden;
     user-select: none;
 }
-.md-editor .autocomplete-item.active { background: rgba(22,119,255,.1); }
+.md-editor .autocomplete-item.active { background: var(--accent-bg); }
 
 /* утилита для внешних подписей/лейблов */
-.md-editor .muted { font-size: 12px; color: #666; }
+.md-editor .muted { font-size: 12px; color: var(--text-muted); }
 
 .md-editor .md-ref-strip {
     position: relative;
@@ -174,10 +178,10 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 }
 
 .md-editor .md-ref-pill {
-    border: 1px solid #d7e4ff;
+    border: 1px solid var(--accent-border);
     border-radius: 999px;
-    background: #f4f8ff;
-    color: #35507a;
+    background: var(--accent-bg);
+    color: var(--accent-text);
     font-size: 11px;
     line-height: 1.2;
     padding: 5px 9px;
@@ -185,14 +189,14 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 }
 
 .md-editor .md-ref-pill.ok:hover {
-    background: #eaf2ff;
-    border-color: #bbcffc;
+    background: var(--accent-bg-strong);
+    border-color: var(--accent-border);
 }
 
 .md-editor .md-ref-pill.broken {
-    border-color: #f1c6cb;
-    background: #fff4f5;
-    color: #8f2733;
+    border-color: var(--danger-border);
+    background: var(--danger-bg);
+    color: var(--danger-text);
 }
 
 .md-editor .md-ref-preview {
@@ -203,40 +207,78 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     width: min(420px, 100%);
     padding: 10px 12px;
     border-radius: 10px;
-    border: 1px solid #d7e4ff;
-    background: #fff;
-    box-shadow: 0 12px 30px rgba(0,0,0,.12);
+    border: 1px solid var(--accent-border);
+    background: var(--bg-elevated);
+    box-shadow: var(--shadow-soft);
 }
 
 .md-editor .md-ref-preview.broken {
-    border-color: #f1c6cb;
-    background: #fffafb;
+    border-color: var(--danger-border);
+    background: var(--danger-bg);
 }
 
 .md-editor .md-ref-preview-title {
     font-size: 12px;
     font-weight: 700;
-    color: #243b63;
+    color: var(--text-strong);
     margin-bottom: 6px;
 }
 
 .md-editor .md-ref-preview-body {
-    color: #4e5f7a;
+    color: var(--text-muted);
     font-size: 12px;
     line-height: 1.45;
 }
 
 .md-editor .md-ref-open {
     margin-top: 8px;
-    border: 1px solid #c9d8fb;
+    border: 1px solid var(--accent-border);
     border-radius: 8px;
-    background: #f3f7ff;
-    color: #244269;
+    background: var(--accent-bg);
+    color: var(--accent-text);
     font-size: 12px;
     padding: 5px 9px;
     cursor: pointer;
 }
 
 .md-editor .md-ref-open:hover {
-    background: #eaf2ff;
+    background: var(--accent-bg-strong);
+}
+
+:root[data-theme='dark'] .md-editor .md-toolbar,
+:root[data-theme='dark'] .md-editor .md-textarea,
+:root[data-theme='dark'] .md-editor .md-preview,
+:root[data-theme='dark'] .md-editor .md-ref-preview,
+:root[data-theme='dark'] .md-editor .autocomplete,
+:root[data-theme='dark'] .md-editor .md-ref-pill,
+:root[data-theme='dark'] .md-editor .md-ref-open,
+:root[data-theme='dark'] .md-editor .md-btn {
+    background: var(--bg-elevated);
+    color: var(--text);
+    border-color: var(--border);
+    box-shadow: none;
+}
+
+:root[data-theme='dark'] .md-editor .md-ref-pill.ok,
+:root[data-theme='dark'] .md-editor .md-ref-open,
+:root[data-theme='dark'] .md-editor .autocomplete-item.active {
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    border-color: var(--accent-border);
+}
+
+:root[data-theme='dark'] .md-editor .md-ref-pill.broken,
+:root[data-theme='dark'] .md-editor .md-ref-preview.broken {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+    border-color: var(--danger-border);
+}
+
+:root[data-theme='dark'] .md-editor .muted,
+:root[data-theme='dark'] .md-editor .md-ref-preview-body {
+    color: var(--text-muted);
+}
+
+:root[data-theme='dark'] .md-editor .md-ref-preview-title {
+    color: var(--text-strong);
 }

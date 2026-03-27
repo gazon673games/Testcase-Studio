@@ -10,6 +10,8 @@ import './panels/AttachmentsPanel.css'
 import DetailsPanel from './panels/DetailsPanel'
 import SharedLibraryPanel from './panels/SharedLibraryPanel'
 import StepsPanel from './panels/StepsPanel'
+import { useUiPreferences } from '../preferences'
+import { useStoredToggle } from '../useStoredToggle'
 
 type Props = {
     test: TestCase
@@ -26,6 +28,7 @@ type Props = {
     onInsertSharedReference(sharedId: string): void | Promise<void>
     onOpenStep(testId: string, stepId: string): void
     onOpenTest(testId: string): void
+    previewMode: 'raw' | 'preview'
 }
 
 export type TestEditorHandle = { commit(): void }
@@ -44,15 +47,16 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         onInsertSharedReference,
         onOpenStep,
         onOpenTest,
+        previewMode,
     }: Props,
     ref
 ) {
+    const { t } = useUiPreferences()
     const [showDetails, setShowDetails] = useStoredToggle('test-editor.show-details', true)
     const [showMeta, setShowMeta] = useStoredToggle('test-editor.show-meta', false)
     const [showAttachments, setShowAttachments] = useStoredToggle('test-editor.show-attachments', false)
     const [showLinks, setShowLinks] = useStoredToggle('test-editor.show-links', false)
     const [showSharedLibrary, setShowSharedLibrary] = useStoredToggle('test-editor.show-shared-library.v2', false)
-    const [previewAll, setPreviewAll] = useStoredToggle('test-editor.preview-all', false)
     const [selectedSharedId, setSelectedSharedId] = React.useState<string | null>(sharedSteps[0]?.id ?? null)
     const [focusSharedStepId, setFocusSharedStepId] = React.useState<string | null>(null)
     const [activeEditorApi, setActiveEditorApi] = React.useState<MarkdownEditorApi | null>(null)
@@ -151,12 +155,12 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     const tagsCount = test.meta?.tags?.length ?? 0
     const externalLinksCount = (zephyrLink ? 1 : 0) + (allureLink ? 1 : 0)
     const summaryItems = [
-        `${test.steps.length} step${test.steps.length === 1 ? '' : 's'}`,
-        sharedReferenceCount ? `${sharedReferenceCount} shared ref${sharedReferenceCount === 1 ? '' : 's'}` : '',
-        test.attachments?.length ? `${test.attachments.length} attachment${test.attachments.length === 1 ? '' : 's'}` : '',
-        tagsCount ? `${tagsCount} tag${tagsCount === 1 ? '' : 's'}` : '',
-        zephyrLink ? 'Linked to Zephyr' : '',
-        allureLink ? 'Linked to Allure' : '',
+        t('editor.summary.steps', { count: test.steps.length }),
+        sharedReferenceCount ? t('editor.summary.sharedRefs', { count: sharedReferenceCount }) : '',
+        test.attachments?.length ? t('editor.summary.attachments', { count: test.attachments.length }) : '',
+        tagsCount ? t('editor.summary.tags', { count: tagsCount }) : '',
+        zephyrLink ? t('editor.summary.linkedZephyr') : '',
+        allureLink ? t('editor.summary.linkedAllure') : '',
     ].filter(Boolean)
 
     React.useImperativeHandle(ref, () => ({ commit: () => {} }), [])
@@ -168,7 +172,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                     <div className="editor-hero">
                         <div className="editor-hero-bar">
                             <div className="editor-hero-title-group">
-                                <div className="editor-hero-copy">Test case</div>
+                                <div className="editor-hero-copy">{t('editor.testCase')}</div>
                                 <div className="editor-summary-row editor-summary-row--compact">
                                     {summaryItems.map((item) => (
                                         <span key={item} className="editor-summary-chip">
@@ -180,27 +184,20 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                             <div className="editor-hero-actions">
                                 <button
                                     type="button"
-                                    className={`btn-small editor-side-button ${previewAll ? 'active' : ''}`}
-                                    onClick={() => setPreviewAll((current) => !current)}
-                                >
-                                    {previewAll ? 'Raw All' : 'Preview All'}
-                                </button>
-                                <button
-                                    type="button"
                                     className={`btn-small editor-side-button ${showSharedLibrary ? 'active' : ''}`}
                                     onClick={() => setShowSharedLibrary((current) => !current)}
                                 >
-                                    {showSharedLibrary ? 'Hide Library' : `Library (${sharedSteps.length})`}
+                                    {showSharedLibrary ? t('editor.hideLibrary') : t('editor.libraryCount', { count: sharedSteps.length })}
                                 </button>
                             </div>
                         </div>
                         <div className="field editor-name-field">
-                            <label className="label-sm">Name</label>
+                            <label className="label-sm">{t('editor.name')}</label>
                             <input
                                 value={test.name}
                                 onChange={(e) => onChange({ name: e.target.value })}
                                 className="input editor-name-input"
-                                placeholder="Enter test case name..."
+                                placeholder={t('editor.namePlaceholder')}
                             />
                         </div>
                     </div>
@@ -215,7 +212,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                         inspectRefs={inspectRefs}
                         onOpenRef={openResolvedRef}
                         focusStepId={focusStepId}
-                        previewMode={previewAll ? 'preview' : 'raw'}
+                        previewMode={previewMode}
                         onApply={() => {}}
                         onActivateEditorApi={setActiveEditorApi}
                         onCreateSharedFromStep={handleCreateSharedFromStep}
@@ -224,7 +221,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                     />
 
                     <SectionHeader
-                        title="Details"
+                        title={t('editor.details')}
                         open={showDetails}
                         onToggle={() => setShowDetails((current) => !current)}
                     />
@@ -238,14 +235,14 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                             sharedSteps={sharedSteps}
                             resolveRefs={resolveRefs}
                             inspectRefs={inspectRefs}
-                            previewMode={previewAll ? 'preview' : 'raw'}
+                            previewMode={previewMode}
                             onOpenRef={openResolvedRef}
                             onActivateEditorApi={setActiveEditorApi}
                         />
                     )}
 
                     <SectionHeader
-                        title="Parameters"
+                        title={t('editor.parameters')}
                         open={showMeta}
                         onToggle={() => setShowMeta((current) => !current)}
                     />
@@ -257,7 +254,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                     )}
 
                     <SectionHeader
-                        title="Attachments"
+                        title={t('editor.attachments')}
                         open={showAttachments}
                         count={test.attachments?.length ?? 0}
                         onToggle={() => setShowAttachments((current) => !current)}
@@ -270,7 +267,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                     )}
 
                     <SectionHeader
-                        title="Integrations"
+                        title={t('editor.integrations')}
                         open={showLinks}
                         count={externalLinksCount}
                         onToggle={() => setShowLinks((current) => !current)}
@@ -279,21 +276,21 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                         <div className="meta-card editor-links-card">
                             <div className="editor-links-grid">
                                 <div className="field" style={{ margin: 0 }}>
-                                    <label className="label-sm">Zephyr key</label>
+                                    <label className="label-sm">{t('editor.zephyrKey')}</label>
                                     <input
                                         className="input"
                                         value={zephyrLink}
                                         onChange={(e) => upsertLink('zephyr', e.target.value)}
-                                        placeholder="Example: PROD-T6079 or 6079"
+                                        placeholder={t('editor.zephyrKeyPlaceholder')}
                                     />
                                 </div>
                                 <div className="field" style={{ margin: 0 }}>
-                                    <label className="label-sm">Allure ID</label>
+                                    <label className="label-sm">{t('editor.allureId')}</label>
                                     <input
                                         className="input"
                                         value={allureLink}
                                         onChange={(e) => upsertLink('allure', e.target.value)}
-                                        placeholder="Example: 12345"
+                                        placeholder={t('editor.allureIdPlaceholder')}
                                     />
                                 </div>
                             </div>
@@ -303,7 +300,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
             </div>
 
             {showSharedLibrary && (
-                <aside className="editor-drawer" aria-label="Shared library drawer">
+                <aside className="editor-drawer" aria-label={t('editor.sharedLibraryDrawer')}>
                     <SharedLibraryPanel
                         variant="drawer"
                         extraHeaderAction={(
@@ -312,7 +309,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                                 className="btn-small"
                                 onClick={() => setShowSharedLibrary(false)}
                             >
-                                Close
+                                {t('editor.close')}
                             </button>
                         )}
                         sharedSteps={sharedSteps}
@@ -346,28 +343,6 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         </div>
     )
 })
-
-function useStoredToggle(key: string, initialValue: boolean) {
-    const [value, setValue] = React.useState(() => {
-        try {
-            const stored = window.localStorage.getItem(key)
-            if (stored == null) return initialValue
-            return stored === '1'
-        } catch {
-            return initialValue
-        }
-    })
-
-    React.useEffect(() => {
-        try {
-            window.localStorage.setItem(key, value ? '1' : '0')
-        } catch {
-            // local persistence is best-effort only
-        }
-    }, [key, value])
-
-    return [value, setValue] as const
-}
 
 const SectionHeader = ({
     title,

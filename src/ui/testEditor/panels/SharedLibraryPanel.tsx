@@ -3,6 +3,7 @@ import { collectSharedUsages, type ResolvedWikiRef, type SharedUsage } from '@co
 import type { SharedStep, Step, TestCase } from '@core/domain'
 import type { MarkdownEditorApi } from '../markdownEditor/MarkdownEditor'
 import StepsPanel from './StepsPanel'
+import { useUiPreferences } from '../../preferences'
 
 type Props = {
     variant?: 'inline' | 'drawer'
@@ -37,19 +38,6 @@ type SharedListEntry = {
     preview: string
 }
 
-const FILTER_LABELS: Record<SharedFilter, string> = {
-    all: 'All',
-    used: 'In use',
-    unused: 'Unused',
-    broken: 'Broken refs',
-}
-
-const SORT_LABELS: Array<{ value: SharedSort; label: string }> = [
-    { value: 'usage', label: 'Most used' },
-    { value: 'name', label: 'Name' },
-    { value: 'broken', label: 'Broken refs' },
-]
-
 export default function SharedLibraryPanel({
     variant = 'inline',
     extraHeaderAction,
@@ -70,9 +58,21 @@ export default function SharedLibraryPanel({
     onOpenShared,
     onInsertText,
 }: Props) {
+    const { t } = useUiPreferences()
     const [query, setQuery] = React.useState('')
     const [filter, setFilter] = React.useState<SharedFilter>('all')
     const [sort, setSort] = React.useState<SharedSort>('usage')
+    const filterLabels: Record<SharedFilter, string> = {
+        all: t('shared.filter.all'),
+        used: t('shared.filter.used'),
+        unused: t('shared.filter.unused'),
+        broken: t('shared.filter.broken'),
+    }
+    const sortLabels: Array<{ value: SharedSort; label: string }> = [
+        { value: 'usage', label: t('shared.sort.usage') },
+        { value: 'name', label: t('shared.sort.name') },
+        { value: 'broken', label: t('shared.sort.broken') },
+    ]
 
     const entries = React.useMemo<SharedListEntry[]>(
         () =>
@@ -150,11 +150,11 @@ export default function SharedLibraryPanel({
         <div className={`shared-library ${variant === 'drawer' ? 'shared-library--drawer' : ''}`}>
             <div className="shared-library-sidebar">
                 <div className="shared-library-head">
-                    <div className="shared-library-title">Shared steps</div>
+                    <div className="shared-library-title">{t('shared.title')}</div>
                     <div className="shared-library-head-actions">
                         {extraHeaderAction}
                         <button type="button" className="btn-small" onClick={() => void onAddShared()}>
-                            + New shared
+                            {t('shared.new')}
                         </button>
                     </div>
                 </div>
@@ -162,50 +162,50 @@ export default function SharedLibraryPanel({
                 <div className="shared-library-stats">
                     <div className="shared-library-stat">
                         <span className="shared-library-stat-value">{filterCounts.all}</span>
-                        <span className="shared-library-stat-label">total</span>
+                        <span className="shared-library-stat-label">{t('shared.total')}</span>
                     </div>
                     <div className="shared-library-stat">
                         <span className="shared-library-stat-value">{filterCounts.used}</span>
-                        <span className="shared-library-stat-label">in use</span>
+                        <span className="shared-library-stat-label">{t('shared.inUse')}</span>
                     </div>
                     <div className="shared-library-stat">
                         <span className="shared-library-stat-value">{filterCounts.broken}</span>
-                        <span className="shared-library-stat-label">broken</span>
+                        <span className="shared-library-stat-label">{t('shared.broken')}</span>
                     </div>
                 </div>
 
                 <div className="shared-library-controls">
                     <div className="field" style={{ margin: 0 }}>
-                        <label className="label-sm">Search library</label>
+                        <label className="label-sm">{t('shared.search')}</label>
                         <input
                             className="input"
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
-                            placeholder="Name or step text"
+                            placeholder={t('shared.searchPlaceholder')}
                         />
                     </div>
 
                     <div className="shared-library-filter-row">
-                        {(Object.keys(FILTER_LABELS) as SharedFilter[]).map((value) => (
+                        {(Object.keys(filterLabels) as SharedFilter[]).map((value) => (
                             <button
                                 key={value}
                                 type="button"
                                 className={`shared-library-filter ${filter === value ? 'active' : ''}`}
                                 onClick={() => setFilter(value)}
                             >
-                                {FILTER_LABELS[value]} ({filterCounts[value]})
+                                {filterLabels[value]} ({filterCounts[value]})
                             </button>
                         ))}
                     </div>
 
                     <div className="field" style={{ margin: 0 }}>
-                        <label className="label-sm">Sort</label>
+                        <label className="label-sm">{t('shared.sort')}</label>
                         <select
                             className="input"
                             value={sort}
                             onChange={(event) => setSort(event.target.value as SharedSort)}
                         >
-                            {SORT_LABELS.map((option) => (
+                            {sortLabels.map((option) => (
                                 <option key={option.value} value={option.value}>
                                     {option.label}
                                 </option>
@@ -215,15 +215,13 @@ export default function SharedLibraryPanel({
                 </div>
 
                 {sharedSteps.length === 0 ? (
-                    <div className="shared-library-empty">The library is empty. Create the first shared step and reuse it across cases.</div>
+                    <div className="shared-library-empty">{t('shared.emptyLibrary')}</div>
                 ) : filteredEntries.length === 0 ? (
-                    <div className="shared-library-empty">
-                        No shared steps match the current search and filters.
-                    </div>
+                    <div className="shared-library-empty">{t('shared.emptyFiltered')}</div>
                 ) : (
                     <>
                         <div className="shared-library-result-copy">
-                            Showing {filteredEntries.length} of {sharedSteps.length}
+                            {t('shared.showing', { visible: filteredEntries.length, total: sharedSteps.length })}
                         </div>
                         <div className="shared-library-list">
                             {filteredEntries.map((entry) => (
@@ -235,9 +233,9 @@ export default function SharedLibraryPanel({
                                 >
                                     <div className="shared-library-item-title">{entry.shared.name}</div>
                                     <div className="shared-library-item-meta">
-                                        <span>{entry.shared.steps.length} steps</span>
-                                        <span>{entry.usageCount} usages</span>
-                                        {entry.brokenRefCount > 0 && <span>{entry.brokenRefCount} broken</span>}
+                                        <span>{t('shared.stepsCount', { count: entry.shared.steps.length })}</span>
+                                        <span>{t('shared.usagesCount', { count: entry.usageCount })}</span>
+                                        {entry.brokenRefCount > 0 && <span>{t('shared.brokenRefs', { count: entry.brokenRefCount })}</span>}
                                     </div>
                                     {entry.preview ? <div className="shared-library-item-preview">{entry.preview}</div> : null}
                                 </button>
@@ -249,43 +247,43 @@ export default function SharedLibraryPanel({
 
             <div className="shared-library-main">
                 {!selectedEntry ? (
-                    <div className="shared-library-empty main">Select a shared step to edit it.</div>
+                    <div className="shared-library-empty main">{t('shared.selectToEdit')}</div>
                 ) : (
                     <>
                         <div className="shared-library-toolbar">
                             <div className="field" style={{ margin: 0, flex: 1 }}>
-                                <label className="label-sm">Shared step name</label>
+                                <label className="label-sm">{t('shared.name')}</label>
                                 <input
                                     className="input"
                                     value={selectedEntry.shared.name}
                                     onChange={(e) => onUpdateShared(selectedEntry.shared.id, { name: e.target.value })}
-                                    placeholder="Shared step name"
+                                    placeholder={t('shared.namePlaceholder')}
                                 />
                             </div>
                             <div className="shared-library-actions">
                                 <button type="button" className="btn-small" onClick={() => onInsertShared(selectedEntry.shared.id)}>
-                                    Insert into case
+                                    {t('shared.insertIntoCase')}
                                 </button>
                                 <button type="button" className="btn-small" onClick={() => onDeleteShared(selectedEntry.shared.id)}>
-                                    Delete
+                                    {t('shared.delete')}
                                 </button>
                             </div>
                         </div>
 
                         <div className="shared-library-summary">
-                            <span className="shared-library-summary-chip">{selectedEntry.shared.steps.length} steps</span>
-                            <span className="shared-library-summary-chip">{selectedEntry.usageCount} usages</span>
+                            <span className="shared-library-summary-chip">{t('shared.stepsCount', { count: selectedEntry.shared.steps.length })}</span>
+                            <span className="shared-library-summary-chip">{t('shared.usagesCount', { count: selectedEntry.usageCount })}</span>
                             {selectedEntry.brokenRefCount > 0 ? (
-                                <span className="shared-library-summary-chip warning">{selectedEntry.brokenRefCount} broken refs</span>
+                                <span className="shared-library-summary-chip warning">{t('shared.brokenRefs', { count: selectedEntry.brokenRefCount })}</span>
                             ) : (
-                                <span className="shared-library-summary-chip ok">No broken refs</span>
+                                <span className="shared-library-summary-chip ok">{t('shared.noBrokenRefs')}</span>
                             )}
                         </div>
 
                         <div className="shared-library-usage-card">
-                            <div className="shared-library-usage-title">Usages and backlinks</div>
+                            <div className="shared-library-usage-title">{t('shared.usageTitle')}</div>
                             {usages.length === 0 ? (
-                                <div className="shared-library-usage-empty">This shared step is not used anywhere yet.</div>
+                                <div className="shared-library-usage-empty">{t('shared.usageEmpty')}</div>
                             ) : (
                                 <div className="shared-library-usage-list">
                                     {usages.map((usage) => (
@@ -295,7 +293,7 @@ export default function SharedLibraryPanel({
                                             className="shared-library-usage-item"
                                             onClick={() => onOpenUsage(usage)}
                                         >
-                                            <span className="shared-library-usage-kind">{usage.kind === 'usesShared' ? 'Uses shared' : 'Ref'}</span>
+                                            <span className="shared-library-usage-kind">{usage.kind === 'usesShared' ? t('shared.usageKindShared') : t('shared.usageKindRef')}</span>
                                             <span className="shared-library-usage-name">{usage.ownerName}</span>
                                             <span className="shared-library-usage-source">{usage.sourceLabel}</span>
                                         </button>

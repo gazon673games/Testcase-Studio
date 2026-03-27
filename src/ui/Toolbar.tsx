@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useUiPreferences } from './preferences'
 
 type Props = {
     selectionLabel: string
@@ -12,50 +13,63 @@ type Props = {
     onExport(): void
     onOpenSettings(): void
     onToggleSyncCenter(): void
+    onTogglePreviewMode?(): void
     syncCenterOpen: boolean
     canDelete?: boolean
     canExport?: boolean
+    canTogglePreview?: boolean
+    previewMode?: 'raw' | 'preview'
 }
 
 export function Toolbar(props: Props) {
+    const { t } = useUiPreferences()
     const publishMeta =
         props.publishCount === 0
-            ? 'Publish scope is empty'
+            ? t('toolbar.publishScopeEmpty')
             : props.publishCount === 1
-                ? `Publish scope: ${props.publishSelectionLabel}`
-                : `Publish scope: ${props.publishCount} cases`
+                ? t('toolbar.publishScopeLabel', { label: props.publishSelectionLabel })
+                : t('toolbar.publishScopeCount', { count: props.publishCount })
 
     return (
         <div style={toolbarStyle}>
             <div style={workspaceStyle}>
-                <div style={workspaceEyebrowStyle}>Editor</div>
+                <div style={workspaceEyebrowStyle}>{t('toolbar.editor')}</div>
                 <div style={workspaceTitleStyle} title={props.selectionLabel}>
                     {props.selectionLabel}
                 </div>
                 <div style={workspaceMetaStyle}>
-                    <span title={props.importDestinationLabel}>{`Import target: ${props.importDestinationLabel}`}</span>
+                    <span title={props.importDestinationLabel}>{t('toolbar.importTarget', { label: props.importDestinationLabel })}</span>
                     <span>{publishMeta}</span>
                 </div>
             </div>
 
             <div style={actionsStyle}>
-                <ToolbarCluster label="Local">
-                    <ToolbarButton onClick={props.onSave} tone="primary" title="Save (Ctrl+S)">
-                        Save
+                <ToolbarCluster label={t('toolbar.local')}>
+                    <ToolbarButton onClick={props.onSave} tone="primary" title={t('toolbar.saveTitle')}>
+                        {t('toolbar.save')}
                     </ToolbarButton>
-                    <ToolbarButton onClick={props.onAddTest}>New Case</ToolbarButton>
+                    {props.canTogglePreview ? (
+                        <ToolbarButton
+                            onClick={props.onTogglePreviewMode}
+                            tone={props.previewMode === 'preview' ? 'info' : 'quiet'}
+                            title={t('toolbar.previewTitle')}
+                        >
+                            {props.previewMode === 'preview' ? t('toolbar.raw') : t('toolbar.preview')}
+                        </ToolbarButton>
+                    ) : null}
+                    <ToolbarButton onClick={props.onAddTest}>{t('toolbar.newCase')}</ToolbarButton>
                     <ToolbarButton onClick={props.onAddFolder} tone="quiet">
-                        New Folder
+                        {t('toolbar.newFolder')}
                     </ToolbarButton>
                 </ToolbarCluster>
 
-                <ToolbarCluster label="Panels">
+                <ToolbarCluster label={t('toolbar.panels')}>
                     <ToolbarButton
                         onClick={props.onToggleSyncCenter}
                         tone={props.syncCenterOpen ? 'info' : 'quiet'}
-                        title="Open the separate sync workspace"
+                        title={t('toolbar.syncCenterTitle')}
                     >
-                        {props.syncCenterOpen ? 'Hide Sync' : 'Sync Center'}
+                        {props.syncCenterOpen ? t('toolbar.hideSync') : t('toolbar.syncCenter')}
                     </ToolbarButton>
                 </ToolbarCluster>
 
@@ -99,6 +113,7 @@ function ToolbarOverflowMenu({
     canExport?: boolean
     canDelete?: boolean
 }) {
+    const { t } = useUiPreferences()
     const [open, setOpen] = React.useState(false)
     const containerRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -135,29 +150,29 @@ function ToolbarOverflowMenu({
                 onClick={() => setOpen((current) => !current)}
                 aria-expanded={open}
                 aria-haspopup="menu"
-                title="More actions"
+                title={t('toolbar.moreTitle')}
             >
-                More
+                {t('toolbar.more')}
             </ToolbarButton>
 
             {open ? (
-                <div role="menu" aria-label="More actions" style={overflowMenuStyle}>
+                <div role="menu" aria-label={t('toolbar.moreMenu')} style={overflowMenuStyle}>
                     <OverflowItem
-                        label="Export JSON"
-                        hint="Download the current case as JSON"
+                        label={t('toolbar.exportJson')}
+                        hint={t('toolbar.exportJsonHint')}
                         disabled={!canExport}
                         onClick={() => closeAndRun(onExport)}
                     />
                     <OverflowItem
-                        label="Delete selection"
-                        hint="Remove the current case or folder"
+                        label={t('toolbar.deleteSelection')}
+                        hint={t('toolbar.deleteSelectionHint')}
                         disabled={!canDelete}
                         tone="danger"
                         onClick={() => closeAndRun(onDelete)}
                     />
                     <OverflowItem
-                        label="Settings"
-                        hint="Open integrations and app settings"
+                        label={t('toolbar.settings')}
+                        hint={t('toolbar.settingsHint')}
                         onClick={() => closeAndRun(onOpenSettings)}
                     />
                 </div>
@@ -229,8 +244,8 @@ const toolbarStyle: React.CSSProperties = {
     alignItems: 'center',
     gap: 16,
     padding: '10px 12px',
-    borderBottom: '1px solid #edf1f6',
-    background: '#ffffff',
+    borderBottom: '1px solid var(--border-soft)',
+    background: 'var(--bg-elevated)',
     flexWrap: 'wrap',
 }
 
@@ -246,13 +261,13 @@ const workspaceEyebrowStyle: React.CSSProperties = {
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '.05em',
-    color: '#6e7d93',
+    color: 'var(--text-dim)',
 }
 
 const workspaceTitleStyle: React.CSSProperties = {
     fontSize: 14,
     fontWeight: 700,
-    color: '#253950',
+    color: 'var(--text-strong)',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -263,7 +278,7 @@ const workspaceMetaStyle: React.CSSProperties = {
     flexWrap: 'wrap',
     gap: 10,
     fontSize: 12,
-    color: '#6b7a90',
+    color: 'var(--text-muted)',
 }
 
 const actionsStyle: React.CSSProperties = {
@@ -278,9 +293,9 @@ const clusterStyle: React.CSSProperties = {
     display: 'grid',
     gap: 5,
     padding: '7px 9px',
-    border: '1px solid #e9edf3',
+    border: '1px solid var(--border-soft)',
     borderRadius: 12,
-    background: '#fbfcff',
+    background: 'var(--bg-soft)',
 }
 
 const clusterLabelStyle: React.CSSProperties = {
@@ -288,7 +303,7 @@ const clusterLabelStyle: React.CSSProperties = {
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '.05em',
-    color: '#627086',
+    color: 'var(--text-muted)',
 }
 
 const clusterButtonsStyle: React.CSSProperties = {
@@ -310,16 +325,16 @@ const overflowMenuStyle: React.CSSProperties = {
     display: 'grid',
     gap: 4,
     padding: 8,
-    border: '1px solid #e5eaf1',
+    border: '1px solid var(--border)',
     borderRadius: 14,
-    background: '#ffffff',
-    boxShadow: '0 18px 46px rgba(18, 36, 58, 0.12)',
+    background: 'var(--bg-elevated)',
+    boxShadow: 'var(--shadow-soft)',
     zIndex: 20,
 }
 
 const overflowItemStyle: React.CSSProperties = {
     border: 'none',
-    background: '#fff',
+    background: 'var(--bg-elevated)',
     borderRadius: 10,
     padding: '9px 10px',
     display: 'grid',
@@ -328,19 +343,19 @@ const overflowItemStyle: React.CSSProperties = {
 }
 
 const overflowDangerItemStyle: React.CSSProperties = {
-    background: '#fff7f6',
+    background: 'var(--danger-bg)',
 }
 
 const overflowItemLabelStyle: React.CSSProperties = {
     fontSize: 13,
     fontWeight: 700,
-    color: '#24384f',
+    color: 'var(--text-strong)',
 }
 
 const overflowItemHintStyle: React.CSSProperties = {
     fontSize: 12,
     lineHeight: 1.4,
-    color: '#6a7890',
+    color: 'var(--text-muted)',
 }
 
 const toneStyles: Record<
@@ -348,33 +363,33 @@ const toneStyles: Record<
     { border: string; background: string; color: string; fontWeight: number }
 > = {
     neutral: {
-        border: '1px solid #d5dce6',
-        background: '#f8fafc',
-        color: '#24384f',
+        border: '1px solid var(--border)',
+        background: 'var(--bg-soft)',
+        color: 'var(--text-strong)',
         fontWeight: 500,
     },
     primary: {
-        border: '1px solid #9fc0f3',
-        background: '#e6f0ff',
-        color: '#174e9b',
+        border: '1px solid var(--accent-border)',
+        background: 'var(--accent-bg-strong)',
+        color: 'var(--accent-text)',
         fontWeight: 700,
     },
     info: {
-        border: '1px solid #bfd4f6',
-        background: '#edf4ff',
-        color: '#225ca8',
+        border: '1px solid var(--accent-border)',
+        background: 'var(--accent-bg)',
+        color: 'var(--accent-text)',
         fontWeight: 600,
     },
     danger: {
-        border: '1px solid #e4b0a5',
-        background: '#fff0ec',
-        color: '#9d3422',
+        border: '1px solid var(--danger-border)',
+        background: 'var(--danger-bg)',
+        color: 'var(--danger-text)',
         fontWeight: 700,
     },
     quiet: {
-        border: '1px solid #e1e7ef',
-        background: '#ffffff',
-        color: '#5d6f87',
+        border: '1px solid var(--border)',
+        background: 'var(--bg-elevated)',
+        color: 'var(--text)',
         fontWeight: 600,
     },
 }

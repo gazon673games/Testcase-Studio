@@ -16,9 +16,9 @@
     grid-template-columns: 1fr 2fr auto;
     gap: 8px;
     align-items: center;
-    border: 1px solid #eee;
+    border: 1px solid var(--border);
     border-radius: 10px;
-    background: #fff;
+    background: var(--bg-elevated);
     padding: 8px;
 }
 .param-remove {
@@ -36,4 +36,9 @@
 /* responsive */
 @media (max-width: 920px) {
     .param-row { grid-template-columns: 1fr 1fr auto; }
+}
+
+:root[data-theme='dark'] .param-row {
+    border-color: var(--border);
+    background: var(--bg-elevated);
 }

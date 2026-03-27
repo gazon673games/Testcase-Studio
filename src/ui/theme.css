@@ -1,0 +1,88 @@
+:root,
+:root[data-theme='light'] {
+    color-scheme: light;
+    --bg: #eef3f9;
+    --bg-elevated: #ffffff;
+    --bg-soft: #f8fafd;
+    --bg-muted: #f3f6fb;
+    --bg-overlay: rgba(15, 23, 42, 0.08);
+    --bg-overlay-strong: rgba(11, 23, 39, 0.42);
+    --border: #dbe4f0;
+    --border-strong: #c6d3e4;
+    --border-soft: #e8eef6;
+    --text: #21364e;
+    --text-strong: #13253a;
+    --text-muted: #61728a;
+    --text-dim: #7a899d;
+    --accent-bg: #edf4ff;
+    --accent-bg-strong: #dfeaff;
+    --accent-border: #bdd1f5;
+    --accent-text: #23539c;
+    --success-bg: #edf8ed;
+    --success-border: #cfe8cf;
+    --success-text: #2c6b39;
+    --warning-bg: #fff8e8;
+    --warning-border: #edd9b2;
+    --warning-text: #8b6408;
+    --danger-bg: #fff4f5;
+    --danger-border: #f1c6cb;
+    --danger-text: #8f2733;
+    --info-bg: #eef5ff;
+    --info-border: #c5dafc;
+    --info-text: #26477a;
+    --shadow-soft: 0 10px 30px rgba(18, 35, 58, 0.12);
+    --shadow-strong: 0 24px 60px rgba(15, 23, 42, 0.16);
+    --focus-ring: rgba(138, 180, 248, 0.25);
+}
+
+:root[data-theme='dark'] {
+    color-scheme: dark;
+    --bg: #0f1724;
+    --bg-elevated: #152234;
+    --bg-soft: #1a2a3f;
+    --bg-muted: #111d2d;
+    --bg-overlay: rgba(8, 14, 24, 0.52);
+    --bg-overlay-strong: rgba(2, 6, 15, 0.78);
+    --border: #2b3d55;
+    --border-strong: #38506e;
+    --border-soft: #203248;
+    --text: #dbe6f3;
+    --text-strong: #f4f8fd;
+    --text-muted: #9eb0c6;
+    --text-dim: #7f93ab;
+    --accent-bg: #1c3355;
+    --accent-bg-strong: #23406a;
+    --accent-border: #3b6298;
+    --accent-text: #b8d0ff;
+    --success-bg: #143225;
+    --success-border: #2f6247;
+    --success-text: #9ee2b3;
+    --warning-bg: #35290f;
+    --warning-border: #6f5820;
+    --warning-text: #f1d386;
+    --danger-bg: #351921;
+    --danger-border: #6e3442;
+    --danger-text: #f5b6c1;
+    --info-bg: #172b46;
+    --info-border: #355b8f;
+    --info-text: #b9d3ff;
+    --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.38);
+    --shadow-strong: 0 26px 72px rgba(0, 0, 0, 0.48);
+    --focus-ring: rgba(138, 180, 248, 0.35);
+}
+
+html,
+body,
+#root {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+}
+
+body {
+    margin: 0;
+}
+
+* {
+    scrollbar-color: var(--border-strong) transparent;
+}

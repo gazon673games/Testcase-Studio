@@ -1,6 +1,7 @@
 import * as React from 'react'
 import type { PreviewStepDiffEntry, PreviewStepDiffRow } from '@core/previewDiff'
 import './PreviewDialog.css'
+import { useUiPreferences } from './preferences'
 
 type ButtonTone = 'primary' | 'danger' | 'ghost' | 'soft'
 type BadgeTone = 'neutral' | 'ok' | 'info' | 'warn' | 'muted'
@@ -26,6 +27,7 @@ export function PreviewDialog({
     initialFocusRef,
     canDismiss = true,
 }: PreviewDialogProps) {
+    const { t } = useUiPreferences()
     const dialogRef = React.useRef<HTMLDivElement | null>(null)
     const titleId = React.useId()
     const subtitleId = React.useId()
@@ -119,7 +121,7 @@ export function PreviewDialog({
                         className="preview-dialog__close"
                         onClick={onClose}
                         disabled={!canDismiss}
-                        aria-label="Close dialog"
+                        aria-label={t('preview.closeDialog')}
                     >
                         x
                     </button>
@@ -334,6 +336,7 @@ export function PreviewDiffCard({
     leftSide?: DiffSide
     rightSide?: DiffSide
 }) {
+    const { t } = useUiPreferences()
     return (
         <div className="preview-dialog__diff-card">
             <div className="preview-dialog__diff-title">{title}</div>
@@ -356,10 +359,10 @@ export function PreviewDiffCard({
                             className="preview-dialog__step-row"
                             data-changed={row.changed ? 'true' : 'false'}
                         >
-                            <div className="preview-dialog__step-index">Step {row.index}</div>
+                            <div className="preview-dialog__step-index">{t('preview.step', { index: row.index })}</div>
                             <div className="preview-dialog__step-columns">
-                                <PreviewStepEntryCard entry={row[leftSide]} emptyLabel={`No ${leftLabel.toLowerCase()} step`} />
-                                <PreviewStepEntryCard entry={row[rightSide]} emptyLabel={`No ${rightLabel.toLowerCase()} step`} />
+                                <PreviewStepEntryCard entry={row[leftSide]} emptyLabel={t('preview.noSideStep', { label: leftLabel.toLowerCase() })} />
+                                <PreviewStepEntryCard entry={row[rightSide]} emptyLabel={t('preview.noSideStep', { label: rightLabel.toLowerCase() })} />
                             </div>
                         </div>
                     ))}
@@ -395,9 +398,12 @@ function PreviewStepEntryCard({
 }
 
 function PreviewStepField({ label, value }: { label: string; value: string }) {
+    const { t } = useUiPreferences()
+    const localizedLabel =
+        label === 'Action' ? t('preview.action') : label === 'Data' ? t('preview.data') : label === 'Expected' ? t('preview.expected') : label
     return (
         <div className="preview-dialog__step-field">
-            <div className="preview-dialog__step-field-label">{label}</div>
+            <div className="preview-dialog__step-field-label">{localizedLabel}</div>
             <div className="preview-dialog__step-field-value">{value}</div>
         </div>
     )

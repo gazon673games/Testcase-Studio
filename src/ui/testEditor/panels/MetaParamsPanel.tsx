@@ -1,38 +1,36 @@
-// src/ui/testEditor/panels/MetaParamsPanel.tsx
 import * as React from 'react'
 import type { TestMeta } from '@core/domain'
 import './MetaParamsPanel.css'
+import { useUiPreferences } from '../../preferences'
 
-type Props = { meta: TestMeta; onChange(m: TestMeta): void }
+type Props = { meta: TestMeta; onChange(meta: TestMeta): void }
+type DraftRow = { key: string; value: string }
 
-/** какие ключи считаем устаревшими "базовыми" и мигрируем в params */
 const LEGACY_KEYS: Array<keyof TestMeta> = ['status', 'priority', 'component']
 
 export function ParamsPanel({ meta, onChange }: Props) {
-    const m = meta ?? { tags: [] }
-    const committed: Record<string, any> = (m as any).params ?? {}
-
-    /** ───────────── MIGRATION (one-shot) ─────────────
-     * если остались legacy-поля (status/priority/component),
-     * переносим их в params и удаляем из корня meta.
-     */
+    const { t } = useUiPreferences()
+    const current = meta ?? { tags: [] }
+    const committed: Record<string, any> = (current as any).params ?? {}
     const didMigrateRef = React.useRef(false)
+    const [draftRows, setDraftRows] = React.useState<DraftRow[]>([])
+
     React.useEffect(() => {
         if (didMigrateRef.current) return
-        let need = false
+        let changed = false
         const nextParams: Record<string, string> = { ...committed }
-        const nextMeta: any = { ...m }
+        const nextMeta: any = { ...current }
 
-        for (const k of LEGACY_KEYS) {
-            const v = (m as any)[k]
-            if (v !== undefined && v !== null && v !== '') {
-                if (nextParams[String(k)] === undefined) nextParams[String(k)] = String(v)
-                delete nextMeta[k]
-                need = true
+        for (const key of LEGACY_KEYS) {
+            const value = (current as any)[key]
+            if (value !== undefined && value !== null && value !== '') {
+                if (nextParams[String(key)] === undefined) nextParams[String(key)] = String(value)
+                delete nextMeta[key]
+                changed = true
             }
         }
 
-        if (need) {
+        if (changed) {
             nextMeta.params = nextParams
             onChange(nextMeta as TestMeta)
         }
@@ -40,100 +38,92 @@ export function ParamsPanel({ meta, onChange }: Props) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    /* ───────── TAGS ───────── */
-    const setTags = (tags: string[]) => onChange({ ...(m as any), tags } as TestMeta)
+    function setTags(tags: string[]) {
+        onChange({ ...(current as any), tags } as TestMeta)
+    }
 
-    /* ───────── Параметры ───────── */
-    const updateExistingKey = (oldKey: string, newKey: string) => {
+    function updateExistingKey(oldKey: string, newKey: string) {
         const params = { ...committed }
-        const val = params[oldKey]
+        const value = params[oldKey]
         delete params[oldKey]
         const key = makeUniqueKey(newKey.trim(), new Set(Object.keys(params)))
-        params[key] = val
-        onChange({ ...(m as any), params } as TestMeta)
+        params[key] = value
+        onChange({ ...(current as any), params } as TestMeta)
     }
 
-    const updateExistingValue = (key: string, val: string) => {
-        const params = { ...committed, [key]: val }
-        onChange({ ...(m as any), params } as TestMeta)
+    function updateExistingValue(key: string, value: string) {
+        const params = { ...committed, [key]: value }
+        onChange({ ...(current as any), params } as TestMeta)
     }
 
-    const removeExisting = (key: string) => {
+    function removeExisting(key: string) {
         const params = { ...committed }
         delete params[key]
-        onChange({ ...(m as any), params } as TestMeta)
+        onChange({ ...(current as any), params } as TestMeta)
     }
 
-    /* ───────── Черновики новых параметров ───────── */
-    type Row = { key: string; value: string }
-    const [draftRows, setDraftRows] = React.useState<Row[]>([])
-
-    const addDraft = () => {
-        const base = 'param'
-        const existing = new Set([...Object.keys(committed), ...draftRows.map(r => r.key)])
-        const key = makeUniqueKey(base, existing)
-        setDraftRows(prev => [...prev, { key, value: '' }])
+    function addDraft() {
+        const existing = new Set([...Object.keys(committed), ...draftRows.map((row) => row.key)])
+        const key = makeUniqueKey('param', existing)
+        setDraftRows((rows) => [...rows, { key, value: '' }])
     }
 
-    const updateDraftKey = (i: number, key: string) => {
-        setDraftRows(prev => prev.map((r, idx) => (idx === i ? { ...r, key } : r)))
-    }
-    const updateDraftValue = (i: number, value: string) => {
-        setDraftRows(prev => prev.map((r, idx) => (idx === i ? { ...r, value } : r)))
-    }
-    const removeDraft = (i: number) => {
-        setDraftRows(prev => prev.filter((_, idx) => idx !== i))
+    function updateDraftKey(index: number, key: string) {
+        setDraftRows((rows) => rows.map((row, rowIndex) => (rowIndex === index ? { ...row, key } : row)))
     }
 
-    const createFromDrafts = () => {
+    function updateDraftValue(index: number, value: string) {
+        setDraftRows((rows) => rows.map((row, rowIndex) => (rowIndex === index ? { ...row, value } : row)))
+    }
+
+    function removeDraft(index: number) {
+        setDraftRows((rows) => rows.filter((_, rowIndex) => rowIndex !== index))
+    }
+
+    function createFromDrafts() {
         const params = { ...committed }
         const used = new Set(Object.keys(params))
         for (const { key, value } of draftRows) {
-            const k = makeUniqueKey(key.trim(), used)
-            if (!k) continue
-            used.add(k)
-            params[k] = value
+            const normalizedKey = makeUniqueKey(key.trim(), used)
+            if (!normalizedKey) continue
+            used.add(normalizedKey)
+            params[normalizedKey] = value
         }
-        onChange({ ...(m as any), params } as TestMeta)
+        onChange({ ...(current as any), params } as TestMeta)
         setDraftRows([])
     }
 
-    // ─────────────────────────────────────────────────────
-    // 🧩 Рендер
-    // ─────────────────────────────────────────────────────
     return (
         <div className="params-panel meta-card">
-            {/* TAGS */}
             <section className="params-section">
-                <label className="label-sm">Tags</label>
-                <TagsEditor value={m.tags ?? []} onChange={setTags} />
+                <label className="label-sm">{t('params.tags')}</label>
+                <TagsEditor value={current.tags ?? []} onChange={setTags} />
             </section>
 
-            {/* CUSTOM PARAMS (редактор) */}
             <section className="params-section">
                 <div className="params-head">
-                    <label className="label-sm">Parameters</label>
+                    <label className="label-sm">{t('params.parameters')}</label>
                 </div>
                 {Object.keys(committed).length === 0 ? (
-                    <div className="muted">No parameters yet.</div>
+                    <div className="muted">{t('params.noParameters')}</div>
                 ) : (
                     <div className="params-list">
-                        {Object.entries(committed).map(([k, v]) => (
-                            <div className="param-row" key={k}>
+                        {Object.entries(committed).map(([key, value]) => (
+                            <div className="param-row" key={key}>
                                 <input
                                     className="input"
-                                    value={k}
-                                    onChange={e => updateExistingKey(k, e.target.value)}
-                                    placeholder="Param name"
+                                    value={key}
+                                    onChange={(event) => updateExistingKey(key, event.target.value)}
+                                    placeholder={t('params.paramNamePlaceholder')}
                                 />
                                 <input
                                     className="input"
-                                    value={String(v ?? '')}
-                                    onChange={e => updateExistingValue(k, e.target.value)}
-                                    placeholder="Value"
+                                    value={String(value ?? '')}
+                                    onChange={(event) => updateExistingValue(key, event.target.value)}
+                                    placeholder={t('params.paramValuePlaceholder')}
                                 />
-                                <button className="btn-small param-remove" onClick={() => removeExisting(k)}>
-                                    ×
+                                <button type="button" className="btn-small param-remove" onClick={() => removeExisting(key)}>
+                                    x
                                 </button>
                             </div>
                         ))}
@@ -141,36 +131,39 @@ export function ParamsPanel({ meta, onChange }: Props) {
                 )}
             </section>
 
-            {/* ADD NEW PARAMS */}
             <section className="params-section">
                 <div className="params-head">
-                    <label className="label-sm">Add parameters</label>
-                    <button className="btn-small" onClick={addDraft}>+ Add param</button>
+                    <label className="label-sm">{t('params.addParameters')}</label>
+                    <button type="button" className="btn-small" onClick={addDraft}>
+                        {t('params.addParam')}
+                    </button>
                 </div>
-                {draftRows.length > 0 && (
+                {draftRows.length > 0 ? (
                     <div className="params-list">
-                        {draftRows.map((r, i) => (
-                            <div className="param-row" key={`${r.key}-${i}`}>
+                        {draftRows.map((row, index) => (
+                            <div className="param-row" key={`${row.key}-${index}`}>
                                 <input
                                     className="input"
-                                    value={r.key}
-                                    onChange={e => updateDraftKey(i, e.target.value)}
-                                    placeholder="Param name"
+                                    value={row.key}
+                                    onChange={(event) => updateDraftKey(index, event.target.value)}
+                                    placeholder={t('params.paramNamePlaceholder')}
                                 />
                                 <input
                                     className="input"
-                                    value={r.value}
-                                    onChange={e => updateDraftValue(i, e.target.value)}
-                                    placeholder="Value"
+                                    value={row.value}
+                                    onChange={(event) => updateDraftValue(index, event.target.value)}
+                                    placeholder={t('params.paramValuePlaceholder')}
                                 />
-                                <button className="btn-small param-remove" onClick={() => removeDraft(i)}>×</button>
+                                <button type="button" className="btn-small param-remove" onClick={() => removeDraft(index)}>
+                                    x
+                                </button>
                             </div>
                         ))}
                     </div>
-                )}
+                ) : null}
                 <div className="params-create-bar">
-                    <button className="btn-small" onClick={createFromDrafts} disabled={!draftRows.length}>
-                        Create
+                    <button type="button" className="btn-small" onClick={createFromDrafts} disabled={!draftRows.length}>
+                        {t('params.create')}
                     </button>
                 </div>
             </section>
@@ -178,48 +171,60 @@ export function ParamsPanel({ meta, onChange }: Props) {
     )
 }
 
-/* helpers */
 function makeUniqueKey(base: string, used: Set<string>): string {
     if (!base) return ''
     let key = base
-    let i = 1
-    while (used.has(key)) key = `${base}${i++}`
+    let index = 1
+    while (used.has(key)) key = `${base}${index++}`
     return key
 }
 
-/* tag editor */
-function TagsEditor({ value, onChange }: { value: string[]; onChange(v: string[]): void }) {
+function TagsEditor({ value, onChange }: { value: string[]; onChange(next: string[]): void }) {
+    const { t } = useUiPreferences()
     const [draft, setDraft] = React.useState('')
-    const add = (t: string) => {
-        const tag = t.trim()
+
+    function addTag(raw: string) {
+        const tag = raw.trim()
         if (!tag) return
-        if (value.includes(tag)) return setDraft('')
+        if (value.includes(tag)) {
+            setDraft('')
+            return
+        }
         onChange([...value, tag])
         setDraft('')
     }
-    const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault()
-            add(draft)
-        } else if (e.key === 'Backspace' && draft === '' && value.length) {
+
+    function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+        if (event.key === 'Enter' || event.key === ',') {
+            event.preventDefault()
+            addTag(draft)
+            return
+        }
+        if (event.key === 'Backspace' && draft === '' && value.length) {
             onChange(value.slice(0, -1))
         }
     }
-    const remove = (tag: string) => onChange(value.filter(t => t !== tag))
+
+    function removeTag(tag: string) {
+        onChange(value.filter((item) => item !== tag))
+    }
+
     return (
         <div className="tags-box">
-            {value.map(t => (
-                <span key={t} className="tag-chip">
-          {t}
-                    <button className="tag-x" onClick={() => remove(t)}>×</button>
-        </span>
+            {value.map((tag) => (
+                <span key={tag} className="tag-chip">
+                    {tag}
+                    <button type="button" className="tag-x" onClick={() => removeTag(tag)}>
+                        x
+                    </button>
+                </span>
             ))}
             <input
                 value={draft}
-                onChange={e => setDraft(e.target.value)}
-                onKeyDown={onKey}
-                onBlur={() => add(draft)}
-                placeholder="Add tag…"
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={handleKeyDown}
+                onBlur={() => addTag(draft)}
+                placeholder={t('params.addTagPlaceholder')}
                 className="input tag-input"
             />
         </div>

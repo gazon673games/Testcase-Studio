@@ -1,6 +1,7 @@
 import * as React from 'react'
 import type { ResolvedWikiRef } from '@core/refs'
 import './MarkdownEditor.css'
+import { useUiPreferences } from '../../preferences'
 
 export type RefPart = { id?: string; text?: string }
 export type RefStep = {
@@ -292,7 +293,8 @@ function trimText(src: string, limit = 60) {
 function makeOwnerSuggestions(
     allTests: RefTest[],
     sharedSteps: RefShared[],
-    query: string
+    query: string,
+    t: (key: string, params?: Record<string, string | number>) => string
 ): Array<{ label: string; insert: string }> {
     const lower = query.toLowerCase()
     const idQuery = lower.startsWith('id:') ? query.slice(3).trim().toLowerCase() : ''
@@ -305,7 +307,7 @@ function makeOwnerSuggestions(
             return test.name.toLowerCase().includes(lower)
         })
         .slice(0, 10)
-        .map((test) => ({ label: `Test: ${test.name}`, insert: `id:${test.id}#` }))
+        .map((test) => ({ label: t('markdown.testLabel', { name: test.name }), insert: `id:${test.id}#` }))
 
     const shared = sharedSteps
         .filter((item) => {
@@ -314,7 +316,7 @@ function makeOwnerSuggestions(
             return item.name.toLowerCase().includes(lower)
         })
         .slice(0, 10)
-        .map((item) => ({ label: `Shared: ${item.name}`, insert: `shared:${item.id}#` }))
+        .map((item) => ({ label: t('markdown.sharedLabel', { name: item.name }), insert: `shared:${item.id}#` }))
 
     return [...tests, ...shared]
 }
@@ -377,6 +379,7 @@ function makeStepSuggestions(
 }
 
 export function MarkdownEditor(props: MarkdownEditorProps) {
+    const { t } = useUiPreferences()
     const {
         value,
         onChange,
@@ -565,7 +568,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         const hashPos = query.indexOf('#')
         const items =
             hashPos === -1
-                ? makeOwnerSuggestions(allTests, sharedSteps, query.trim())
+                ? makeOwnerSuggestions(allTests, sharedSteps, query.trim(), t)
                 : makeStepSuggestions(query.slice(0, hashPos).trim(), query.slice(hashPos + 1).trim(), allTests, sharedSteps)
 
         setAcItems(items)
@@ -635,9 +638,9 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
             {typeof onTogglePreview === 'function' && (
                 <>
                     <div className="divider" />
-                    <button type="button" className="md-btn" title="Toggle preview" onClick={onTogglePreview}>
-                        Preview
-                    </button>
+                    <button type="button" className="md-btn" title={t('markdown.togglePreview')} onClick={onTogglePreview}>
+                        {t('markdown.togglePreview')}
+                </button>
                 </>
             )}
         </div>
@@ -713,14 +716,14 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                             onClick={() => {
                                 if (refInfo.ok) onOpenRef?.(refInfo)
                             }}
-                            title={refInfo.ok ? refInfo.preview : refInfo.brokenReason ?? 'Broken reference'}
+                            title={refInfo.ok ? refInfo.preview : refInfo.brokenReason ?? t('steps.brokenLink')}
                         >
                             {refInfo.ok ? trimText(refInfo.label, 44) : `Broken: ${trimText(refInfo.body, 32)}`}
                         </button>
                     ))}
                     {hoveredRef && (
                         <div className={`md-ref-preview ${hoveredRef.ok ? 'ok' : 'broken'}`}>
-                            <div className="md-ref-preview-title">{hoveredRef.ok ? hoveredRef.label : 'Broken reference'}</div>
+                            <div className="md-ref-preview-title">{hoveredRef.ok ? hoveredRef.label : t('steps.brokenLink')}</div>
                             <div className="md-ref-preview-body">
                                 {hoveredRef.ok ? hoveredRef.preview : hoveredRef.brokenReason ?? hoveredRef.raw}
                             </div>

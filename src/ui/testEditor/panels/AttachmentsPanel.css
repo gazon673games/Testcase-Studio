@@ -25,9 +25,9 @@
     align-items: center;
     gap: 8px;
     padding: 6px 10px;
-    border: 1px solid #eee;
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: #fff;
+    background: var(--bg-elevated);
 }
 .file-name {
     flex: 1;
@@ -37,11 +37,22 @@
 }
 .file-size {
     font-size: 12px;
-    color: #888;
+    color: var(--text-dim);
 }
 .remove-btn {
     width: 28px;
     height: 28px;
     line-height: 1;
     text-align: center;
+}
+
+:root[data-theme='dark'] .attachment-item {
+    border-color: var(--border);
+    background: var(--bg-elevated);
+}
+
+:root[data-theme='dark'] .file-name,
+:root[data-theme='dark'] .file-size,
+:root[data-theme='dark'] .attachments-panel .muted {
+    color: var(--text-muted);
 }

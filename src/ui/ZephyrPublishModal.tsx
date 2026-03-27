@@ -15,6 +15,7 @@ import {
     PreviewToolbar,
     PreviewToolbarGroup,
 } from './PreviewDialog'
+import { useUiPreferences } from './preferences'
 
 type PublishOutcome = ZephyrPublishResult & {
     snapshotPath: string
@@ -32,6 +33,7 @@ type Props = {
 type PublishStatusFilter = 'all' | ZephyrPublishPreviewItem['status']
 
 export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, onApply }: Props) {
+    const { t } = useUiPreferences()
     const loadButtonRef = React.useRef<HTMLButtonElement | null>(null)
     const itemRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
     const [loading, setLoading] = React.useState(false)
@@ -70,7 +72,7 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
         } catch (err) {
             setPreview(null)
             setPublishMap({})
-            setError(err instanceof Error ? err.message : 'Failed to build publish preview')
+            setError(err instanceof Error ? err.message : t('publish.previewError'))
         } finally {
             setLoading(false)
         }
@@ -90,7 +92,7 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
             })
             onClose()
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to publish to Zephyr')
+            setError(err instanceof Error ? err.message : t('publish.applyError'))
         } finally {
             setApplying(false)
         }
@@ -141,8 +143,8 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
     return (
         <PreviewDialog
             open={open}
-            title="Publish Local -> Zephyr"
-            subtitle={`Scope: ${selectionLabel}`}
+            title={t('publish.title')}
+            subtitle={t('publish.subtitle', { label: selectionLabel })}
             onClose={onClose}
             initialFocusRef={loadButtonRef}
             canDismiss={!loading && !applying}
@@ -150,17 +152,12 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
             <PreviewDialogSplit
                 sidebar={(
                     <div style={columnStyle}>
-                        <PreviewCard title="Dry-run">
-                            <PreviewHint>
-                                This preview compares local tests with current Zephyr state, then prepares a replace publish.
-                                A local snapshot is created before the first write, and a publish log is saved after the run.
-                            </PreviewHint>
+                        <PreviewCard title={t('publish.dryRun')}>
+                            <PreviewHint>{t('publish.dryRunHint')}</PreviewHint>
                         </PreviewCard>
 
-                        <PreviewCard title="Confirmation">
-                            <PreviewHint>
-                                Type <code>PUBLISH</code> to enable the mass replace action.
-                            </PreviewHint>
+                        <PreviewCard title={t('publish.confirmation')}>
+                            <PreviewHint>{t('publish.confirmationHint')}</PreviewHint>
                             <input
                                 className="preview-dialog__input"
                                 value={confirmText}
@@ -178,10 +175,10 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                                 onClick={handlePreview}
                                 disabled={loading || applying}
                             >
-                                {loading ? 'Loading preview...' : 'Load dry-run'}
+                                {loading ? t('publish.loadingPreview') : t('publish.loadDryRun')}
                             </PreviewButton>
                             <PreviewButton tone="ghost" onClick={onClose} disabled={loading || applying}>
-                                Close
+                                {t('publish.close')}
                             </PreviewButton>
                         </div>
                     </div>
@@ -189,49 +186,47 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                 content={(
                     <div style={columnStyle}>
                         {!preview ? (
-                            <PreviewEmptyState title="Preview">
-                                Load the dry-run first to review create, update and blocked items.
+                            <PreviewEmptyState title={t('publish.previewEmptyTitle')}>
+                                {t('publish.previewEmptyText')}
                             </PreviewEmptyState>
                         ) : (
                             <>
                                 <PreviewCard>
                                     <div className="preview-dialog__summary-row">
                                         <div>
-                                            <div className="preview-dialog__card-title">Publish preview</div>
+                                            <div className="preview-dialog__card-title">{t('publish.previewTitle')}</div>
                                             <div className="preview-dialog__subtitle">
-                                                {preview.summary.total} tests in scope, {selectedCount} selected to publish
+                                                {t('publish.scopeSummary', { total: preview.summary.total, selected: selectedCount })}
                                             </div>
                                         </div>
                                         <div className="preview-dialog__badge-row">
-                                            <PreviewBadge tone="ok">{preview.summary.create} create</PreviewBadge>
-                                            <PreviewBadge tone="info">{preview.summary.update} update</PreviewBadge>
-                                            <PreviewBadge tone="muted">{preview.summary.skip} skip</PreviewBadge>
-                                            <PreviewBadge tone="warn">{preview.summary.blocked} blocked</PreviewBadge>
+                                            <PreviewBadge tone="ok">{t('publish.create', { count: preview.summary.create })}</PreviewBadge>
+                                            <PreviewBadge tone="info">{t('publish.update', { count: preview.summary.update })}</PreviewBadge>
+                                            <PreviewBadge tone="muted">{t('publish.skip', { count: preview.summary.skip })}</PreviewBadge>
+                                            <PreviewBadge tone="warn">{t('publish.blocked', { count: preview.summary.blocked })}</PreviewBadge>
                                         </div>
                                     </div>
                                 </PreviewCard>
 
                                 {blockedItems.length > 0 ? (
-                                    <PreviewCard title="Blocked items to review first">
+                                    <PreviewCard title={t('publish.blockedTitle')}>
                                         <PreviewToolbar>
                                             <PreviewToolbarGroup>
-                                                <PreviewHint>
-                                                    {blockedItems.length} items cannot be published until their blockers are resolved.
-                                                </PreviewHint>
+                                                <PreviewHint>{t('publish.blockedHint')}</PreviewHint>
                                             </PreviewToolbarGroup>
                                             <PreviewToolbarGroup align="end">
                                                 <PreviewButton
                                                     tone="soft"
                                                     onClick={() => handleStatusFilterChange('blocked')}
                                                 >
-                                                    Only blocked
+                                                    {t('publish.onlyBlocked')}
                                                 </PreviewButton>
                                                 <PreviewButton
                                                     tone="ghost"
                                                     onClick={() => scrollToItem(firstBlockedId)}
                                                     disabled={!firstBlockedId}
                                                 >
-                                                    Jump to first blocked
+                                                    {t('publish.jumpFirstBlocked')}
                                                 </PreviewButton>
                                             </PreviewToolbarGroup>
                                         </PreviewToolbar>
@@ -248,44 +243,44 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                                                 </button>
                                             ))}
                                             {blockedItems.length > 4 ? (
-                                                <PreviewHint>+ {blockedItems.length - 4} more blocked items in this preview</PreviewHint>
+                                                <PreviewHint>{t('publish.moreBlocked', { count: blockedItems.length - 4 })}</PreviewHint>
                                             ) : null}
                                         </div>
                                     </PreviewCard>
                                 ) : null}
 
-                                <PreviewCard title="Review filters">
+                                <PreviewCard title={t('publish.reviewFilters')}>
                                     <PreviewToolbar>
                                         <PreviewToolbarGroup>
                                             <PreviewFilterChip
                                                 active={statusFilter === 'all'}
                                                 onClick={() => handleStatusFilterChange('all')}
                                             >
-                                                All {preview.summary.total}
+                                                {t('publish.filter.all', { count: preview.summary.total })}
                                             </PreviewFilterChip>
                                             <PreviewFilterChip
                                                 active={statusFilter === 'create'}
                                                 onClick={() => handleStatusFilterChange('create')}
                                             >
-                                                Create {preview.summary.create}
+                                                {t('publish.filter.create', { count: preview.summary.create })}
                                             </PreviewFilterChip>
                                             <PreviewFilterChip
                                                 active={statusFilter === 'update'}
                                                 onClick={() => handleStatusFilterChange('update')}
                                             >
-                                                Update {preview.summary.update}
+                                                {t('publish.filter.update', { count: preview.summary.update })}
                                             </PreviewFilterChip>
                                             <PreviewFilterChip
                                                 active={statusFilter === 'blocked'}
                                                 onClick={() => handleStatusFilterChange('blocked')}
                                             >
-                                                Blocked {preview.summary.blocked}
+                                                {t('publish.filter.blocked', { count: preview.summary.blocked })}
                                             </PreviewFilterChip>
                                             <PreviewFilterChip
                                                 active={statusFilter === 'skip'}
                                                 onClick={() => handleStatusFilterChange('skip')}
                                             >
-                                                Skip {preview.summary.skip}
+                                                {t('publish.filter.skip', { count: preview.summary.skip })}
                                             </PreviewFilterChip>
                                         </PreviewToolbarGroup>
                                         <PreviewToolbarGroup align="end">
@@ -295,7 +290,7 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                                                     checked={selectedOnly}
                                                     onChange={(event) => setSelectedOnly(event.target.checked)}
                                                 />
-                                                Selected only
+                                                {t('publish.selectedOnly')}
                                             </label>
                                             <label className="preview-dialog__toggle">
                                                 <input
@@ -303,10 +298,10 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                                                     checked={showSkipped}
                                                     onChange={(event) => handleShowSkippedChange(event.target.checked)}
                                                 />
-                                                Show skipped
+                                                {t('publish.showSkipped')}
                                             </label>
                                             {hiddenCount > 0 ? (
-                                                <PreviewBadge tone="muted">{hiddenCount} hidden</PreviewBadge>
+                                                <PreviewBadge tone="muted">{t('publish.hidden', { count: hiddenCount })}</PreviewBadge>
                                             ) : null}
                                         </PreviewToolbarGroup>
                                     </PreviewToolbar>
@@ -315,15 +310,15 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                                 {hiddenSkippedCount > 0 && !showSkipped && statusFilter !== 'skip' ? (
                                     <PreviewCard className="preview-dialog__collapsed-note">
                                         <PreviewHint>
-                                            {hiddenSkippedCount} skipped items are collapsed to keep the publish review focused.
+                                            {t('publish.collapsedSkipped', { count: hiddenSkippedCount })}
                                         </PreviewHint>
                                     </PreviewCard>
                                 ) : null}
 
                                 <div style={listStyle}>
                                     {visibleItems.length === 0 ? (
-                                        <PreviewEmptyState title="No items match the current filters">
-                                            Adjust the filters to continue reviewing this publish batch.
+                                        <PreviewEmptyState title={t('publish.emptyFilters')}>
+                                            {t('publish.emptyFiltersText')}
                                         </PreviewEmptyState>
                                     ) : (
                                         visibleItems.map((item) => (
@@ -342,9 +337,9 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
 
                                 <PreviewStickyBar>
                                     <div className="preview-dialog__sticky-summary">
-                                        <span>{visibleItems.length} shown</span>
-                                        <PreviewBadge tone="info">{selectedCount} selected</PreviewBadge>
-                                        {hiddenCount > 0 ? <PreviewBadge tone="muted">{hiddenCount} hidden</PreviewBadge> : null}
+                                        <span>{t('publish.shown', { count: visibleItems.length })}</span>
+                                        <PreviewBadge tone="info">{t('publish.selected', { count: selectedCount })}</PreviewBadge>
+                                        {hiddenCount > 0 ? <PreviewBadge tone="muted">{t('publish.hidden', { count: hiddenCount })}</PreviewBadge> : null}
                                     </div>
                                     <div className="preview-dialog__button-row">
                                         <PreviewButton
@@ -356,10 +351,10 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                                             }}
                                             disabled={loading || applying}
                                         >
-                                            Reset filters
+                                            {t('publish.resetFilters')}
                                         </PreviewButton>
                                         <PreviewButton tone="danger" disabled={!canApply} onClick={handleApply}>
-                                            {applying ? 'Publishing...' : 'Publish to Zephyr'}
+                                            {applying ? t('publish.running') : t('publish.run')}
                                         </PreviewButton>
                                     </div>
                                 </PreviewStickyBar>
@@ -384,6 +379,7 @@ function PublishItemCard({
     onToggle(value: boolean): void
     containerRef?: (node: HTMLDivElement | null) => void
 }) {
+    const { t } = useUiPreferences()
     const tone =
         item.status === 'create'
             ? 'ok'
@@ -400,12 +396,12 @@ function PublishItemCard({
                     <div style={{ minWidth: 0 }}>
                         <div className="preview-dialog__card-title">{item.testName}</div>
                         <div className="preview-dialog__subtitle">
-                            <span>{item.externalId ?? 'New test case'}</span>
+                            <span>{item.externalId ?? t('publish.newCase')}</span>
                             {item.projectKey ? ` / ${item.projectKey}` : ''}
                             {item.folder ? ` / ${item.folder}` : ''}
                         </div>
                     </div>
-                    <PreviewBadge tone={tone}>{item.status}</PreviewBadge>
+                    <PreviewBadge tone={tone}>{t(`publish.status.${item.status}`)}</PreviewBadge>
                 </div>
 
                 <PreviewHint>{item.reason}</PreviewHint>
@@ -417,7 +413,7 @@ function PublishItemCard({
                         disabled={item.status === 'blocked' || item.status === 'skip'}
                         onChange={(event) => onToggle(event.target.checked)}
                     />
-                    Include in publish run
+                    {t('publish.include')}
                 </label>
 
                 {item.attachmentWarnings.length > 0 ? (
@@ -434,8 +430,8 @@ function PublishItemCard({
                             <PreviewDiffCard
                                 key={`${item.id}:${diff.field}`}
                                 title={diff.label}
-                                leftLabel="Remote"
-                                rightLabel="Local publish"
+                                leftLabel={t('preview.remote')}
+                                rightLabel={t('preview.localPublish')}
                                 leftText={diff.remote}
                                 rightText={diff.local}
                                 stepRows={diff.stepRows}
@@ -466,5 +462,5 @@ const checkboxLabelStyle: React.CSSProperties = {
     alignItems: 'center',
     gap: 8,
     fontSize: 13,
-    color: '#40506a',
+    color: 'var(--text-muted)',
 }
