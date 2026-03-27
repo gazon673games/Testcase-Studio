@@ -163,7 +163,6 @@ function AppShell() {
             importDestinationLabel={importDestination.label}
             publishSelectionLabel={publishSelection.label}
             publishCount={publishSelection.tests.length}
-            sharedStepsCount={app.state.sharedSteps.length}
             onOpenImport={() => setImportOpen(true)}
             onOpenPublish={() => setPublishOpen(true)}
             onAddFolder={app.addFolder}
@@ -201,16 +200,6 @@ function AppShell() {
                 canSyncAll={canSyncAll}
                 canExport={canExport}
             />
-
-            {selectionSummary.kind !== 'test' && (
-                <ScopeStrip
-                    selectionLabel={selectionSummary.pathLabel}
-                    selectionKind={selectionSummary.kind}
-                    importDestinationLabel={importDestination.label}
-                    publishSelectionLabel={publishSelection.label}
-                    publishCount={publishSelection.tests.length}
-                />
-            )}
 
             <div
                 style={{
@@ -263,124 +252,11 @@ function App() {
     )
 }
 
-function ScopeStrip({
-    selectionLabel,
-    selectionKind,
-    importDestinationLabel,
-    publishSelectionLabel,
-    publishCount,
-}: {
-    selectionLabel: string
-    selectionKind: SelectionSummary['kind']
-    importDestinationLabel: string
-    publishSelectionLabel: string
-    publishCount: number
-}) {
-    return (
-        <div
-            style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                gap: 10,
-                padding: '10px 12px',
-                borderBottom: '1px solid #edf1f6',
-                background: '#fcfdff',
-            }}
-        >
-            <ScopeCard
-                label="Selected"
-                value={selectionLabel}
-                hint={selectionKind === 'test' ? 'Editing one testcase' : 'Current workspace scope'}
-                tone="neutral"
-            />
-            <ScopeCard
-                label="Import destination"
-                value={importDestinationLabel}
-                hint="Zephyr import writes into this local folder"
-                tone="info"
-            />
-            <ScopeCard
-                label="Publish scope"
-                value={publishSelectionLabel}
-                hint={
-                    publishCount === 0
-                        ? 'Nothing will be published from this scope yet'
-                        : publishCount === 1
-                            ? 'One testcase will be compared'
-                            : `${publishCount} tests will be compared`
-                }
-                tone={publishCount === 0 ? 'neutral' : publishCount > 1 ? 'warn' : 'danger'}
-            />
-        </div>
-    )
-}
-
-function ScopeCard({
-    label,
-    value,
-    hint,
-    tone,
-}: {
-    label: string
-    value: string
-    hint: string
-    tone: 'neutral' | 'info' | 'warn' | 'danger'
-}) {
-    const accents =
-        tone === 'info'
-            ? { border: '#cfe0ff', background: '#f4f8ff', label: '#2d5fa9' }
-            : tone === 'warn'
-                ? { border: '#edd9b2', background: '#fffaf0', label: '#8b6408' }
-                : tone === 'danger'
-                    ? { border: '#e8c7c0', background: '#fff6f3', label: '#944332' }
-                    : { border: '#e5eaf1', background: '#ffffff', label: '#5c6b80' }
-
-    return (
-        <div
-            style={{
-                minWidth: 0,
-                border: `1px solid ${accents.border}`,
-                background: accents.background,
-                borderRadius: 14,
-                padding: '12px 14px',
-                display: 'grid',
-                gap: 4,
-            }}
-        >
-            <div
-                style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '.05em',
-                    color: accents.label,
-                }}
-            >
-                {label}
-            </div>
-            <div
-                style={{
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: '#22384f',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                }}
-            >
-                {value}
-            </div>
-            <div style={{ fontSize: 12, lineHeight: 1.4, color: '#6d7b90' }}>{hint}</div>
-        </div>
-    )
-}
-
 function ScopeOverviewPanel({
     summary,
     importDestinationLabel,
     publishSelectionLabel,
     publishCount,
-    sharedStepsCount,
     onOpenImport,
     onOpenPublish,
     onAddFolder,
@@ -390,7 +266,6 @@ function ScopeOverviewPanel({
     importDestinationLabel: string
     publishSelectionLabel: string
     publishCount: number
-    sharedStepsCount: number
     onOpenImport(): void
     onOpenPublish(): void
     onAddFolder(): void
@@ -399,27 +274,27 @@ function ScopeOverviewPanel({
     return (
         <div
             style={{
-                padding: 24,
+                padding: 20,
                 display: 'grid',
-                gap: 18,
-                maxWidth: 980,
+                gap: 16,
+                maxWidth: 920,
             }}
         >
             <div
                 style={{
                     display: 'grid',
-                    gap: 8,
-                    padding: 22,
-                    borderRadius: 22,
+                    gap: 6,
+                    padding: 18,
+                    borderRadius: 18,
                     border: '1px solid #e3e8f0',
-                    background: 'linear-gradient(180deg, #ffffff 0%, #f7f9fd 100%)',
+                    background: '#ffffff',
                 }}
             >
                 <div style={eyebrowStyle}>
                     {summary.kind === 'root' ? 'Workspace overview' : summary.kind === 'folder' ? 'Folder overview' : 'Selection overview'}
                 </div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: '#20354f' }}>{summary.title}</div>
-                <div style={{ color: '#5f6e84', fontSize: 14, lineHeight: 1.55 }}>{summary.subtitle}</div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: '#20354f' }}>{summary.title}</div>
+                <div style={{ color: '#5f6e84', fontSize: 14, lineHeight: 1.5 }}>{summary.subtitle}</div>
                 <div style={{ color: '#6f7d93', fontSize: 13 }}>
                     Path: <code>{summary.pathLabel}</code>
                 </div>
@@ -435,7 +310,6 @@ function ScopeOverviewPanel({
                 <OverviewStat label="Folders in scope" value={String(summary.folderCount)} hint="Nested local folders" />
                 <OverviewStat label="Tests in scope" value={String(summary.testCount)} hint="Will participate in batch publish" />
                 <OverviewStat label="Direct children" value={String(summary.directChildrenCount)} hint="Immediate items in current node" />
-                <OverviewStat label="Shared steps" value={String(sharedStepsCount)} hint="Reusable library entries" />
             </div>
 
             <div

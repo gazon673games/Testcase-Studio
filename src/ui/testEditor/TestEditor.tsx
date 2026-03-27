@@ -164,10 +164,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         <div className="test-editor">
             <div className="editor-hero">
                 <div className="editor-hero-bar">
-                    <div className="editor-hero-copy-block">
-                        <div className="editor-hero-copy">Test Case</div>
-                        <div className="editor-hero-caption">Keep the testcase itself in focus. Shared steps, metadata and provider links stay below.</div>
-                    </div>
+                    <div className="editor-hero-copy">Test Case</div>
                     <div className="editor-summary-row editor-summary-row--compact">
                         {summaryItems.map((item) => (
                             <span key={item} className="editor-summary-chip">
@@ -298,9 +295,6 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
             />
             {showLinks && (
                 <div className="meta-card editor-links-card">
-                    <div className="editor-links-copy">
-                        Provider IDs live here so they stay available, but they do not compete with the test content for attention.
-                    </div>
                     <div className="editor-links-grid">
                         <div className="field" style={{ margin: 0 }}>
                             <label className="label-sm">Zephyr key</label>

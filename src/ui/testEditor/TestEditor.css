@@ -7,24 +7,19 @@
 
 .editor-hero {
     display: grid;
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 12px;
-    padding: 14px 16px;
-    border: 1px solid #e3e9f3;
-    border-radius: 14px;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    padding: 12px 14px;
+    border: 1px solid #e6ebf2;
+    border-radius: 12px;
+    background: #ffffff;
 }
 .editor-hero-bar {
     display: flex;
-    align-items: start;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
     flex-wrap: wrap;
-}
-.editor-hero-copy-block {
-    display: grid;
-    gap: 4px;
-    min-width: 220px;
 }
 .editor-hero-copy {
     font-size: 11px;
@@ -33,17 +28,12 @@
     text-transform: uppercase;
     color: #71819a;
 }
-.editor-hero-caption {
-    color: #63728a;
-    font-size: 13px;
-    line-height: 1.45;
-}
 .editor-name-field { margin: 0; }
 .editor-name-input {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
-    padding-top: 12px;
-    padding-bottom: 12px;
+    padding-top: 11px;
+    padding-bottom: 11px;
 }
 .editor-summary-row {
     display: flex;
@@ -52,28 +42,22 @@
 }
 .editor-summary-row--compact {
     justify-content: flex-end;
-    align-self: start;
 }
 .editor-summary-chip {
     display: inline-flex;
     align-items: center;
-    min-height: 24px;
-    padding: 0 9px;
+    min-height: 22px;
+    padding: 0 8px;
     border-radius: 999px;
-    border: 1px solid #dae5f7;
-    background: #f3f7ff;
-    color: #53627e;
+    border: 1px solid #e2e8f2;
+    background: #f8fafc;
+    color: #5e6b80;
     font-size: 12px;
     font-weight: 600;
 }
 .editor-links-card {
     display: grid;
-    gap: 12px;
-}
-.editor-links-copy {
-    color: #627189;
-    line-height: 1.5;
-    font-size: 13px;
+    gap: 10px;
 }
 .editor-links-grid {
     display: grid;
