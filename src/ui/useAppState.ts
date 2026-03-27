@@ -122,7 +122,7 @@ export function useAppState() {
 
     async function addTestAt(parentId: ID) {
         if (!state) return
-        const test = mkTest('New Test', '')
+        const test = mkTest('New Case', '')
         const first = mkStep('Step 1', '', '')
         test.steps.push(first)
 

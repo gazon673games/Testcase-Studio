@@ -9,36 +9,31 @@ type Props = {
     onAddTest(): void
     onDelete(): void
     onSave(): void
-    onImport(): void
-    onPull(): void
-    onPublish(): void
-    onSyncAll(): void
     onExport(): void
     onOpenSettings(): void
+    onToggleSyncCenter(): void
+    syncCenterOpen: boolean
     canDelete?: boolean
-    canPull?: boolean
-    canPublish?: boolean
-    canSyncAll?: boolean
     canExport?: boolean
 }
 
 export function Toolbar(props: Props) {
     const publishMeta =
         props.publishCount === 0
-            ? 'Publish -> empty scope'
+            ? 'Publish scope is empty'
             : props.publishCount === 1
-                ? `Publish -> ${props.publishSelectionLabel}`
-                : `Publish -> ${props.publishCount} tests`
+                ? `Publish scope: ${props.publishSelectionLabel}`
+                : `Publish scope: ${props.publishCount} cases`
 
     return (
         <div style={toolbarStyle}>
             <div style={workspaceStyle}>
-                <div style={workspaceEyebrowStyle}>Workspace</div>
+                <div style={workspaceEyebrowStyle}>Editor</div>
                 <div style={workspaceTitleStyle} title={props.selectionLabel}>
                     {props.selectionLabel}
                 </div>
                 <div style={workspaceMetaStyle}>
-                    <span title={props.importDestinationLabel}>{`Import -> ${props.importDestinationLabel}`}</span>
+                    <span title={props.importDestinationLabel}>{`Import target: ${props.importDestinationLabel}`}</span>
                     <span>{publishMeta}</span>
                 </div>
             </div>
@@ -48,34 +43,26 @@ export function Toolbar(props: Props) {
                     <ToolbarButton onClick={props.onSave} tone="primary" title="Save (Ctrl+S)">
                         Save
                     </ToolbarButton>
-                    <ToolbarButton onClick={props.onAddTest}>New Test</ToolbarButton>
+                    <ToolbarButton onClick={props.onAddTest}>New Case</ToolbarButton>
                     <ToolbarButton onClick={props.onAddFolder} tone="quiet">
-                        Folder
+                        New Folder
                     </ToolbarButton>
                 </ToolbarCluster>
 
-                <ToolbarCluster label="Sync">
-                    <ToolbarButton onClick={props.onImport} tone="info" title="Import from Zephyr into local">
-                        Import...
-                    </ToolbarButton>
+                <ToolbarCluster label="Panels">
                     <ToolbarButton
-                        onClick={props.onPublish}
-                        tone="danger"
-                        title={`Preview and publish local changes to Zephyr for ${props.publishSelectionLabel}`}
-                        disabled={!props.canPublish}
+                        onClick={props.onToggleSyncCenter}
+                        tone={props.syncCenterOpen ? 'info' : 'quiet'}
+                        title="Open the separate sync workspace"
                     >
-                        Publish...
+                        {props.syncCenterOpen ? 'Hide Sync' : 'Sync Center'}
                     </ToolbarButton>
                 </ToolbarCluster>
 
                 <ToolbarOverflowMenu
-                    onPull={props.onPull}
-                    onSyncAll={props.onSyncAll}
                     onExport={props.onExport}
                     onDelete={props.onDelete}
                     onOpenSettings={props.onOpenSettings}
-                    canPull={props.canPull}
-                    canSyncAll={props.canSyncAll}
                     canExport={props.canExport}
                     canDelete={props.canDelete}
                 />
@@ -100,23 +87,15 @@ function ToolbarCluster({
 }
 
 function ToolbarOverflowMenu({
-    onPull,
-    onSyncAll,
     onExport,
     onDelete,
     onOpenSettings,
-    canPull,
-    canSyncAll,
     canExport,
     canDelete,
 }: {
-    onPull(): void
-    onSyncAll(): void
     onExport(): void
     onDelete(): void
     onOpenSettings(): void
-    canPull?: boolean
-    canSyncAll?: boolean
     canExport?: boolean
     canDelete?: boolean
 }) {
@@ -164,26 +143,14 @@ function ToolbarOverflowMenu({
             {open ? (
                 <div role="menu" aria-label="More actions" style={overflowMenuStyle}>
                     <OverflowItem
-                        label="Pull latest"
-                        hint="Refresh the current linked test from Zephyr"
-                        disabled={!canPull}
-                        onClick={() => closeAndRun(onPull)}
-                    />
-                    <OverflowItem
-                        label="Quick sync"
-                        hint="Run the fast sync flow without preview"
-                        disabled={!canSyncAll}
-                        onClick={() => closeAndRun(onSyncAll)}
-                    />
-                    <OverflowItem
                         label="Export JSON"
-                        hint="Download the current test as JSON"
+                        hint="Download the current case as JSON"
                         disabled={!canExport}
                         onClick={() => closeAndRun(onExport)}
                     />
                     <OverflowItem
                         label="Delete selection"
-                        hint="Remove the current test or folder"
+                        hint="Remove the current case or folder"
                         disabled={!canDelete}
                         tone="danger"
                         onClick={() => closeAndRun(onDelete)}

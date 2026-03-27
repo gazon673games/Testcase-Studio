@@ -62,6 +62,12 @@ type StepRowProps = {
     onInsertText?: (text: string) => void | Promise<void>
 }
 
+type OverflowAction = {
+    label: string
+    onClick(): void
+    danger?: boolean
+}
+
 export default function StepsPanel({
     owner,
     steps,
@@ -299,12 +305,38 @@ export default function StepsPanel({
 const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(props, ref) {
     const { owner, index, step, preview, isNarrow, sharedById } = props
 
+    const getTopFieldValue = (kind: 'action' | 'data' | 'expected') =>
+        String(kind === 'action' ? step.action ?? step.text ?? '' : (step as any)[kind] ?? '').trim()
+
+    const countBlocksForKind = (kind: 'action' | 'data' | 'expected') => {
+        const parts = step.internal?.parts?.[kind] ?? []
+        if (!parts.length) return 0
+        return parts.length + (getTopFieldValue(kind) ? 1 : 0)
+    }
+
+    const normalActions: OverflowAction[] = [
+        ...(owner.type === 'test' && props.onCreateSharedFromStep
+            ? [{ label: 'Save as shared', onClick: () => void props.onCreateSharedFromStep?.(step) }]
+            : []),
+        { label: 'Clone step', onClick: props.onClone },
+        { label: 'Add step below', onClick: props.onAddNext },
+        { label: 'Remove step', onClick: props.onRemove, danger: true },
+    ]
+
     if (step.usesShared) {
         const shared = sharedById.get(step.usesShared)
         const previewLines = shared?.steps.slice(0, 3).map((item, itemIndex) => ({
             id: item.id,
             text: item.action || item.text || `Step ${itemIndex + 1}`,
         })) ?? []
+        const sharedActions: OverflowAction[] = [
+            ...(shared && props.onOpenShared
+                ? [{ label: 'Open shared', onClick: () => props.onOpenShared?.(shared.id) }]
+                : []),
+            { label: 'Clone step', onClick: props.onClone },
+            { label: 'Add step below', onClick: props.onAddNext },
+            { label: 'Remove step', onClick: props.onRemove, danger: true },
+        ]
 
         return (
             <div
@@ -333,14 +365,7 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                         </div>
                     </div>
                     <span className="spacer" />
-                    {shared && props.onOpenShared && (
-                        <button type="button" className="btn-small" onClick={() => props.onOpenShared?.(shared.id)}>
-                            Open shared
-                        </button>
-                    )}
-                    <button type="button" title="Clone step" onClick={props.onClone} className="btn-small">Clone</button>
-                    <button type="button" title="Add next step" onClick={props.onAddNext} className="btn-small">Next</button>
-                    <button type="button" title="Remove step" onClick={props.onRemove} className="btn-small">Remove</button>
+                    <StepOverflowMenu actions={sharedActions} />
                 </div>
 
                 <div className="shared-ref-body">
@@ -369,25 +394,25 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
     }
 
     const attachments = props.getStepAttachments()
-    const partCount =
-        (step.internal?.parts?.action?.length ?? 0) +
-        (step.internal?.parts?.data?.length ?? 0) +
-        (step.internal?.parts?.expected?.length ?? 0)
+    const blockCount =
+        countBlocksForKind('action') +
+        countBlocksForKind('data') +
+        countBlocksForKind('expected')
 
     const insertLink = (kind: 'action' | 'data' | 'expected', partId?: string) => {
         const refText = `[[${makeStepRef(owner.type, owner.id, step.id, kind, partId)}]]`
         void props.onInsertText?.(refText)
     }
 
-    const PartAddButton = ({ kind }: { kind: 'action' | 'data' | 'expected' }) => (
+    const BlockAddButton = ({ kind }: { kind: 'action' | 'data' | 'expected' }) => (
         <div className="cell-actions">
             {props.onInsertText && (
                 <button type="button" className="btn-icon" title={`Insert ${kind} link`} onClick={() => insertLink(kind)}>
                     Link
                 </button>
             )}
-            <button type="button" title={`Add ${kind} part`} onClick={() => props.onAddPart(index, kind)} className="add-part-btn">
-                Add part
+            <button type="button" title={`Add ${kind} block`} onClick={() => props.onAddPart(index, kind)} className="add-part-btn">
+                Add block
             </button>
         </div>
     )
@@ -395,16 +420,17 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
     const renderCell = (kind: 'action' | 'data' | 'expected', label: string) => {
         const topValue = (step as any)[kind] ?? ''
         const parts = step.internal?.parts?.[kind] ?? []
+        const blockCount = parts.length + (String(topValue ?? '').trim() ? 1 : 0)
         const setTop = (nextValue: string) => props.onEditTop({ [kind]: nextValue, ...(kind === 'action' ? { text: nextValue } : {}) })
 
         return (
-            <div className="step-cell">
+            <div className={`step-cell step-cell--${kind}`}>
                 <div className="cell-head">
                     <div className="cell-head-main">
                         <div className="cell-title">{label}</div>
-                        {parts.length > 0 && <span className="cell-chip">{parts.length} parts</span>}
+                        {parts.length > 0 && <span className="cell-chip">{blockCount} blocks</span>}
                     </div>
-                    <PartAddButton kind={kind} />
+                    <BlockAddButton kind={kind} />
                 </div>
 
                 <MarkdownEditor
@@ -425,7 +451,7 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                         {parts.map((part, partIndex) => (
                             <PartItemRow
                                 key={part.id}
-                                label={`${label} part ${partIndex + 1}`}
+                                label={`${label} block ${partIndex + 1}`}
                                 value={part.text}
                                 preview={preview}
                                 allTests={props.allTests}
@@ -467,20 +493,13 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                 <div className="step-title-wrap">
                     <div className="step-title">Step {index + 1}</div>
                     <div className="step-meta">
-                        {partCount > 0 && <span className="step-chip">{partCount} parts</span>}
+                        {blockCount > 0 && <span className="step-chip">{blockCount} blocks</span>}
                         {attachments.length > 0 && <span className="step-chip">{attachments.length} files</span>}
                         {preview && <span className="step-chip step-chip-preview">Preview</span>}
                     </div>
                 </div>
                 <span className="spacer" />
-                {owner.type === 'test' && props.onCreateSharedFromStep && (
-                    <button type="button" className="btn-small" onClick={() => props.onCreateSharedFromStep?.(step)}>
-                        Save as shared
-                    </button>
-                )}
-                <button type="button" title="Clone step" onClick={props.onClone} className="btn-small">Clone</button>
-                <button type="button" title="Add next step" onClick={props.onAddNext} className="btn-small">Next</button>
-                <button type="button" title="Remove step" onClick={props.onRemove} className="btn-small">Remove</button>
+                <StepOverflowMenu actions={normalActions} />
             </div>
 
             <div className={`step-grid ${isNarrow ? 'stack' : ''}`}>
@@ -539,11 +558,11 @@ function PartItemRow({
         <div className="part-row">
             <div className="part-row-toolbar">
                 {onInsertLink && (
-                    <button type="button" className="btn-icon" title="Insert link to this part" onClick={onInsertLink}>
+                    <button type="button" className="btn-icon" title="Insert link to this block" onClick={onInsertLink}>
                         Link
                     </button>
                 )}
-                <button type="button" className="btn-icon" title="Remove part" onClick={onRemove}>
+                <button type="button" className="btn-icon" title="Remove block" onClick={onRemove}>
                     x
                 </button>
             </div>
@@ -560,6 +579,64 @@ function PartItemRow({
                 sharedSteps={sharedSteps}
                 onActivateApi={onActivateApi}
             />
+        </div>
+    )
+}
+
+function StepOverflowMenu({ actions }: { actions: OverflowAction[] }) {
+    const [open, setOpen] = React.useState(false)
+    const containerRef = React.useRef<HTMLDivElement | null>(null)
+
+    React.useEffect(() => {
+        if (!open) return
+
+        const onPointerDown = (event: MouseEvent) => {
+            const target = event.target as Node | null
+            if (target && containerRef.current?.contains(target)) return
+            setOpen(false)
+        }
+
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setOpen(false)
+        }
+
+        document.addEventListener('mousedown', onPointerDown)
+        window.addEventListener('keydown', onKeyDown)
+        return () => {
+            document.removeEventListener('mousedown', onPointerDown)
+            window.removeEventListener('keydown', onKeyDown)
+        }
+    }, [open])
+
+    return (
+        <div className="step-overflow" ref={containerRef}>
+            <button
+                type="button"
+                className="btn-small step-overflow-trigger"
+                aria-haspopup="menu"
+                aria-expanded={open}
+                onClick={() => setOpen((current) => !current)}
+            >
+                More
+            </button>
+            {open && (
+                <div className="step-overflow-menu" role="menu" aria-label="Step actions">
+                    {actions.map((action) => (
+                        <button
+                            key={action.label}
+                            type="button"
+                            role="menuitem"
+                            className={`step-overflow-item${action.danger ? ' danger' : ''}`}
+                            onClick={() => {
+                                setOpen(false)
+                                action.onClick()
+                            }}
+                        >
+                            {action.label}
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     )
 }

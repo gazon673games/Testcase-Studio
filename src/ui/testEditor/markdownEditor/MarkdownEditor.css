@@ -44,7 +44,7 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 
 .md-editor .md-textarea {
     width: 100%;
-    padding: 10px 12px;
+    padding: 8px 10px;
     font-size: 14px;
     line-height: 1.45;
     border-radius: 8px;
@@ -86,7 +86,7 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 .md-editor .md-preview {
     position: absolute;
     inset: 0;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border-radius: 8px;
     border: 1px solid #ddd;
     background: #fff;
@@ -122,7 +122,7 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     display: flex;
     gap: 4px;
     align-items: center;
-    margin: 6px 0;
+    margin: 4px 0;
 }
 
 /* кнопки тулбара */

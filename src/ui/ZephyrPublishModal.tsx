@@ -400,7 +400,7 @@ function PublishItemCard({
                     <div style={{ minWidth: 0 }}>
                         <div className="preview-dialog__card-title">{item.testName}</div>
                         <div className="preview-dialog__subtitle">
-                            <span>{item.externalId ?? 'New testcase'}</span>
+                            <span>{item.externalId ?? 'New test case'}</span>
                             {item.projectKey ? ` / ${item.projectKey}` : ''}
                             {item.folder ? ` / ${item.folder}` : ''}
                         </div>

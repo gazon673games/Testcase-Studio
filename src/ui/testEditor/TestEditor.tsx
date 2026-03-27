@@ -161,161 +161,177 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     React.useImperativeHandle(ref, () => ({ commit: () => {} }), [])
 
     return (
-        <div className="test-editor">
-            <div className="editor-hero">
-                <div className="editor-hero-bar">
-                    <div className="editor-hero-copy">Test Case</div>
-                    <div className="editor-summary-row editor-summary-row--compact">
-                        {summaryItems.map((item) => (
-                            <span key={item} className="editor-summary-chip">
-                                {item}
-                            </span>
-                        ))}
+        <div className={`test-editor-shell ${showSharedLibrary ? 'with-drawer' : ''}`}>
+            <div className="test-editor-main">
+                <div className="test-editor">
+                    <div className="editor-hero">
+                        <div className="editor-hero-bar">
+                            <div className="editor-hero-title-group">
+                                <div className="editor-hero-copy">Test case</div>
+                                <div className="editor-summary-row editor-summary-row--compact">
+                                    {summaryItems.map((item) => (
+                                        <span key={item} className="editor-summary-chip">
+                                            {item}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="editor-hero-actions">
+                                <button
+                                    type="button"
+                                    className={`btn-small editor-side-button ${showSharedLibrary ? 'active' : ''}`}
+                                    onClick={() => setShowSharedLibrary((current) => !current)}
+                                >
+                                    {showSharedLibrary ? 'Hide Library' : `Library (${sharedSteps.length})`}
+                                </button>
+                            </div>
+                        </div>
+                        <div className="field editor-name-field">
+                            <label className="label-sm">Name</label>
+                            <input
+                                value={test.name}
+                                onChange={(e) => onChange({ name: e.target.value })}
+                                className="input editor-name-input"
+                                placeholder="Enter test case name..."
+                            />
+                        </div>
                     </div>
-                </div>
-                <div className="field editor-name-field">
-                    <label className="label-sm">Name</label>
-                    <input
-                        value={test.name}
-                        onChange={(e) => onChange({ name: e.target.value })}
-                        className="input editor-name-input"
-                        placeholder="Enter test name..."
+
+                    <StepsPanel
+                        owner={{ type: 'test', id: test.id }}
+                        steps={test.steps}
+                        onChange={(next) => onChange({ steps: next })}
+                        allTests={allTests}
+                        sharedSteps={sharedSteps}
+                        resolveRefs={resolveRefs}
+                        inspectRefs={inspectRefs}
+                        onOpenRef={openResolvedRef}
+                        focusStepId={focusStepId}
+                        onApply={() => {}}
+                        onActivateEditorApi={setActiveEditorApi}
+                        onCreateSharedFromStep={handleCreateSharedFromStep}
+                        onOpenShared={handleOpenShared}
+                        onInsertText={insertIntoActiveEditor}
                     />
+
+                    <SectionHeader
+                        title="Details"
+                        open={showDetails}
+                        onToggle={() => setShowDetails((current) => !current)}
+                    />
+                    {showDetails && (
+                        <DetailsPanel
+                            description={test.description ?? ''}
+                            onChangeDescription={(value) => onChange({ description: value })}
+                            meta={(test.meta as TestMeta) ?? { tags: [] }}
+                            onChangeMeta={(nextMeta) => onChange({ meta: nextMeta })}
+                            allTests={allTests}
+                            sharedSteps={sharedSteps}
+                            resolveRefs={resolveRefs}
+                            inspectRefs={inspectRefs}
+                            onOpenRef={openResolvedRef}
+                            onActivateEditorApi={setActiveEditorApi}
+                        />
+                    )}
+
+                    <SectionHeader
+                        title="Parameters"
+                        open={showMeta}
+                        onToggle={() => setShowMeta((current) => !current)}
+                    />
+                    {showMeta && (
+                        <ParamsPanel
+                            meta={(test.meta as TestMeta) ?? { tags: [] }}
+                            onChange={(nextMeta) => onChange({ meta: nextMeta })}
+                        />
+                    )}
+
+                    <SectionHeader
+                        title="Attachments"
+                        open={showAttachments}
+                        count={test.attachments?.length ?? 0}
+                        onToggle={() => setShowAttachments((current) => !current)}
+                    />
+                    {showAttachments && (
+                        <AttachmentsPanel
+                            attachments={test.attachments ?? []}
+                            onChange={(next) => onChange({ attachments: next })}
+                        />
+                    )}
+
+                    <SectionHeader
+                        title="Integrations"
+                        open={showLinks}
+                        count={externalLinksCount}
+                        onToggle={() => setShowLinks((current) => !current)}
+                    />
+                    {showLinks && (
+                        <div className="meta-card editor-links-card">
+                            <div className="editor-links-grid">
+                                <div className="field" style={{ margin: 0 }}>
+                                    <label className="label-sm">Zephyr key</label>
+                                    <input
+                                        className="input"
+                                        value={zephyrLink}
+                                        onChange={(e) => upsertLink('zephyr', e.target.value)}
+                                        placeholder="Example: PROD-T6079 or 6079"
+                                    />
+                                </div>
+                                <div className="field" style={{ margin: 0 }}>
+                                    <label className="label-sm">Allure ID</label>
+                                    <input
+                                        className="input"
+                                        value={allureLink}
+                                        onChange={(e) => upsertLink('allure', e.target.value)}
+                                        placeholder="Example: 12345"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <StepsPanel
-                owner={{ type: 'test', id: test.id }}
-                steps={test.steps}
-                onChange={(next) => onChange({ steps: next })}
-                allTests={allTests}
-                sharedSteps={sharedSteps}
-                resolveRefs={resolveRefs}
-                inspectRefs={inspectRefs}
-                onOpenRef={openResolvedRef}
-                focusStepId={focusStepId}
-                onApply={() => {}}
-                onActivateEditorApi={setActiveEditorApi}
-                onCreateSharedFromStep={handleCreateSharedFromStep}
-                onOpenShared={handleOpenShared}
-                onInsertText={insertIntoActiveEditor}
-            />
-
-            <SectionHeader
-                title="Shared Library"
-                open={showSharedLibrary}
-                count={sharedSteps.length}
-                onToggle={() => setShowSharedLibrary((current) => !current)}
-                right={(
-                    <button type="button" className="btn-small" onClick={() => void handleAddShared()}>
-                        + New shared
-                    </button>
-                )}
-            />
             {showSharedLibrary && (
-                <SharedLibraryPanel
-                    sharedSteps={sharedSteps}
-                    selectedSharedId={selectedSharedId}
-                    focusStepId={focusSharedStepId}
-                    allTests={allTests}
-                    resolveRefs={resolveRefs}
-                    inspectRefs={inspectRefs}
-                    onOpenRef={openResolvedRef}
-                    onActivateEditorApi={setActiveEditorApi}
-                    onSelectShared={(id) => {
-                        setSelectedSharedId(id)
-                        setFocusSharedStepId(null)
-                    }}
-                    onAddShared={handleAddShared}
-                    onUpdateShared={onUpdateSharedStep}
-                    onDeleteShared={(sharedId) => {
-                        onDeleteSharedStep(sharedId)
-                        if (selectedSharedId === sharedId) {
-                            setSelectedSharedId(null)
+                <aside className="editor-drawer" aria-label="Shared library drawer">
+                    <SharedLibraryPanel
+                        variant="drawer"
+                        extraHeaderAction={(
+                            <button
+                                type="button"
+                                className="btn-small"
+                                onClick={() => setShowSharedLibrary(false)}
+                            >
+                                Close
+                            </button>
+                        )}
+                        sharedSteps={sharedSteps}
+                        selectedSharedId={selectedSharedId}
+                        focusStepId={focusSharedStepId}
+                        allTests={allTests}
+                        resolveRefs={resolveRefs}
+                        inspectRefs={inspectRefs}
+                        onOpenRef={openResolvedRef}
+                        onActivateEditorApi={setActiveEditorApi}
+                        onSelectShared={(id) => {
+                            setSelectedSharedId(id)
                             setFocusSharedStepId(null)
-                        }
-                    }}
-                    onInsertShared={onInsertSharedReference}
-                    onOpenUsage={openUsage}
-                    onOpenShared={handleOpenShared}
-                    onInsertText={insertIntoActiveEditor}
-                />
-            )}
-
-            <SectionHeader
-                title="Details"
-                open={showDetails}
-                onToggle={() => setShowDetails((current) => !current)}
-            />
-            {showDetails && (
-                <DetailsPanel
-                    description={test.description ?? ''}
-                    onChangeDescription={(value) => onChange({ description: value })}
-                    meta={(test.meta as TestMeta) ?? { tags: [] }}
-                    onChangeMeta={(nextMeta) => onChange({ meta: nextMeta })}
-                    allTests={allTests}
-                    sharedSteps={sharedSteps}
-                    resolveRefs={resolveRefs}
-                    inspectRefs={inspectRefs}
-                    onOpenRef={openResolvedRef}
-                    onActivateEditorApi={setActiveEditorApi}
-                />
-            )}
-
-            <SectionHeader
-                title="Parameters"
-                open={showMeta}
-                onToggle={() => setShowMeta((current) => !current)}
-            />
-            {showMeta && (
-                <ParamsPanel
-                    meta={(test.meta as TestMeta) ?? { tags: [] }}
-                    onChange={(nextMeta) => onChange({ meta: nextMeta })}
-                />
-            )}
-
-            <SectionHeader
-                title="Attachments"
-                open={showAttachments}
-                count={test.attachments?.length ?? 0}
-                onToggle={() => setShowAttachments((current) => !current)}
-            />
-            {showAttachments && (
-                <AttachmentsPanel
-                    attachments={test.attachments ?? []}
-                    onChange={(next) => onChange({ attachments: next })}
-                />
-            )}
-
-            <SectionHeader
-                title="External Links"
-                open={showLinks}
-                count={externalLinksCount}
-                onToggle={() => setShowLinks((current) => !current)}
-            />
-            {showLinks && (
-                <div className="meta-card editor-links-card">
-                    <div className="editor-links-grid">
-                        <div className="field" style={{ margin: 0 }}>
-                            <label className="label-sm">Zephyr key</label>
-                            <input
-                                className="input"
-                                value={zephyrLink}
-                                onChange={(e) => upsertLink('zephyr', e.target.value)}
-                                placeholder="Example: PROD-T6079 or 6079"
-                            />
-                        </div>
-                        <div className="field" style={{ margin: 0 }}>
-                            <label className="label-sm">Allure ID</label>
-                            <input
-                                className="input"
-                                value={allureLink}
-                                onChange={(e) => upsertLink('allure', e.target.value)}
-                                placeholder="Example: 12345"
-                            />
-                        </div>
-                    </div>
-                </div>
+                        }}
+                        onAddShared={handleAddShared}
+                        onUpdateShared={onUpdateSharedStep}
+                        onDeleteShared={(sharedId) => {
+                            onDeleteSharedStep(sharedId)
+                            if (selectedSharedId === sharedId) {
+                                setSelectedSharedId(null)
+                                setFocusSharedStepId(null)
+                            }
+                        }}
+                        onInsertShared={onInsertSharedReference}
+                        onOpenUsage={openUsage}
+                        onOpenShared={handleOpenShared}
+                        onInsertText={insertIntoActiveEditor}
+                    />
+                </aside>
             )}
         </div>
     )

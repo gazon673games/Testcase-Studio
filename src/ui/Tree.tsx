@@ -42,6 +42,14 @@ type VisibleItem =
           name: string
       }
 
+type SyncStatus = 'dirty' | 'synced' | 'conflict'
+
+const IMPORT_IMPORTED_AT_KEY = '__zephyrImport.importedAt'
+const IMPORT_REMOTE_KEY_KEY = '__zephyrImport.remoteKey'
+const IMPORT_CONFLICT_REMOTE_KEY = '__zephyrImport.conflictRemoteKey'
+const PUBLISH_AT_KEY = '__zephyrPublish.publishedAt'
+const PUBLISH_REMOTE_KEY = '__zephyrPublish.remoteKey'
+
 export function Tree(props: Props) {
     const [expanded, setExpanded] = React.useState<Set<string>>(() => new Set([props.root.id]))
     const [menu, setMenu] = React.useState<ContextMenuState>(null)
@@ -224,7 +232,7 @@ export function Tree(props: Props) {
         <div style={treeShellStyle}>
             <div style={treeHeaderStyle}>
                 <div style={treeHeaderEyebrowStyle}>Navigator</div>
-                <div style={treeHeaderTitleStyle}>Tests</div>
+                <div style={treeHeaderTitleStyle}>Cases</div>
                 <div style={treeHeaderHintStyle}>Arrows move focus, Enter opens, Shift+F10 shows actions.</div>
             </div>
 
@@ -339,6 +347,7 @@ function NodeView(props: NodeViewProps) {
     const itemLabel = isDir
         ? `${itemCount} item${itemCount === 1 ? '' : 's'}`
         : `${itemCount} step${itemCount === 1 ? '' : 's'}`
+    const syncStatus = resolveNodeSyncStatus(node)
     const item: VisibleItem = {
         key,
         kind: isDir ? 'folder' : 'test',
@@ -402,7 +411,15 @@ function NodeView(props: NodeViewProps) {
                 style={{
                     ...treeRowStyle,
                     marginLeft: offset,
-                    background: selected ? '#eaf2ff' : hoverDrop ? '#f5f8ff' : focused ? '#f7faff' : 'transparent',
+                    background: selected
+                        ? '#eaf2ff'
+                        : hoverDrop
+                            ? '#f5f8ff'
+                            : focused
+                                ? '#f7faff'
+                                : isDir
+                                    ? '#fcfdff'
+                                    : 'transparent',
                     borderColor: selected ? '#bfd2f7' : hoverDrop ? '#d5e2fb' : focused ? '#d7e4fb' : 'transparent',
                     boxShadow: selected ? 'inset 0 0 0 1px #d7e4ff' : focused ? 'inset 0 0 0 1px #e2ebfa' : undefined,
                 }}
@@ -422,7 +439,7 @@ function NodeView(props: NodeViewProps) {
                     aria-label={hasChildren ? (isOpen ? 'Collapse' : 'Expand') : 'No nested items'}
                     disabled={!hasChildren}
                 >
-                    {isOpen ? 'v' : '>'}
+                    <ChevronIcon open={isOpen} />
                 </button>
 
                 <span
@@ -433,7 +450,7 @@ function NodeView(props: NodeViewProps) {
                         color: isDir ? '#2b5ca6' : '#5a6678',
                     }}
                 >
-                    {isDir ? 'F' : 'T'}
+                    {isDir ? 'Folder' : 'Case'}
                 </span>
 
                 {!isEditing ? (
@@ -446,6 +463,11 @@ function NodeView(props: NodeViewProps) {
                                 </div>
                             )}
                         </div>
+                        {syncStatus ? (
+                            <span style={treeStatusPillStyle(syncStatus)}>
+                                {formatSyncStatusLabel(syncStatus)}
+                            </span>
+                        ) : null}
                         <span style={treeMetaPillStyle}>{itemLabel}</span>
                         <button
                             type="button"
@@ -553,7 +575,7 @@ function StepsList({
         <div role="group" style={{ marginLeft: offset, marginTop: 4, display: 'grid', gap: 4, paddingBottom: 6 }}>
             {steps.map((step, index) => {
                 const details = [
-                    step.usesShared ? 'shared' : '',
+                    step.usesShared ? 'shared ref' : '',
                     step.subSteps?.length ? `${step.subSteps.length} sub` : '',
                     step.attachments?.length ? `${step.attachments.length} file` : '',
                 ].filter(Boolean)
@@ -661,7 +683,7 @@ function Menu({
             {isFolder && (
                 <>
                     <MenuItem ref={firstItemRef} label="New Folder" onClick={() => { onNewFolder(); onClose() }} />
-                    <MenuItem label="New Test" onClick={() => { onNewTest(); onClose() }} />
+                    <MenuItem label="New Case" onClick={() => { onNewTest(); onClose() }} />
                 </>
             )}
             {!isFolder && <MenuItem ref={firstItemRef} label="Rename" disabled={isRoot} onClick={() => { onRename(); onClose() }} />}
@@ -751,6 +773,76 @@ function flattenVisibleItems(root: Folder, expanded: Set<string>) {
     return walk(root, 0)
 }
 
+function resolveNodeSyncStatus(node: ViewNode): SyncStatus | null {
+    if (!isFolder(node)) return resolveTestSyncStatus(node)
+
+    let sawSynced = false
+    for (const child of node.children) {
+        const status = resolveNodeSyncStatus(child)
+        if (status === 'conflict') return 'conflict'
+        if (status === 'dirty') return 'dirty'
+        if (status === 'synced') sawSynced = true
+    }
+    return sawSynced ? 'synced' : null
+}
+
+function resolveTestSyncStatus(test: TestCase): SyncStatus | null {
+    const params = test.meta?.params ?? {}
+    if (safeString(params[IMPORT_CONFLICT_REMOTE_KEY])) return 'conflict'
+
+    const linkedZephyrId =
+        test.links.find((link) => link.provider === 'zephyr')?.externalId ??
+        safeString(params.key) ??
+        safeString(params[IMPORT_REMOTE_KEY_KEY]) ??
+        safeString(params[PUBLISH_REMOTE_KEY])
+
+    if (!linkedZephyrId) return null
+
+    const baselineAt = Math.max(parseTimestamp(params[IMPORT_IMPORTED_AT_KEY]), parseTimestamp(params[PUBLISH_AT_KEY]))
+    if (!baselineAt) return 'dirty'
+
+    return parseTimestamp(test.updatedAt) <= baselineAt ? 'synced' : 'dirty'
+}
+
+function formatSyncStatusLabel(status: SyncStatus): string {
+    return status === 'conflict' ? 'Conflict' : status === 'dirty' ? 'Dirty' : 'Synced'
+}
+
+function ChevronIcon({ open }: { open: boolean }) {
+    return (
+        <svg
+            aria-hidden
+            viewBox="0 0 12 12"
+            width="12"
+            height="12"
+            style={{
+                display: 'block',
+                transform: open ? 'rotate(90deg)' : 'none',
+                transition: 'transform .12s ease',
+            }}
+        >
+            <path
+                d="M4 2.5L8 6L4 9.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    )
+}
+
+function parseTimestamp(value: unknown): number {
+    const timestamp = Date.parse(String(value ?? '').trim())
+    return Number.isFinite(timestamp) ? timestamp : 0
+}
+
+function safeString(value: unknown): string {
+    const next = typeof value === 'string' ? value.trim() : value == null ? '' : String(value).trim()
+    return next || ''
+}
+
 function clampMenuPosition(x: number, y: number) {
     if (typeof window === 'undefined') return { left: x, top: y }
     const width = 188
@@ -826,16 +918,17 @@ const expandButtonStyle: React.CSSProperties = {
     border: '1px solid #dce3ee',
     background: '#fff',
     color: '#5f6f86',
-    fontSize: 11,
-    lineHeight: 1,
     padding: 0,
     flexShrink: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
 }
 
 const kindBadgeStyle: React.CSSProperties = {
-    width: 22,
-    height: 22,
-    borderRadius: 8,
+    minHeight: 22,
+    padding: '0 8px',
+    borderRadius: 999,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -843,6 +936,22 @@ const kindBadgeStyle: React.CSSProperties = {
     fontWeight: 700,
     flexShrink: 0,
 }
+
+const treeStatusPillStyle = (status: SyncStatus): React.CSSProperties => ({
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: 22,
+    padding: '0 8px',
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 700,
+    flexShrink: 0,
+    ...(status === 'conflict'
+        ? { background: '#fff2f1', color: '#9a3928' }
+        : status === 'dirty'
+            ? { background: '#fff8e8', color: '#896009' }
+            : { background: '#eef8ef', color: '#2e6a3a' }),
+})
 
 const rowMenuButtonStyle: React.CSSProperties = {
     width: 28,

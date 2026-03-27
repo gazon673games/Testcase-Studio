@@ -203,7 +203,7 @@ function buildPreviewItem(
             projectKey,
             folder,
             status: 'blocked',
-            reason: remote.message || 'Failed to load remote testcase before publish',
+            reason: remote.message || 'Failed to load remote test case before publish',
             publish: false,
             diffs: [],
             payload,
@@ -220,7 +220,7 @@ function buildPreviewItem(
             projectKey,
             folder,
             status: 'blocked',
-            reason: 'Remote testcase is unavailable for dry-run diff',
+            reason: 'Remote test case is unavailable for dry-run diff',
             publish: false,
             diffs: [],
             payload,
@@ -238,7 +238,7 @@ function buildPreviewItem(
             projectKey,
             folder,
             status: 'skip',
-            reason: 'Remote testcase already matches local content',
+            reason: 'Remote test case already matches local content',
             publish: false,
             diffs: [],
             payload,
@@ -254,7 +254,7 @@ function buildPreviewItem(
         projectKey,
         folder,
         status: 'update',
-        reason: 'Remote testcase will be replaced with local content',
+        reason: 'Remote test case will be replaced with local content',
         publish: true,
         diffs,
         payload,
@@ -301,19 +301,19 @@ function diffPayloadAgainstRemote(local: ProviderTest, remote: ProviderTest): Ze
 
 function buildCreateDiffs(local: ProviderTest): ZephyrPublishDiff[] {
     return [
-        { field: 'name', label: 'Name', local: local.name, remote: 'No remote testcase' },
+        { field: 'name', label: 'Name', local: local.name, remote: 'No remote test case' },
         {
             field: 'steps',
             label: 'Steps',
             local: summarizePreviewSteps(local.steps),
-            remote: 'No remote testcase',
+            remote: 'No remote test case',
             stepRows: buildPreviewStepDiffRows(local.steps, []),
         },
         {
             field: 'folder',
             label: 'Folder',
             local: safeString(local.extras?.folder) ?? 'No folder',
-            remote: 'No remote testcase',
+            remote: 'No remote test case',
         },
     ]
 }

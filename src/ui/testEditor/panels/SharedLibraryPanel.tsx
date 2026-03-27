@@ -5,6 +5,8 @@ import type { MarkdownEditorApi } from '../markdownEditor/MarkdownEditor'
 import StepsPanel from './StepsPanel'
 
 type Props = {
+    variant?: 'inline' | 'drawer'
+    extraHeaderAction?: React.ReactNode
     sharedSteps: SharedStep[]
     selectedSharedId: string | null
     focusStepId?: string | null
@@ -49,6 +51,8 @@ const SORT_LABELS: Array<{ value: SharedSort; label: string }> = [
 ]
 
 export default function SharedLibraryPanel({
+    variant = 'inline',
+    extraHeaderAction,
     sharedSteps,
     selectedSharedId,
     focusStepId,
@@ -143,13 +147,16 @@ export default function SharedLibraryPanel({
     }, [filteredEntries, onSelectShared, selectedEntry])
 
     return (
-        <div className="shared-library">
+        <div className={`shared-library ${variant === 'drawer' ? 'shared-library--drawer' : ''}`}>
             <div className="shared-library-sidebar">
                 <div className="shared-library-head">
-                    <div className="shared-library-title">Reusable steps</div>
-                    <button type="button" className="btn-small" onClick={() => void onAddShared()}>
-                        + New shared
-                    </button>
+                    <div className="shared-library-title">Shared steps</div>
+                    <div className="shared-library-head-actions">
+                        {extraHeaderAction}
+                        <button type="button" className="btn-small" onClick={() => void onAddShared()}>
+                            + New shared
+                        </button>
+                    </div>
                 </div>
 
                 <div className="shared-library-stats">
@@ -208,7 +215,7 @@ export default function SharedLibraryPanel({
                 </div>
 
                 {sharedSteps.length === 0 ? (
-                    <div className="shared-library-empty">The library is empty. Create the first shared step and reuse it across tests.</div>
+                    <div className="shared-library-empty">The library is empty. Create the first shared step and reuse it across cases.</div>
                 ) : filteredEntries.length === 0 ? (
                     <div className="shared-library-empty">
                         No shared steps match the current search and filters.
@@ -257,7 +264,7 @@ export default function SharedLibraryPanel({
                             </div>
                             <div className="shared-library-actions">
                                 <button type="button" className="btn-small" onClick={() => onInsertShared(selectedEntry.shared.id)}>
-                                    Insert into test
+                                    Insert into case
                                 </button>
                                 <button type="button" className="btn-small" onClick={() => onDeleteShared(selectedEntry.shared.id)}>
                                     Delete

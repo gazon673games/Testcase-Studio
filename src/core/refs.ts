@@ -331,7 +331,11 @@ function getStepRefValue(step: Step, kind: RefKind, partId?: string): string | n
         if (!part) return null
         return trimPreview(part.text)
     }
-    const value = kind === 'action' ? step.action ?? step.text ?? '' : (step as any)[kind] ?? ''
+    const parts = step.internal?.parts?.[kind] ?? []
+    const topLevel = kind === 'action' ? step.action ?? step.text ?? '' : (step as any)[kind] ?? ''
+    const value = parts.length
+        ? [String(topLevel ?? '').trim(), ...parts.map((part) => String(part.text ?? '').trim())].filter(Boolean).join('\n')
+        : String(topLevel ?? '')
     const preview = trimPreview(String(value ?? ''))
     return preview.length ? preview : null
 }

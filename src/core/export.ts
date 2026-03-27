@@ -1,4 +1,3 @@
-// @core/export.ts
 import type {
     Attachment,
     PartItem,
@@ -7,81 +6,107 @@ import type {
     TestCase,
     TestMeta,
 } from './domain'
+import { buildRefCatalog, resolveRefsInText, type RefCatalog } from './refs'
 import { materializeSharedSteps } from './shared'
+import { mapTests } from './tree'
 
-/** Экспортируемая форма одного шага */
 export type ExportStep = {
     action?: string
     data?: string
     expected?: string
-    /** 🆕 Вложения шага (берём и из step.attachments, и из internal.meta.attachments) */
     attachments?: Attachment[]
 }
 
-/** Экспортируемая форма теста */
 export type ExportTest = {
     id: string
     name: string
     description?: string
     steps: ExportStep[]
-    /** Вложения уровня теста (как было) */
     attachments: Attachment[]
     meta?: TestMeta
 }
 
-/* ────────────────────────────────────────────────────────── */
-/* helpers */
-
-function pickColumn(s: Step, kind: 'action' | 'data' | 'expected') {
-    const parts: PartItem[] | undefined = s.internal?.parts?.[kind]
-    if (parts && parts.length > 0) {
-        // Склеиваем все части через перенос строки
-        const joined = parts.map(p => p.text ?? '').join('\n').trim()
-        return joined || undefined
+function createTextResolver(catalog?: RefCatalog) {
+    return (value: string | undefined) => {
+        if (!value) return undefined
+        const resolved = catalog ? resolveRefsInText(value, catalog) : value
+        const trimmed = resolved.trim()
+        return trimmed || undefined
     }
-    // Fallback: топ-уровень, для action ещё учитываем s.text
-    const top = (s as any)[kind] ?? (kind === 'action' ? s.text : undefined)
-    const val = (top ?? '').toString().trim()
-    return val || undefined
 }
 
-/** Собираем вложения шага из нового и старого мест */
-function collectStepAttachments(s: Step): Attachment[] {
-    const fromNew = Array.isArray(s.attachments) ? s.attachments : []
-    const legacy = (s.internal as any)?.meta?.attachments
-    const fromLegacy = Array.isArray(legacy) ? legacy : []
-    // Уберём возможные дубликаты по id
-    const map = new Map<string, Attachment>()
-    for (const a of [...fromLegacy, ...fromNew]) {
-        if (a && a.id) map.set(a.id, a)
+function pickColumn(
+    step: Step,
+    kind: 'action' | 'data' | 'expected',
+    resolveText: (value: string | undefined) => string | undefined
+) {
+    const parts: PartItem[] | undefined = step.internal?.parts?.[kind]
+    if (parts?.length) {
+        const exportableParts = parts.filter((part) => part.export !== false)
+        const topLevel = kind === 'action' ? step.action ?? step.text ?? '' : ((step as any)[kind] ?? '')
+        const chunks = [
+            String(topLevel ?? '').trim(),
+            ...exportableParts.map((part) => String(part.text ?? '').trim()),
+        ].filter(Boolean)
+        const joined = chunks.join('\n').trim()
+        return resolveText(joined || undefined)
     }
-    return [...map.values()]
+
+    const topLevel = (step as any)[kind] ?? (kind === 'action' ? step.text : undefined)
+    const value = String(topLevel ?? '').trim()
+    return resolveText(value || undefined)
 }
 
-/* ────────────────────────────────────────────────────────── */
-/* экспорт шага/теста */
+function collectStepAttachments(step: Step): Attachment[] {
+    const next = new Map<string, Attachment>()
+    const modern = Array.isArray(step.attachments) ? step.attachments : []
+    const legacy = Array.isArray((step.internal as any)?.meta?.attachments) ? (step.internal as any).meta.attachments : []
 
-function exportOneStep(s: Step): ExportStep {
+    for (const attachment of [...legacy, ...modern]) {
+        if (attachment?.id) next.set(attachment.id, attachment)
+    }
+
+    return [...next.values()]
+}
+
+function exportOneStep(step: Step, resolveText: (value: string | undefined) => string | undefined): ExportStep {
     return {
-        action: pickColumn(s, 'action'),
-        data: pickColumn(s, 'data'),
-        expected: pickColumn(s, 'expected'),
-        attachments: collectStepAttachments(s),
+        action: pickColumn(step, 'action', resolveText),
+        data: pickColumn(step, 'data', resolveText),
+        expected: pickColumn(step, 'expected', resolveText),
+        attachments: collectStepAttachments(step),
     }
 }
 
-/**
- * Построить «канонический экспорт» для теста
- * с разворотом shared-steps (если есть RootState)
- */
+function resolveMeta(meta: TestMeta | undefined, resolveText: (value: string | undefined) => string | undefined) {
+    if (!meta) return undefined
+
+    return {
+        ...meta,
+        objective: resolveText(meta.objective),
+        preconditions: resolveText(meta.preconditions),
+        params: meta.params
+            ? Object.fromEntries(
+                  Object.entries(meta.params).map(([key, value]) => [
+                      key,
+                      typeof value === 'string' ? resolveText(value) ?? '' : value,
+                  ])
+              )
+            : meta.params,
+    }
+}
+
 export function buildExport(test: TestCase, state?: RootState): ExportTest {
     const steps = state ? materializeSharedSteps(test.steps, state.sharedSteps) : test.steps
+    const catalog = state ? buildRefCatalog(mapTests(state.root), state.sharedSteps) : undefined
+    const resolveText = createTextResolver(catalog)
+
     return {
         id: test.id,
         name: test.name,
-        description: test.description,
-        steps: steps.map(exportOneStep),
+        description: resolveText(test.description),
+        steps: steps.map((step) => exportOneStep(step, resolveText)),
         attachments: test.attachments,
-        meta: test.meta,
+        meta: resolveMeta(test.meta, resolveText),
     }
 }

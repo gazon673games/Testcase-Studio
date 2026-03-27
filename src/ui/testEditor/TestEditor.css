@@ -3,23 +3,51 @@
    (под твой текущий TSX)
 ──────────────────────────────── */
 
-.test-editor { padding: 12px; }
+.test-editor-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 100%;
+}
+
+.test-editor-shell.with-drawer {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 40vw);
+}
+
+.test-editor-main {
+    min-width: 0;
+}
+
+.test-editor {
+    padding: 14px 16px 18px;
+}
+
+.editor-drawer {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    min-height: 100%;
+    padding: 14px 14px 18px 0;
+}
 
 .editor-hero {
     display: grid;
-    gap: 10px;
+    gap: 8px;
     margin-bottom: 12px;
-    padding: 12px 14px;
-    border: 1px solid #e6ebf2;
-    border-radius: 12px;
-    background: #ffffff;
+    padding: 4px 0 8px;
+    border: none;
+    border-bottom: 1px solid #e7edf4;
+    background: transparent;
 }
 .editor-hero-bar {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
     flex-wrap: wrap;
+}
+.editor-hero-title-group {
+    display: grid;
+    gap: 8px;
 }
 .editor-hero-copy {
     font-size: 11px;
@@ -28,12 +56,25 @@
     text-transform: uppercase;
     color: #71819a;
 }
+.editor-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 .editor-name-field { margin: 0; }
 .editor-name-input {
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 700;
     padding-top: 11px;
     padding-bottom: 11px;
+}
+.editor-side-button {
+    min-width: 108px;
+}
+.editor-side-button.active {
+    border-color: #bfd0ea;
+    background: #eef4ff;
+    color: #274c77;
 }
 .editor-summary-row {
     display: flex;
@@ -41,7 +82,7 @@
     gap: 8px;
 }
 .editor-summary-row--compact {
-    justify-content: flex-end;
+    justify-content: flex-start;
 }
 .editor-summary-chip {
     display: inline-flex;
@@ -49,11 +90,11 @@
     min-height: 22px;
     padding: 0 8px;
     border-radius: 999px;
-    border: 1px solid #e2e8f2;
-    background: #f8fafc;
-    color: #5e6b80;
+    border: 1px solid #e7edf4;
+    background: #fbfcfe;
+    color: #677489;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
 }
 .editor-links-card {
     display: grid;
@@ -106,6 +147,7 @@
     cursor:pointer;
 }
 .btn-small:hover { background:#f0f3ff; border-color:#bfcfff; }
+.btn-small.active { background:#eef4ff; border-color:#bfd0ea; color:#274c77; }
 .btn-icon {
     border:1px solid #ddd;
     background:#fff;
@@ -119,8 +161,8 @@
 /* секция */
 .section-header {
     display:flex; align-items:center; gap:8px; width:100%;
-    padding:8px 10px; margin:12px 0 6px;
-    border-radius:8px; border:1px solid #e5e5e5; background:#fafafa;
+    padding:10px 0 6px; margin:14px 0 4px;
+    border-radius:0; border:none; border-top:1px solid #e7edf4; background:transparent;
 }
 .section-header-right { margin-left:auto; display:flex; align-items:center; gap:6px; }
 .section-header > button {
@@ -152,12 +194,12 @@
 
 /* карточка шага */
 .step-card {
-    border:1px solid #e7e7e7; border-radius:12px; background:#fff;
-    box-shadow:0 2px 6px rgba(0,0,0,.03);
+    border:1px solid #e7e7e7; border-radius:10px; background:#fff;
+    box-shadow:0 1px 4px rgba(0,0,0,.03);
 }
 .step-header {
     display:flex; align-items:center; gap:8px;
-    padding:8px 10px; border-bottom:1px solid #f0f0f0;
+    padding:7px 9px; border-bottom:1px solid #f0f0f0;
     background:#fafafa; border-radius:12px 12px 0 0;
     flex-wrap: wrap;
 }
@@ -195,38 +237,80 @@
     background: #fff4f5;
     color: #8f2733;
 }
-.step-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-left: auto;
+.step-overflow {
+    position: relative;
 }
-.step-delete-btn {
-    color: #8f2733;
-    border-color: #efc9ce;
-    background: #fff7f8;
+.step-overflow-trigger {
+    min-width: 58px;
+}
+.step-overflow-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 12;
+    min-width: 180px;
+    display: grid;
+    gap: 4px;
+    padding: 8px;
+    border: 1px solid #dde5f0;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 16px 36px rgba(16, 34, 57, 0.14);
+}
+.step-overflow-item {
+    border: none;
+    background: #fff;
+    color: #27415f;
+    border-radius: 9px;
+    padding: 8px 10px;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+}
+.step-overflow-item:hover {
+    background: #f5f8fe;
+}
+.step-overflow-item.danger {
+    color: #9a3525;
+}
+.step-overflow-item.danger:hover {
+    background: #fff4f2;
 }
 
 /* сетка внутри шага: № | Action | Data | Expected */
-.step-grid { display:grid; grid-template-columns:68px 1fr 1fr 1fr; }
+.step-grid { display:grid; grid-template-columns:60px minmax(0, 1.35fr) minmax(0, .8fr) minmax(0, 1fr); }
 .step-grid.stack { grid-template-columns:1fr; }
 @media (max-width: 980px) {
     .step-grid { grid-template-columns:1fr; }
 }
 
 .step-num {
-    padding:10px; border-right:1px solid #f0f0f0;
+    padding:8px; border-right:1px solid #f0f0f0;
     display:flex; align-items:flex-start; justify-content:center;
 }
 .step-num-badge {
-    width:36px; height:36px; border-radius:9px; background:#eef4ff;
+    width:32px; height:32px; border-radius:8px; background:#eef4ff;
     border:1px solid #d7e3ff; display:flex; align-items:center; justify-content:center;
     font-weight:700; color:#4d6bdc;
 }
 
-.step-cell { padding:10px; border-right:1px solid #f0f0f0; }
+.step-cell { padding:8px; border-right:1px solid #f0f0f0; }
 .step-cell:last-child { border-right:none; }
-.cell-head { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:6px; }
+.step-cell--action {
+    background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+}
+.step-cell--data {
+    background: #fbfcfe;
+}
+.step-cell--data .cell-title,
+.step-cell--data .cell-chip {
+    color: #7b8697;
+}
+.step-cell--data .add-part-btn {
+    border-color: #e0e5ee;
+    color: #667487;
+}
+.cell-head { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:4px; }
 .cell-head-main { display:flex; align-items:center; gap:6px; min-width:0; }
 .cell-title { font-size:12px; color:#666; font-weight:600; }
 .cell-actions {
@@ -251,11 +335,11 @@
 }
 .add-part-btn:hover { background:#f0f3ff; border-color:#bfcfff; }
 
-.parts { margin-top:8px; display:grid; gap:8px; }
+.parts { margin-top:6px; display:grid; gap:6px; }
 .part-row {
     position: relative;
     z-index: 2;
-    padding: 8px;
+    padding: 6px;
     border: 1px solid #edf1f7;
     border-radius: 10px;
     background: #fbfcff;
@@ -291,7 +375,7 @@
     background: linear-gradient(180deg, rgba(250,251,254,0) 0%, rgba(250,251,254,0.9) 100%);
 }
 .shared-ref-card {
-    overflow: hidden;
+    overflow: visible;
 }
 .shared-ref-body {
     display: grid;
@@ -326,7 +410,10 @@
     display: grid;
     grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
     gap: 12px;
-    margin-bottom: 16px;
+    min-height: calc(100vh - 126px);
+}
+.shared-library--drawer {
+    margin-bottom: 0;
 }
 .shared-library-sidebar,
 .shared-library-main {
@@ -344,6 +431,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
+}
+.shared-library-head-actions {
+    display: flex;
+    align-items: center;
     gap: 8px;
 }
 .shared-library-stats {
@@ -451,6 +543,8 @@
     padding: 12px;
     display: grid;
     gap: 12px;
+    min-height: 0;
+    overflow: auto;
 }
 .shared-library-toolbar {
     display: flex;
@@ -611,9 +705,20 @@
 }
 
 @media (max-width: 980px) {
+    .test-editor-shell.with-drawer {
+        grid-template-columns: 1fr;
+    }
+    .editor-drawer {
+        position: static;
+        padding: 0 16px 18px;
+    }
     .editor-hero-bar {
         flex-direction: column;
         align-items: stretch;
+    }
+    .editor-hero-actions {
+        width: 100%;
+        justify-content: flex-start;
     }
     .editor-summary-row--compact {
         justify-content: flex-start;
@@ -631,15 +736,14 @@
         justify-content: flex-start;
         flex-wrap: wrap;
     }
-    .step-actions {
-        width: 100%;
-        margin-left: 0;
-    }
-    .step-actions .btn-small {
-        flex: 1 1 auto;
+    .step-overflow-menu {
+        left: 0;
+        right: auto;
+        min-width: 160px;
     }
     .shared-library {
         grid-template-columns: 1fr;
+        min-height: 0;
     }
     .shared-library-stats {
         grid-template-columns: 1fr;
