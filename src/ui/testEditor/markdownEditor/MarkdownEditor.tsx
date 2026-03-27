@@ -44,6 +44,7 @@ export type MarkdownEditorProps = {
     placeholder?: string
     rows?: number
     preview?: boolean
+    editInPreview?: boolean
     onTogglePreview?: () => void
     resolveRefs?: (src: string) => string
     inspectRefs?: (src: string) => ResolvedWikiRef[]
@@ -386,6 +387,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         placeholder,
         rows = 3,
         preview = false,
+        editInPreview = false,
         onTogglePreview,
         resolveRefs,
         inspectRefs,
@@ -677,17 +679,17 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                     }}
                     placeholder={placeholder}
                     rows={rows}
-                    className="md-textarea"
+                    className={`md-textarea ${preview && editInPreview ? 'md-textarea--preview-edit' : ''}`}
                     wrap="soft"
-                    aria-hidden={preview}
-                    tabIndex={preview ? -1 : 0}
+                    aria-hidden={preview && !editInPreview}
+                    tabIndex={preview && !editInPreview ? -1 : 0}
                 />
 
                 {preview && (
                     <div
                         ref={previewRef}
-                        className="md-preview"
-                        tabIndex={0}
+                        className={`md-preview ${editInPreview ? 'md-preview--editable' : ''}`}
+                        tabIndex={editInPreview ? -1 : 0}
                         dangerouslySetInnerHTML={{ __html: previewHtml }}
                     />
                 )}

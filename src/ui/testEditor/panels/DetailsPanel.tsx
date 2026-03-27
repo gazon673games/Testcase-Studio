@@ -95,6 +95,7 @@ export function DetailsPanel({
                     onChange={onChangeDescription}
                     rows={4}
                     preview={resolvePreview('description')}
+                    editInPreview={isControlledPreview}
                     {...editorProps}
                 />
             </div>
@@ -122,6 +123,7 @@ export function DetailsPanel({
                     onChange={setObjective}
                     rows={4}
                     preview={resolvePreview('objective')}
+                    editInPreview={isControlledPreview}
                     {...editorProps}
                 />
             </div>
@@ -149,6 +151,7 @@ export function DetailsPanel({
                     onChange={setPreconditions}
                     rows={4}
                     preview={resolvePreview('preconditions')}
+                    editInPreview={isControlledPreview}
                     {...editorProps}
                 />
             </div>
