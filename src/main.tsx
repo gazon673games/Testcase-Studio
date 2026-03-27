@@ -36,6 +36,9 @@ function AppShell() {
     const [importOpen, setImportOpen] = React.useState(false)
     const [publishOpen, setPublishOpen] = React.useState(false)
     const [syncCenterOpen, setSyncCenterOpen] = React.useState(false)
+    const [compactWorkspace, setCompactWorkspace] = React.useState(() =>
+        typeof window !== 'undefined' ? window.innerWidth < 980 : false
+    )
 
     const handleSave = React.useCallback(async () => {
         editorRef.current?.commit?.()
@@ -56,6 +59,12 @@ function AppShell() {
         window.addEventListener('keydown', onKey)
         return () => window.removeEventListener('keydown', onKey)
     }, [handleSave])
+
+    React.useEffect(() => {
+        const onResize = () => setCompactWorkspace(window.innerWidth < 980)
+        window.addEventListener('resize', onResize)
+        return () => window.removeEventListener('resize', onResize)
+    }, [])
 
     const handleExport = React.useCallback(async () => {
         editorRef.current?.commit?.()
@@ -203,11 +212,18 @@ function AppShell() {
                 style={{
                     flex: 1,
                     display: 'grid',
-                    gridTemplateColumns: '320px 1fr',
+                    gridTemplateColumns: compactWorkspace ? '1fr' : 'minmax(260px, 320px) 1fr',
+                    gridTemplateRows: compactWorkspace ? 'minmax(210px, 34vh) 1fr' : undefined,
                     minHeight: 0,
                 }}
             >
-                <div style={{ borderRight: '1px solid #eee', overflow: 'auto' }}>
+                <div
+                    style={{
+                        borderRight: compactWorkspace ? 'none' : '1px solid #eee',
+                        borderBottom: compactWorkspace ? '1px solid #eee' : 'none',
+                        overflow: 'auto',
+                    }}
+                >
                     <Tree
                         root={app.state.root}
                         selectedId={app.selectedId}
@@ -692,7 +708,7 @@ const syncPanelStyle: React.CSSProperties = {
     top: 12,
     right: 12,
     bottom: 12,
-    width: 336,
+    width: 'min(336px, calc(100vw - 24px))',
     display: 'grid',
     gridTemplateRows: 'auto 1fr',
     gap: 14,

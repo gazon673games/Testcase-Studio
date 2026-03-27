@@ -16,6 +16,7 @@ type Props = {
     inspectRefs(src: string): ResolvedWikiRef[]
     onOpenRef(ref: ResolvedWikiRef): void
     onActivateEditorApi?: (api: MarkdownEditorApi | null) => void
+    previewMode?: 'raw' | 'preview'
 }
 
 function mergeMeta(prev: TestMeta | undefined, patch: Partial<TestMeta>): TestMeta {
@@ -38,6 +39,7 @@ export function DetailsPanel({
     inspectRefs,
     onOpenRef,
     onActivateEditorApi,
+    previewMode,
 }: Props) {
     const [preview, setPreview] = React.useState({
         description: false,
@@ -63,29 +65,34 @@ export function DetailsPanel({
         onActivateApi: onActivateEditorApi,
     }
 
+    const isControlledPreview = previewMode != null
+    const resolvePreview = (key: keyof typeof preview) => (isControlledPreview ? previewMode === 'preview' : preview[key])
+
     return (
         <div className="details-panel card-box">
             <div className="field">
                 <div className="details-head">
                     <label className="label-sm">Description</label>
-                    <div className="md-view">
-                        <span className="muted">View:</span>{' '}
-                        <button
-                            className="btn-icon"
-                            onClick={() => setPreview((current) => ({ ...current, description: !current.description }))}
-                            title="Toggle preview"
-                            type="button"
-                        >
-                            {preview.description ? 'Raw' : 'Preview'}
-                        </button>
-                    </div>
+                    {!isControlledPreview && (
+                        <div className="md-view">
+                            <span className="muted">View:</span>{' '}
+                            <button
+                                className="btn-icon"
+                                onClick={() => setPreview((current) => ({ ...current, description: !current.description }))}
+                                title="Toggle preview"
+                                type="button"
+                            >
+                                {preview.description ? 'Raw' : 'Preview'}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <MarkdownEditor
                     value={description ?? ''}
                     onChange={onChangeDescription}
                     rows={4}
-                    preview={preview.description}
+                    preview={resolvePreview('description')}
                     {...editorProps}
                 />
             </div>
@@ -93,24 +100,26 @@ export function DetailsPanel({
             <div className="field">
                 <div className="details-head">
                     <label className="label-sm">Test Objective</label>
-                    <div className="md-view">
-                        <span className="muted">View:</span>{' '}
-                        <button
-                            className="btn-icon"
-                            onClick={() => setPreview((current) => ({ ...current, objective: !current.objective }))}
-                            title="Toggle preview"
-                            type="button"
-                        >
-                            {preview.objective ? 'Raw' : 'Preview'}
-                        </button>
-                    </div>
+                    {!isControlledPreview && (
+                        <div className="md-view">
+                            <span className="muted">View:</span>{' '}
+                            <button
+                                className="btn-icon"
+                                onClick={() => setPreview((current) => ({ ...current, objective: !current.objective }))}
+                                title="Toggle preview"
+                                type="button"
+                            >
+                                {preview.objective ? 'Raw' : 'Preview'}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <MarkdownEditor
                     value={meta?.objective ?? ''}
                     onChange={setObjective}
                     rows={4}
-                    preview={preview.objective}
+                    preview={resolvePreview('objective')}
                     {...editorProps}
                 />
             </div>
@@ -118,24 +127,26 @@ export function DetailsPanel({
             <div className="field">
                 <div className="details-head">
                     <label className="label-sm">Preconditions</label>
-                    <div className="md-view">
-                        <span className="muted">View:</span>{' '}
-                        <button
-                            className="btn-icon"
-                            onClick={() => setPreview((current) => ({ ...current, preconditions: !current.preconditions }))}
-                            title="Toggle preview"
-                            type="button"
-                        >
-                            {preview.preconditions ? 'Raw' : 'Preview'}
-                        </button>
-                    </div>
+                    {!isControlledPreview && (
+                        <div className="md-view">
+                            <span className="muted">View:</span>{' '}
+                            <button
+                                className="btn-icon"
+                                onClick={() => setPreview((current) => ({ ...current, preconditions: !current.preconditions }))}
+                                title="Toggle preview"
+                                type="button"
+                            >
+                                {preview.preconditions ? 'Raw' : 'Preview'}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <MarkdownEditor
                     value={meta?.preconditions ?? ''}
                     onChange={setPreconditions}
                     rows={4}
-                    preview={preview.preconditions}
+                    preview={resolvePreview('preconditions')}
                     {...editorProps}
                 />
             </div>

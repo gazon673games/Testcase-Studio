@@ -18,6 +18,7 @@ type Props = {
     inspectRefs(src: string): ResolvedWikiRef[]
     onOpenRef(ref: ResolvedWikiRef): void
     focusStepId?: string | null
+    previewMode?: 'raw' | 'preview'
     onApply?: () => void
     onUploadStepFiles?: (stepId: string, files: File[]) => Promise<Attachment[]>
     onActivateEditorApi?: (api: MarkdownEditorApi | null) => void
@@ -78,6 +79,7 @@ export default function StepsPanel({
     inspectRefs,
     onOpenRef,
     focusStepId,
+    previewMode,
     onApply,
     onUploadStepFiles,
     onActivateEditorApi,
@@ -93,6 +95,7 @@ export default function StepsPanel({
     const [draggingIndex, setDraggingIndex] = React.useState<number | null>(null)
     const [hoverIndex, setHoverIndex] = React.useState<number | null>(null)
     const sharedById = React.useMemo(() => new Map(sharedSteps.map((item) => [item.id, item] as const)), [sharedSteps])
+    const previewEnabled = previewMode ? previewMode === 'preview' : globalPreview
 
     React.useEffect(() => {
         const onResize = () => setIsNarrow(window.innerWidth < 980)
@@ -226,10 +229,16 @@ export default function StepsPanel({
                 </button>
                 <span className="spacer" />
                 <div className="section-header-right steps-toolbar">
-                    <span className="muted">View:</span>
-                    <button type="button" onClick={() => setGlobalPreview((current) => !current)} className="btn-small">
-                        {globalPreview ? 'Raw' : 'Preview'}
-                    </button>
+                    {previewMode == null ? (
+                        <>
+                            <span className="muted">View:</span>
+                            <button type="button" onClick={() => setGlobalPreview((current) => !current)} className="btn-small">
+                                {globalPreview ? 'Raw' : 'Preview'}
+                            </button>
+                        </>
+                    ) : (
+                        <span className="muted">{previewEnabled ? 'Preview all' : 'Raw all'}</span>
+                    )}
                     <button type="button" onClick={() => addStepAfter(Math.max(steps.length - 1, -1))} className="btn-small">
                         + Add step
                     </button>
@@ -263,7 +272,7 @@ export default function StepsPanel({
                                 owner={owner}
                                 index={index}
                                 step={step}
-                                preview={globalPreview}
+                                preview={previewEnabled}
                                 isNarrow={isNarrow}
                                 allTests={allTests}
                                 sharedSteps={sharedSteps}

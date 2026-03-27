@@ -1,9 +1,9 @@
-import { app, BrowserWindow, ipcMain } from "electron";
-import path from "node:path";
-import { promises } from "fs";
-import crypto, { randomUUID } from "crypto";
-import keytar from "keytar";
-const CHANNELS = {
+import { app as w, BrowserWindow as F, ipcMain as K } from "electron";
+import c from "node:path";
+import { promises as m } from "fs";
+import C, { randomUUID as H } from "crypto";
+import j from "keytar";
+const f = {
   LOAD_STATE: "LOAD_STATE",
   SAVE_STATE: "SAVE_STATE",
   LOAD_SETTINGS: "LOAD_SETTINGS",
@@ -14,548 +14,445 @@ const CHANNELS = {
   ZEPHYR_UPSERT_TESTCASE: "ZEPHYR_UPSERT_TESTCASE",
   WRITE_STATE_SNAPSHOT: "WRITE_STATE_SNAPSHOT",
   WRITE_PUBLISH_LOG: "WRITE_PUBLISH_LOG"
+}, b = new Uint8Array(256);
+let A = b.length;
+function Q() {
+  return A > b.length - 16 && (C.randomFillSync(b), A = 0), b.slice(A, A += 16);
+}
+const p = [];
+for (let t = 0; t < 256; ++t)
+  p.push((t + 256).toString(16).slice(1));
+function X(t, n = 0) {
+  return p[t[n + 0]] + p[t[n + 1]] + p[t[n + 2]] + p[t[n + 3]] + "-" + p[t[n + 4]] + p[t[n + 5]] + "-" + p[t[n + 6]] + p[t[n + 7]] + "-" + p[t[n + 8]] + p[t[n + 9]] + "-" + p[t[n + 10]] + p[t[n + 11]] + p[t[n + 12]] + p[t[n + 13]] + p[t[n + 14]] + p[t[n + 15]];
+}
+const L = {
+  randomUUID: C.randomUUID
 };
-const rnds8Pool = new Uint8Array(256);
-let poolPtr = rnds8Pool.length;
-function rng() {
-  if (poolPtr > rnds8Pool.length - 16) {
-    crypto.randomFillSync(rnds8Pool);
-    poolPtr = 0;
-  }
-  return rnds8Pool.slice(poolPtr, poolPtr += 16);
+function v(t, n, e) {
+  if (L.randomUUID && !t)
+    return L.randomUUID();
+  t = t || {};
+  const r = t.random || (t.rng || Q)();
+  return r[6] = r[6] & 15 | 64, r[8] = r[8] & 63 | 128, X(r);
 }
-const byteToHex = [];
-for (let i = 0; i < 256; ++i) {
-  byteToHex.push((i + 256).toString(16).slice(1));
-}
-function unsafeStringify(arr, offset = 0) {
-  return byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]];
-}
-const native = {
-  randomUUID: crypto.randomUUID
-};
-function v4(options, buf, offset) {
-  if (native.randomUUID && true && !options) {
-    return native.randomUUID();
-  }
-  options = options || {};
-  const rnds = options.random || (options.rng || rng)();
-  rnds[6] = rnds[6] & 15 | 64;
-  rnds[8] = rnds[8] & 63 | 128;
-  return unsafeStringify(rnds);
-}
-function nowISO() {
+function tt() {
   return (/* @__PURE__ */ new Date()).toISOString();
 }
-function toOptionalString(value) {
-  if (typeof value !== "string") return value == null ? void 0 : String(value);
-  const next = value.trim();
-  return next.length ? next : void 0;
+function i(t) {
+  if (typeof t != "string") return t == null ? void 0 : String(t);
+  const n = t.trim();
+  return n.length ? n : void 0;
 }
-function toOptionalBoolean(value) {
-  return typeof value === "boolean" ? value : void 0;
+function nt(t) {
+  return typeof t == "boolean" ? t : void 0;
 }
-function ensureId(value) {
-  return typeof value === "string" && value.trim() ? value.trim() : v4();
+function g(t) {
+  return typeof t == "string" && t.trim() ? t.trim() : v();
 }
-function normalizeIso(value) {
-  return typeof value === "string" && value.trim() ? value : nowISO();
+function z(t) {
+  return typeof t == "string" && t.trim() ? t : tt();
 }
-function normalizeAttachmentEntry(value) {
-  if (!value || typeof value !== "object") return null;
-  const name = typeof value.name === "string" ? value.name : "attachment";
-  const pathOrDataUrl = typeof value.pathOrDataUrl === "string" ? value.pathOrDataUrl : typeof value.path === "string" ? value.path : "";
-  if (!name && !pathOrDataUrl) return null;
-  return {
-    id: ensureId(value.id),
-    name,
-    pathOrDataUrl
+function et(t) {
+  if (!t || typeof t != "object") return null;
+  const n = typeof t.name == "string" ? t.name : "attachment", e = typeof t.pathOrDataUrl == "string" ? t.pathOrDataUrl : typeof t.path == "string" ? t.path : "";
+  return !n && !e ? null : {
+    id: g(t.id),
+    name: n,
+    pathOrDataUrl: e
   };
 }
-function attachmentKey(value) {
-  if (value && typeof value.id === "string" && value.id.trim()) return `id:${value.id.trim()}`;
-  const name = typeof value?.name === "string" ? value.name : "";
-  const pathOrDataUrl = typeof value?.pathOrDataUrl === "string" ? value.pathOrDataUrl : typeof value?.path === "string" ? value.path : "";
-  return `path:${name}::${pathOrDataUrl}`;
+function rt(t) {
+  if (t && typeof t.id == "string" && t.id.trim()) return `id:${t.id.trim()}`;
+  const n = typeof t?.name == "string" ? t.name : "", e = typeof t?.pathOrDataUrl == "string" ? t.pathOrDataUrl : typeof t?.path == "string" ? t.path : "";
+  return `path:${n}::${e}`;
 }
-function normalizeAttachments(values) {
-  const out = /* @__PURE__ */ new Map();
-  for (const value of values) {
-    const normalized = normalizeAttachmentEntry(value);
-    if (!normalized) continue;
-    out.set(attachmentKey(value), normalized);
+function G(t) {
+  const n = /* @__PURE__ */ new Map();
+  for (const e of t) {
+    const r = et(e);
+    r && n.set(rt(e), r);
   }
-  return [...out.values()];
+  return [...n.values()];
 }
-function normalizePartItem(value) {
+function x(t) {
   return {
-    id: ensureId(value?.id),
-    text: typeof value?.text === "string" ? value.text : "",
-    export: toOptionalBoolean(value?.export)
+    id: g(t?.id),
+    text: typeof t?.text == "string" ? t.text : "",
+    export: nt(t?.export)
   };
 }
-function normalizeSubStep(value) {
+function at(t) {
   return {
-    id: ensureId(value?.id),
-    title: toOptionalString(value?.title),
-    text: toOptionalString(value?.text)
+    id: g(t?.id),
+    title: i(t?.title),
+    text: i(t?.text)
   };
 }
-function normalizeLinks(values) {
-  const out = [];
-  for (const value of values) {
-    const provider = value && typeof value === "object" ? value.provider : void 0;
-    const externalId = value && typeof value === "object" ? value.externalId : void 0;
-    if ((provider === "zephyr" || provider === "allure") && typeof externalId === "string" && externalId.trim()) {
-      out.push({ provider, externalId: externalId.trim() });
-    }
+function it(t) {
+  const n = [];
+  for (const e of t) {
+    const r = e && typeof e == "object" ? e.provider : void 0, a = e && typeof e == "object" ? e.externalId : void 0;
+    (r === "zephyr" || r === "allure") && typeof a == "string" && a.trim() && n.push({ provider: r, externalId: a.trim() });
   }
-  return out;
+  return n;
 }
-function normalizeParams(value) {
-  if (!value || typeof value !== "object") return {};
-  const out = {};
-  for (const [key, raw] of Object.entries(value)) {
-    if (raw == null) continue;
-    out[key] = typeof raw === "string" ? raw : String(raw);
-  }
-  return out;
+function st(t) {
+  if (!t || typeof t != "object") return {};
+  const n = {};
+  for (const [e, r] of Object.entries(t))
+    r != null && (n[e] = typeof r == "string" ? r : String(r));
+  return n;
 }
-function normalizeMeta(value) {
+function ot(t) {
   return {
-    tags: Array.isArray(value?.tags) ? value.tags.map((tag) => String(tag)) : [],
-    params: normalizeParams(value?.params),
-    objective: toOptionalString(value?.objective),
-    preconditions: toOptionalString(value?.preconditions),
-    status: toOptionalString(value?.status),
-    priority: toOptionalString(value?.priority),
-    component: toOptionalString(value?.component),
-    owner: toOptionalString(value?.owner),
-    folder: toOptionalString(value?.folder),
-    estimated: toOptionalString(value?.estimated),
-    testType: toOptionalString(value?.testType),
-    automation: toOptionalString(value?.automation),
-    assignedTo: toOptionalString(value?.assignedTo)
+    tags: Array.isArray(t?.tags) ? t.tags.map((n) => String(n)) : [],
+    params: st(t?.params),
+    objective: i(t?.objective),
+    preconditions: i(t?.preconditions),
+    status: i(t?.status),
+    priority: i(t?.priority),
+    component: i(t?.component),
+    owner: i(t?.owner),
+    folder: i(t?.folder),
+    estimated: i(t?.estimated),
+    testType: i(t?.testType),
+    automation: i(t?.automation),
+    assignedTo: i(t?.assignedTo)
   };
 }
-function normalizeStep(step) {
-  const source = step ?? {};
-  const legacyAttachments = Array.isArray(source?.internal?.meta?.attachments) ? source.internal.meta.attachments : [];
-  const providerStepId = toOptionalString(
-    source.raw?.providerStepId ?? source?.providerStepId ?? source?.internal?.meta?.providerStepId
-  );
-  const rawMeta = source.internal && typeof source.internal === "object" && source.internal.meta && typeof source.internal.meta === "object" ? { ...source.internal.meta } : void 0;
-  if (rawMeta && "attachments" in rawMeta) delete rawMeta.attachments;
-  return {
-    id: ensureId(source.id),
-    action: toOptionalString(source.action),
-    data: toOptionalString(source.data),
-    expected: toOptionalString(source.expected),
-    text: toOptionalString(source.text) ?? toOptionalString(source.action) ?? "",
+function k(t) {
+  const n = t ?? {}, e = Array.isArray(n?.internal?.meta?.attachments) ? n.internal.meta.attachments : [], r = i(
+    n.raw?.providerStepId ?? n?.providerStepId ?? n?.internal?.meta?.providerStepId
+  ), a = n.internal && typeof n.internal == "object" && n.internal.meta && typeof n.internal.meta == "object" ? { ...n.internal.meta } : void 0;
+  return a && "attachments" in a && delete a.attachments, {
+    id: g(n.id),
+    action: i(n.action),
+    data: i(n.data),
+    expected: i(n.expected),
+    text: i(n.text) ?? i(n.action) ?? "",
     raw: {
-      action: toOptionalString(source.raw?.action) ?? toOptionalString(source.action),
-      data: toOptionalString(source.raw?.data) ?? toOptionalString(source.data),
-      expected: toOptionalString(source.raw?.expected) ?? toOptionalString(source.expected),
-      ...providerStepId ? { providerStepId } : {}
+      action: i(n.raw?.action) ?? i(n.action),
+      data: i(n.raw?.data) ?? i(n.data),
+      expected: i(n.raw?.expected) ?? i(n.expected),
+      ...r ? { providerStepId: r } : {}
     },
-    subSteps: Array.isArray(source.subSteps) ? source.subSteps.map(normalizeSubStep) : [],
+    subSteps: Array.isArray(n.subSteps) ? n.subSteps.map(at) : [],
     internal: {
-      note: toOptionalString(source.internal?.note),
-      url: toOptionalString(source.internal?.url),
-      meta: rawMeta && Object.keys(rawMeta).length ? rawMeta : void 0,
+      note: i(n.internal?.note),
+      url: i(n.internal?.url),
+      meta: a && Object.keys(a).length ? a : void 0,
       parts: {
-        action: Array.isArray(source.internal?.parts?.action) ? source.internal.parts.action.map(normalizePartItem) : [],
-        data: Array.isArray(source.internal?.parts?.data) ? source.internal.parts.data.map(normalizePartItem) : [],
-        expected: Array.isArray(source.internal?.parts?.expected) ? source.internal.parts.expected.map(normalizePartItem) : []
+        action: Array.isArray(n.internal?.parts?.action) ? n.internal.parts.action.map(x) : [],
+        data: Array.isArray(n.internal?.parts?.data) ? n.internal.parts.data.map(x) : [],
+        expected: Array.isArray(n.internal?.parts?.expected) ? n.internal.parts.expected.map(x) : []
       }
     },
-    usesShared: toOptionalString(source.usesShared),
-    attachments: normalizeAttachments([
-      ...Array.isArray(source.attachments) ? source.attachments : [],
-      ...legacyAttachments
+    usesShared: i(n.usesShared),
+    attachments: G([
+      ...Array.isArray(n.attachments) ? n.attachments : [],
+      ...e
     ])
   };
 }
-function normalizeTestCase(test) {
-  const source = test ?? {};
+function D(t) {
+  const n = t ?? {};
   return {
-    id: ensureId(source.id),
-    name: typeof source.name === "string" && source.name.trim() ? source.name : "Untitled Test",
-    description: toOptionalString(source.description) ?? "",
-    steps: Array.isArray(source.steps) ? source.steps.map(normalizeStep) : [],
-    attachments: normalizeAttachments(Array.isArray(source.attachments) ? source.attachments : []),
-    links: normalizeLinks(Array.isArray(source.links) ? source.links : []),
-    updatedAt: normalizeIso(source.updatedAt),
-    meta: normalizeMeta(source.meta),
+    id: g(n.id),
+    name: typeof n.name == "string" && n.name.trim() ? n.name : "Untitled Test",
+    description: i(n.description) ?? "",
+    steps: Array.isArray(n.steps) ? n.steps.map(k) : [],
+    attachments: G(Array.isArray(n.attachments) ? n.attachments : []),
+    links: it(Array.isArray(n.links) ? n.links : []),
+    updatedAt: z(n.updatedAt),
+    meta: ot(n.meta),
     exportCfg: {
-      enabled: typeof source.exportCfg?.enabled === "boolean" ? source.exportCfg.enabled : true
+      enabled: typeof n.exportCfg?.enabled == "boolean" ? n.exportCfg.enabled : !0
     }
   };
 }
-function normalizeNode(node) {
-  return Array.isArray(node?.children) ? normalizeFolder(node, toOptionalString(node?.name) ?? "Folder") : normalizeTestCase(node);
+function ct(t) {
+  return Array.isArray(t?.children) ? B(t, i(t?.name) ?? "Folder") : D(t);
 }
-function normalizeFolder(folder, fallbackName = "Folder") {
-  const source = folder ?? {};
+function B(t, n = "Folder") {
+  const e = t ?? {};
   return {
-    id: ensureId(source.id),
-    name: typeof source.name === "string" && source.name.trim() ? source.name : fallbackName,
-    children: Array.isArray(source.children) ? source.children.map(normalizeNode) : []
+    id: g(e.id),
+    name: typeof e.name == "string" && e.name.trim() ? e.name : n,
+    children: Array.isArray(e.children) ? e.children.map(ct) : []
   };
 }
-function normalizeSharedStep(shared) {
-  const source = shared ?? {};
+function Z(t) {
+  const n = t ?? {};
   return {
-    id: ensureId(source.id),
-    name: typeof source.name === "string" && source.name.trim() ? source.name : "Shared Step",
-    steps: Array.isArray(source.steps) ? source.steps.map(normalizeStep) : [],
-    updatedAt: normalizeIso(source.updatedAt)
+    id: g(n.id),
+    name: typeof n.name == "string" && n.name.trim() ? n.name : "Shared Step",
+    steps: Array.isArray(n.steps) ? n.steps.map(k) : [],
+    updatedAt: z(n.updatedAt)
   };
 }
-function normalizeRootState(state) {
-  const source = state ?? {};
+function N(t) {
+  const n = t ?? {};
   return {
-    root: normalizeFolder(source.root, "Root"),
-    sharedSteps: Array.isArray(source.sharedSteps) ? source.sharedSteps.map(normalizeSharedStep) : []
+    root: B(n.root, "Root"),
+    sharedSteps: Array.isArray(n.sharedSteps) ? n.sharedSteps.map(Z) : []
   };
 }
-const REPO_DIR = "tests_repo";
-const ROOT_DIR = "root";
-const FOLDER_META_FILE = "folder.json";
-const SHARED_STEPS_FILE = "shared_steps.json";
-const SNAPSHOTS_DIR = ".snapshots";
-const PUBLISH_LOGS_DIR = ".publish-logs";
-function getBaseDir$1() {
-  return app.isPackaged ? path.dirname(app.getPath("exe")) : process.cwd();
+const I = "tests_repo", J = "root", Y = "folder.json", W = "shared_steps.json", dt = ".snapshots", lt = ".publish-logs";
+function R() {
+  return w.isPackaged ? c.dirname(w.getPath("exe")) : process.cwd();
 }
-function slugify(name) {
-  return name.toLowerCase().replace(/[^a-z0-9\u0400-\u04FF]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "node";
+function pt(t) {
+  return t.toLowerCase().replace(/[^a-z0-9\u0400-\u04FF]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "node";
 }
-function isTestFolder(entries) {
-  return entries.includes("test.json");
+function ut(t) {
+  return t.includes("test.json");
 }
-async function ensureDir$1(targetPath) {
-  await promises.mkdir(targetPath, { recursive: true });
+async function y(t) {
+  await m.mkdir(t, { recursive: !0 });
 }
-async function readJsonFile(filePath) {
+async function V(t) {
   try {
-    const raw = await promises.readFile(filePath, "utf-8");
-    return JSON.parse(raw);
+    const n = await m.readFile(t, "utf-8");
+    return JSON.parse(n);
   } catch {
     return null;
   }
 }
-async function readFolderMeta(dir) {
-  return readJsonFile(path.join(dir, FOLDER_META_FILE));
+async function mt(t) {
+  return V(c.join(t, Y));
 }
-async function loadSharedSteps(baseDir) {
-  const raw = await readJsonFile(path.join(baseDir, SHARED_STEPS_FILE));
-  return Array.isArray(raw) ? raw.map(normalizeSharedStep) : [];
+async function St(t) {
+  const n = await V(c.join(t, W));
+  return Array.isArray(n) ? n.map(Z) : [];
 }
-async function loadFromFs() {
-  const baseDir = path.join(getBaseDir$1(), REPO_DIR);
-  const rootDir = path.join(baseDir, ROOT_DIR);
-  await ensureDir$1(rootDir);
-  async function readNode(dir, fallbackName) {
-    const entries = await promises.readdir(dir);
-    if (isTestFolder(entries)) {
-      const raw = await promises.readFile(path.join(dir, "test.json"), "utf-8");
-      return normalizeTestCase(JSON.parse(raw));
+async function ht() {
+  const t = c.join(R(), I), n = c.join(t, J);
+  await y(n);
+  async function e(d, S) {
+    const u = await m.readdir(d);
+    if (ut(u)) {
+      const s = await m.readFile(c.join(d, "test.json"), "utf-8");
+      return D(JSON.parse(s));
     }
-    const meta = await readFolderMeta(dir);
-    const folder = {
-      id: typeof meta?.id === "string" && meta.id.trim() ? meta.id : randomUUID(),
-      name: typeof meta?.name === "string" && meta.name.trim() ? meta.name : fallbackName,
+    const l = await mt(d), o = {
+      id: typeof l?.id == "string" && l.id.trim() ? l.id : H(),
+      name: typeof l?.name == "string" && l.name.trim() ? l.name : S,
       children: []
     };
-    for (const entry of entries) {
-      const childPath = path.join(dir, entry);
-      const stat = await promises.lstat(childPath);
-      if (!stat.isDirectory()) continue;
-      folder.children.push(await readNode(childPath, entry));
+    for (const s of u) {
+      const h = c.join(d, s);
+      (await m.lstat(h)).isDirectory() && o.children.push(await e(h, s));
     }
-    return folder;
+    return o;
   }
-  const root = await readNode(rootDir, "Root");
-  const sharedSteps = await loadSharedSteps(baseDir);
-  return normalizeRootState({ root, sharedSteps });
+  const r = await e(n, "Root"), a = await St(t);
+  return N({ root: r, sharedSteps: a });
 }
-async function saveToFs(state) {
-  const normalized = normalizeRootState(state);
-  const baseDir = path.join(getBaseDir$1(), REPO_DIR);
-  const rootDir = path.join(baseDir, ROOT_DIR);
-  await ensureDir$1(rootDir);
-  async function writeFolder(fsDir, folder) {
-    await ensureDir$1(fsDir);
-    await promises.writeFile(
-      path.join(fsDir, FOLDER_META_FILE),
-      JSON.stringify({ id: folder.id, name: folder.name }, null, 2),
+async function ft(t) {
+  const n = N(t), e = c.join(R(), I), r = c.join(e, J);
+  await y(r);
+  async function a(d, S) {
+    await y(d), await m.writeFile(
+      c.join(d, Y),
+      JSON.stringify({ id: S.id, name: S.name }, null, 2),
       "utf-8"
     );
-    const desired = /* @__PURE__ */ new Map();
-    for (const child of folder.children) {
-      if ("children" in child) {
-        desired.set(path.join(fsDir, child.name), { node: child });
+    const u = /* @__PURE__ */ new Map();
+    for (const o of S.children) {
+      if ("children" in o) {
+        u.set(c.join(d, o.name), { node: o });
         continue;
       }
-      const slug = slugify(child.name);
-      const idSuffix = child.id?.slice(0, 6) ?? randomUUID().slice(0, 6);
-      desired.set(path.join(fsDir, `${slug}__${idSuffix}`), { node: child });
+      const s = pt(o.name), h = o.id?.slice(0, 6) ?? H().slice(0, 6);
+      u.set(c.join(d, `${s}__${h}`), { node: o });
     }
-    for (const [targetPath, entry] of desired.entries()) {
-      if ("children" in entry.node) {
-        await writeFolder(targetPath, entry.node);
-      } else {
-        await ensureDir$1(targetPath);
-        await ensureDir$1(path.join(targetPath, "attachments"));
-        await promises.writeFile(
-          path.join(targetPath, "test.json"),
-          JSON.stringify(normalizeTestCase(entry.node), null, 2),
-          "utf-8"
-        );
-      }
-    }
-    const current = await promises.readdir(fsDir);
-    for (const entry of current) {
-      const currentPath = path.join(fsDir, entry);
-      const stat = await promises.lstat(currentPath);
-      if (!stat.isDirectory()) continue;
-      if (!desired.has(currentPath)) {
-        await promises.rm(currentPath, { recursive: true, force: true });
-      }
+    for (const [o, s] of u.entries())
+      "children" in s.node ? await a(o, s.node) : (await y(o), await y(c.join(o, "attachments")), await m.writeFile(
+        c.join(o, "test.json"),
+        JSON.stringify(D(s.node), null, 2),
+        "utf-8"
+      ));
+    const l = await m.readdir(d);
+    for (const o of l) {
+      const s = c.join(d, o);
+      (await m.lstat(s)).isDirectory() && (u.has(s) || await m.rm(s, { recursive: !0, force: !0 }));
     }
   }
-  await writeFolder(rootDir, normalized.root);
-  await promises.writeFile(
-    path.join(baseDir, SHARED_STEPS_FILE),
-    JSON.stringify(normalized.sharedSteps, null, 2),
+  await a(r, n.root), await m.writeFile(
+    c.join(e, W),
+    JSON.stringify(n.sharedSteps, null, 2),
     "utf-8"
   );
 }
-async function writeStateSnapshot(state, kind = "snapshot", meta) {
-  const normalized = normalizeRootState(state);
-  const baseDir = path.join(getBaseDir$1(), REPO_DIR, SNAPSHOTS_DIR);
-  await ensureDir$1(baseDir);
-  const filePath = path.join(baseDir, `${kind}-${timestampLabel()}.json`);
-  await promises.writeFile(
-    filePath,
-    JSON.stringify({ createdAt: (/* @__PURE__ */ new Date()).toISOString(), kind, meta: meta ?? {}, state: normalized }, null, 2),
+async function wt(t, n = "snapshot", e) {
+  const r = N(t), a = c.join(R(), I, dt);
+  await y(a);
+  const d = c.join(a, `${n}-${q()}.json`);
+  return await m.writeFile(
+    d,
+    JSON.stringify({ createdAt: (/* @__PURE__ */ new Date()).toISOString(), kind: n, meta: e ?? {}, state: r }, null, 2),
     "utf-8"
-  );
-  return filePath;
+  ), d;
 }
-async function writePublishLog(payload) {
-  const baseDir = path.join(getBaseDir$1(), REPO_DIR, PUBLISH_LOGS_DIR);
-  await ensureDir$1(baseDir);
-  const filePath = path.join(baseDir, `publish-${timestampLabel()}.json`);
-  await promises.writeFile(filePath, JSON.stringify(payload, null, 2), "utf-8");
-  return filePath;
+async function yt(t) {
+  const n = c.join(R(), I, lt);
+  await y(n);
+  const e = c.join(n, `publish-${q()}.json`);
+  return await m.writeFile(e, JSON.stringify(t, null, 2), "utf-8"), e;
 }
-function timestampLabel() {
-  const now = /* @__PURE__ */ new Date();
-  const date = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0")
-  ].join("");
-  const time = [
-    String(now.getHours()).padStart(2, "0"),
-    String(now.getMinutes()).padStart(2, "0"),
-    String(now.getSeconds()).padStart(2, "0")
+function q() {
+  const t = /* @__PURE__ */ new Date(), n = [
+    t.getFullYear(),
+    String(t.getMonth() + 1).padStart(2, "0"),
+    String(t.getDate()).padStart(2, "0")
+  ].join(""), e = [
+    String(t.getHours()).padStart(2, "0"),
+    String(t.getMinutes()).padStart(2, "0"),
+    String(t.getSeconds()).padStart(2, "0")
   ].join("-");
-  return `${date}-${time}`;
+  return `${n}-${e}`;
 }
-const SERVICE = "testshub-atlassian";
-function getBaseDir() {
-  return app.isPackaged ? path.dirname(app.getPath("exe")) : process.cwd();
+const P = "testshub-atlassian";
+function gt() {
+  return w.isPackaged ? c.dirname(w.getPath("exe")) : process.cwd();
 }
-const SETTINGS_PATH = path.join(getBaseDir(), "tests_repo", ".settings.json");
-async function ensureDir(filePath) {
-  await promises.mkdir(path.dirname(filePath), { recursive: true });
+const $ = c.join(gt(), "tests_repo", ".settings.json");
+async function At(t) {
+  await m.mkdir(c.dirname(t), { recursive: !0 });
 }
-async function loadSettings() {
+async function E() {
   try {
-    const raw = await promises.readFile(SETTINGS_PATH, "utf-8");
-    const parsed = JSON.parse(raw);
-    const login = parsed.login ?? "";
-    const baseUrl = parsed.baseUrl ?? "";
-    const hasSecret = login ? !!await keytar.getPassword(SERVICE, login) : false;
-    return { login, baseUrl, hasSecret };
+    const t = await m.readFile($, "utf-8"), n = JSON.parse(t), e = n.login ?? "", r = n.baseUrl ?? "", a = e ? !!await j.getPassword(P, e) : !1;
+    return { login: e, baseUrl: r, hasSecret: a };
   } catch {
-    return { login: "", baseUrl: "", hasSecret: false };
+    return { login: "", baseUrl: "", hasSecret: !1 };
   }
 }
-async function saveSettings(login, passwordOrToken, baseUrl) {
-  await ensureDir(SETTINGS_PATH);
-  const filePayload = { login, baseUrl };
-  await promises.writeFile(SETTINGS_PATH, JSON.stringify(filePayload, null, 2), "utf-8");
-  if (login && typeof passwordOrToken === "string" && passwordOrToken.length > 0) {
-    await keytar.setPassword(SERVICE, login, passwordOrToken);
-  }
-  const hasSecret = login ? !!await keytar.getPassword(SERVICE, login) : false;
-  return { login, baseUrl: baseUrl ?? "", hasSecret };
+async function Et(t, n, e) {
+  await At($);
+  const r = { login: t, baseUrl: e };
+  await m.writeFile($, JSON.stringify(r, null, 2), "utf-8"), t && typeof n == "string" && n.length > 0 && await j.setPassword(P, t, n);
+  const a = t ? !!await j.getPassword(P, t) : !1;
+  return { login: t, baseUrl: e ?? "", hasSecret: a };
 }
-async function getAtlassianSecret(login) {
-  if (!login) return null;
-  return await keytar.getPassword(SERVICE, login);
+async function T(t) {
+  return t ? await j.getPassword(P, t) : null;
 }
-function cleanBaseUrl(u) {
-  return (u || "").replace(/\/+$/, "");
+function U(t) {
+  return (t || "").replace(/\/+$/, "");
 }
-function b64(s) {
-  return Buffer.from(s, "utf8").toString("base64");
+function O(t) {
+  return Buffer.from(t, "utf8").toString("base64");
 }
-function registerHandlers(ipcMain2) {
-  ipcMain2.handle(CHANNELS.LOAD_STATE, async (_e, fallback) => {
+function Tt(t) {
+  t.handle(f.LOAD_STATE, async (n, e) => {
     try {
-      return await loadFromFs();
+      return await ht();
     } catch {
-      return fallback;
+      return e;
     }
-  });
-  ipcMain2.handle(CHANNELS.SAVE_STATE, async (_e, state) => {
-    await saveToFs(state);
-    return true;
-  });
-  ipcMain2.handle(CHANNELS.WRITE_STATE_SNAPSHOT, async (_e, payload) => {
-    return await writeStateSnapshot(payload.state, payload.kind, payload.meta);
-  });
-  ipcMain2.handle(CHANNELS.WRITE_PUBLISH_LOG, async (_e, payload) => {
-    return await writePublishLog(payload);
-  });
-  ipcMain2.handle(CHANNELS.LOAD_SETTINGS, async () => {
-    return await loadSettings();
-  });
-  ipcMain2.handle(
-    CHANNELS.SAVE_SETTINGS,
-    async (_e, payload) => {
-      return await saveSettings(payload.login, payload.passwordOrToken, payload.baseUrl);
-    }
-  );
-  ipcMain2.handle(
-    CHANNELS.GET_ATLASSIAN_SECRET,
-    async (_e, payload) => {
-      const s = await getAtlassianSecret(payload.login);
-      return s ?? "";
-    }
-  );
-  ipcMain2.handle(
-    CHANNELS.ZEPHYR_GET_TESTCASE,
-    async (_e, payload) => {
-      const settings = await loadSettings();
-      const login = settings.login || "";
-      const baseUrl = cleanBaseUrl(settings.baseUrl || "");
-      if (!login) throw new Error("Atlassian login is empty in settings");
-      if (!baseUrl) throw new Error("Atlassian baseUrl is empty in settings");
-      const password = await getAtlassianSecret(login) || "";
-      if (!password) throw new Error("Atlassian password is not stored in keychain");
-      const url = `${baseUrl}/rest/atm/1.0/testcase/${encodeURIComponent(payload.ref)}`;
-      const auth = `Basic ${b64(`${login}:${password}`)}`;
-      const res = await fetch(url, {
+  }), t.handle(f.SAVE_STATE, async (n, e) => (await ft(e), !0)), t.handle(f.WRITE_STATE_SNAPSHOT, async (n, e) => await wt(e.state, e.kind, e.meta)), t.handle(f.WRITE_PUBLISH_LOG, async (n, e) => await yt(e)), t.handle(f.LOAD_SETTINGS, async () => await E()), t.handle(
+    f.SAVE_SETTINGS,
+    async (n, e) => await Et(e.login, e.passwordOrToken, e.baseUrl)
+  ), t.handle(
+    f.GET_ATLASSIAN_SECRET,
+    async (n, e) => await T(e.login) ?? ""
+  ), t.handle(
+    f.ZEPHYR_GET_TESTCASE,
+    async (n, e) => {
+      const r = await E(), a = r.login || "", d = U(r.baseUrl || "");
+      if (!a) throw new Error("Atlassian login is empty in settings");
+      if (!d) throw new Error("Atlassian baseUrl is empty in settings");
+      const S = await T(a) || "";
+      if (!S) throw new Error("Atlassian password is not stored in keychain");
+      const u = `${d}/rest/atm/1.0/testcase/${encodeURIComponent(e.ref)}`, l = `Basic ${O(`${a}:${S}`)}`, o = await fetch(u, {
         method: "GET",
-        headers: { Authorization: auth, Accept: "application/json" }
+        headers: { Authorization: l, Accept: "application/json" }
       });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
+      if (!o.ok) {
+        const s = await o.text().catch(() => "");
         throw new Error(
-          `Zephyr(${payload.by}) ${res.status} ${res.statusText}` + (text ? ` – ${text.slice(0, 300)}` : "")
+          `Zephyr(${e.by}) ${o.status} ${o.statusText}` + (s ? ` – ${s.slice(0, 300)}` : "")
         );
       }
-      return await res.json();
+      return await o.json();
     }
-  );
-  ipcMain2.handle(
-    CHANNELS.ZEPHYR_SEARCH_TESTCASES,
-    async (_e, payload) => {
-      const settings = await loadSettings();
-      const login = settings.login || "";
-      const baseUrl = cleanBaseUrl(settings.baseUrl || "");
-      if (!login) throw new Error("Atlassian login is empty in settings");
-      if (!baseUrl) throw new Error("Atlassian baseUrl is empty in settings");
-      const password = await getAtlassianSecret(login) || "";
-      if (!password) throw new Error("Atlassian password is not stored in keychain");
-      const query = String(payload.query ?? "").trim();
-      if (!query) throw new Error("Zephyr search query is empty");
-      const url = new URL(`${baseUrl}/rest/atm/1.0/testcase/search`);
-      url.searchParams.set("query", query);
-      url.searchParams.set("startAt", String(Math.max(0, Number(payload.startAt ?? 0) || 0)));
-      url.searchParams.set("maxResults", String(Math.max(1, Number(payload.maxResults ?? 100) || 100)));
-      const auth = `Basic ${b64(`${login}:${password}`)}`;
-      const res = await fetch(url, {
+  ), t.handle(
+    f.ZEPHYR_SEARCH_TESTCASES,
+    async (n, e) => {
+      const r = await E(), a = r.login || "", d = U(r.baseUrl || "");
+      if (!a) throw new Error("Atlassian login is empty in settings");
+      if (!d) throw new Error("Atlassian baseUrl is empty in settings");
+      const S = await T(a) || "";
+      if (!S) throw new Error("Atlassian password is not stored in keychain");
+      const u = String(e.query ?? "").trim();
+      if (!u) throw new Error("Zephyr search query is empty");
+      const l = new URL(`${d}/rest/atm/1.0/testcase/search`);
+      l.searchParams.set("query", u), l.searchParams.set("startAt", String(Math.max(0, Number(e.startAt ?? 0) || 0))), l.searchParams.set("maxResults", String(Math.max(1, Number(e.maxResults ?? 100) || 100)));
+      const o = `Basic ${O(`${a}:${S}`)}`, s = await fetch(l, {
         method: "GET",
-        headers: { Authorization: auth, Accept: "application/json" }
+        headers: { Authorization: o, Accept: "application/json" }
       });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
+      if (!s.ok) {
+        const h = await s.text().catch(() => "");
         throw new Error(
-          `Zephyr(search) ${res.status} ${res.statusText}` + (text ? ` – ${text.slice(0, 300)}` : "")
+          `Zephyr(search) ${s.status} ${s.statusText}` + (h ? ` – ${h.slice(0, 300)}` : "")
         );
       }
-      return await res.json();
+      return await s.json();
     }
-  );
-  ipcMain2.handle(
-    CHANNELS.ZEPHYR_UPSERT_TESTCASE,
-    async (_e, payload) => {
-      const settings = await loadSettings();
-      const login = settings.login || "";
-      const baseUrl = cleanBaseUrl(settings.baseUrl || "");
-      if (!login) throw new Error("Atlassian login is empty in settings");
-      if (!baseUrl) throw new Error("Atlassian baseUrl is empty in settings");
-      const password = await getAtlassianSecret(login) || "";
-      if (!password) throw new Error("Atlassian password is not stored in keychain");
-      const ref = typeof payload.ref === "string" && payload.ref.trim() ? payload.ref.trim() : "";
-      const url = ref ? `${baseUrl}/rest/atm/1.0/testcase/${encodeURIComponent(ref)}` : `${baseUrl}/rest/atm/1.0/testcase`;
-      const auth = `Basic ${b64(`${login}:${password}`)}`;
-      const res = await fetch(url, {
-        method: ref ? "PUT" : "POST",
+  ), t.handle(
+    f.ZEPHYR_UPSERT_TESTCASE,
+    async (n, e) => {
+      const r = await E(), a = r.login || "", d = U(r.baseUrl || "");
+      if (!a) throw new Error("Atlassian login is empty in settings");
+      if (!d) throw new Error("Atlassian baseUrl is empty in settings");
+      const S = await T(a) || "";
+      if (!S) throw new Error("Atlassian password is not stored in keychain");
+      const u = typeof e.ref == "string" && e.ref.trim() ? e.ref.trim() : "", l = u ? `${d}/rest/atm/1.0/testcase/${encodeURIComponent(u)}` : `${d}/rest/atm/1.0/testcase`, o = `Basic ${O(`${a}:${S}`)}`, s = await fetch(l, {
+        method: u ? "PUT" : "POST",
         headers: {
-          Authorization: auth,
+          Authorization: o,
           Accept: "application/json",
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(payload.body ?? {})
+        body: JSON.stringify(e.body ?? {})
       });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
+      if (!s.ok) {
+        const h = await s.text().catch(() => "");
         throw new Error(
-          `Zephyr(upsert) ${res.status} ${res.statusText}` + (text ? ` – ${text.slice(0, 400)}` : "")
+          `Zephyr(upsert) ${s.status} ${s.statusText}` + (h ? ` – ${h.slice(0, 400)}` : "")
         );
       }
-      return await res.json().catch(() => ({}));
+      return await s.json().catch(() => ({}));
     }
   );
 }
-let win = null;
-async function createWindow() {
-  win = new BrowserWindow({
+let _ = null;
+async function M() {
+  _ = new F({
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(app.getAppPath(), "electron", "preload.cjs"),
-      contextIsolation: true,
-      nodeIntegration: false
+      preload: c.join(w.getAppPath(), "electron", "preload.cjs"),
+      contextIsolation: !0,
+      nodeIntegration: !1
     }
   });
-  const devUrl = process.env.ELECTRON_RENDERER_URL || "http://localhost:5173";
-  {
-    try {
-      await win.loadURL(devUrl);
-      win.webContents.openDevTools({ mode: "detach" });
-    } catch (err) {
-      console.error("Failed to load renderer dev URL:", devUrl, err);
-      await win.loadFile(path.join(app.getAppPath(), "dist", "index.html"));
-    }
+  const t = process.env.ELECTRON_RENDERER_URL || "http://localhost:5173";
+  try {
+    await _.loadURL(t), _.webContents.openDevTools({ mode: "detach" });
+  } catch (n) {
+    console.error("Failed to load renderer dev URL:", t, n), await _.loadFile(c.join(w.getAppPath(), "dist", "index.html"));
   }
 }
-app.whenReady().then(() => {
-  registerHandlers(ipcMain);
-  createWindow();
+w.whenReady().then(() => {
+  Tt(K), M();
 });
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+w.on("window-all-closed", () => {
+  process.platform !== "darwin" && w.quit();
 });
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+w.on("activate", () => {
+  F.getAllWindows().length === 0 && M();
 });
 //# sourceMappingURL=main.mjs.map

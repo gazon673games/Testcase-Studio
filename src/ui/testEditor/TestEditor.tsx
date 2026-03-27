@@ -52,6 +52,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     const [showAttachments, setShowAttachments] = useStoredToggle('test-editor.show-attachments', false)
     const [showLinks, setShowLinks] = useStoredToggle('test-editor.show-links', false)
     const [showSharedLibrary, setShowSharedLibrary] = useStoredToggle('test-editor.show-shared-library.v2', false)
+    const [previewAll, setPreviewAll] = useStoredToggle('test-editor.preview-all', false)
     const [selectedSharedId, setSelectedSharedId] = React.useState<string | null>(sharedSteps[0]?.id ?? null)
     const [focusSharedStepId, setFocusSharedStepId] = React.useState<string | null>(null)
     const [activeEditorApi, setActiveEditorApi] = React.useState<MarkdownEditorApi | null>(null)
@@ -179,6 +180,13 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                             <div className="editor-hero-actions">
                                 <button
                                     type="button"
+                                    className={`btn-small editor-side-button ${previewAll ? 'active' : ''}`}
+                                    onClick={() => setPreviewAll((current) => !current)}
+                                >
+                                    {previewAll ? 'Raw All' : 'Preview All'}
+                                </button>
+                                <button
+                                    type="button"
                                     className={`btn-small editor-side-button ${showSharedLibrary ? 'active' : ''}`}
                                     onClick={() => setShowSharedLibrary((current) => !current)}
                                 >
@@ -207,6 +215,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                         inspectRefs={inspectRefs}
                         onOpenRef={openResolvedRef}
                         focusStepId={focusStepId}
+                        previewMode={previewAll ? 'preview' : 'raw'}
                         onApply={() => {}}
                         onActivateEditorApi={setActiveEditorApi}
                         onCreateSharedFromStep={handleCreateSharedFromStep}
@@ -229,6 +238,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                             sharedSteps={sharedSteps}
                             resolveRefs={resolveRefs}
                             inspectRefs={inspectRefs}
+                            previewMode={previewAll ? 'preview' : 'raw'}
                             onOpenRef={openResolvedRef}
                             onActivateEditorApi={setActiveEditorApi}
                         />

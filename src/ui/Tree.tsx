@@ -463,11 +463,7 @@ function NodeView(props: NodeViewProps) {
                                 </div>
                             )}
                         </div>
-                        {syncStatus ? (
-                            <span style={treeStatusPillStyle(syncStatus)}>
-                                {formatSyncStatusLabel(syncStatus)}
-                            </span>
-                        ) : null}
+                        {renderSyncStatusBadge(syncStatus)}
                         <span style={treeMetaPillStyle}>{itemLabel}</span>
                         <button
                             type="button"
@@ -808,6 +804,21 @@ function formatSyncStatusLabel(status: SyncStatus): string {
     return status === 'conflict' ? 'Conflict' : status === 'dirty' ? 'Dirty' : 'Synced'
 }
 
+function renderSyncStatusBadge(status: SyncStatus | null) {
+    if (!status) return null
+    if (status === 'dirty') {
+        return (
+            <span
+                aria-label="Local changes are not synced"
+                title="Local changes are not synced"
+                style={treeDirtyIndicatorStyle}
+            />
+        )
+    }
+
+    return <span style={treeStatusPillStyle(status)}>{formatSyncStatusLabel(status)}</span>
+}
+
 function ChevronIcon({ open }: { open: boolean }) {
     return (
         <svg
@@ -952,6 +963,15 @@ const treeStatusPillStyle = (status: SyncStatus): React.CSSProperties => ({
             ? { background: '#fff8e8', color: '#896009' }
             : { background: '#eef8ef', color: '#2e6a3a' }),
 })
+
+const treeDirtyIndicatorStyle: React.CSSProperties = {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: '#f0b429',
+    boxShadow: '0 0 0 3px rgba(240, 180, 41, 0.18)',
+    flexShrink: 0,
+}
 
 const rowMenuButtonStyle: React.CSSProperties = {
     width: 28,

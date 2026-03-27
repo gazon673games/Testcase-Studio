@@ -669,7 +669,7 @@
 /* Autocomplete */
 .autocomplete {
     position: fixed; z-index: 9999;
-    width: 380px; max-height: 260px; overflow: auto;
+    width: min(380px, calc(100vw - 24px)); max-height: 260px; overflow: auto;
     background: #fff; border: 1px solid #ddd; border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0,0,0,.15);
 }
