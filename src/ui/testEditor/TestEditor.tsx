@@ -47,19 +47,14 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     }: Props,
     ref
 ) {
-    const [showAttachments, setShowAttachments] = React.useState(false)
-    const [showDetails, setShowDetails] = React.useState(false)
-    const [showMeta, setShowMeta] = React.useState(false)
-    const [showSharedLibrary, setShowSharedLibrary] = React.useState(true)
+    const [showDetails, setShowDetails] = useStoredToggle('test-editor.show-details', true)
+    const [showMeta, setShowMeta] = useStoredToggle('test-editor.show-meta', false)
+    const [showAttachments, setShowAttachments] = useStoredToggle('test-editor.show-attachments', false)
+    const [showLinks, setShowLinks] = useStoredToggle('test-editor.show-links', false)
+    const [showSharedLibrary, setShowSharedLibrary] = useStoredToggle('test-editor.show-shared-library', true)
     const [selectedSharedId, setSelectedSharedId] = React.useState<string | null>(sharedSteps[0]?.id ?? null)
     const [focusSharedStepId, setFocusSharedStepId] = React.useState<string | null>(null)
     const [activeEditorApi, setActiveEditorApi] = React.useState<MarkdownEditorApi | null>(null)
-
-    React.useEffect(() => {
-        setShowAttachments(false)
-        setShowDetails(false)
-        setShowMeta(false)
-    }, [test.id])
 
     React.useEffect(() => {
         if (!selectedSharedId && sharedSteps[0]) setSelectedSharedId(sharedSteps[0].id)
@@ -109,7 +104,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         }
         if (refInfo.stepId) onOpenStep(refInfo.ownerId, refInfo.stepId)
         else onOpenTest(refInfo.ownerId)
-    }, [onOpenStep, onOpenTest])
+    }, [onOpenStep, onOpenTest, setShowSharedLibrary])
 
     const openUsage = React.useCallback((usage: SharedUsage) => {
         if (usage.ownerType === 'shared') {
@@ -120,7 +115,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         }
         if (usage.sourceStepId) onOpenStep(usage.ownerId, usage.sourceStepId)
         else onOpenTest(usage.ownerId)
-    }, [onOpenStep, onOpenTest])
+    }, [onOpenStep, onOpenTest, setShowSharedLibrary])
 
     const handleAddShared = React.useCallback(async () => {
         const created = await onAddSharedStep()
@@ -129,7 +124,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
             setSelectedSharedId(created)
             setFocusSharedStepId(null)
         }
-    }, [onAddSharedStep])
+    }, [onAddSharedStep, setShowSharedLibrary])
 
     const handleCreateSharedFromStep = React.useCallback(async (step: Step, name?: string) => {
         const created = await onAddSharedStepFromStep(step, name)
@@ -138,48 +133,71 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
             setSelectedSharedId(created)
             setFocusSharedStepId(step.id)
         }
-    }, [onAddSharedStepFromStep])
+    }, [onAddSharedStepFromStep, setShowSharedLibrary])
 
     const handleOpenShared = React.useCallback((sharedId: string, stepId?: string) => {
         setShowSharedLibrary(true)
         setSelectedSharedId(sharedId)
         setFocusSharedStepId(stepId ?? null)
-    }, [])
+    }, [setShowSharedLibrary])
+
+    const zephyrLink = getLink('zephyr')
+    const allureLink = getLink('allure')
+    const sharedReferenceCount = React.useMemo(
+        () => (test.steps ?? []).filter((step) => step.usesShared).length,
+        [test.steps]
+    )
+    const tagsCount = test.meta?.tags?.length ?? 0
+    const externalLinksCount = (zephyrLink ? 1 : 0) + (allureLink ? 1 : 0)
+    const summaryItems = [
+        `${test.steps.length} step${test.steps.length === 1 ? '' : 's'}`,
+        sharedReferenceCount ? `${sharedReferenceCount} shared ref${sharedReferenceCount === 1 ? '' : 's'}` : '',
+        test.attachments?.length ? `${test.attachments.length} attachment${test.attachments.length === 1 ? '' : 's'}` : '',
+        tagsCount ? `${tagsCount} tag${tagsCount === 1 ? '' : 's'}` : '',
+        zephyrLink ? 'Linked to Zephyr' : '',
+        allureLink ? 'Linked to Allure' : '',
+    ].filter(Boolean)
 
     React.useImperativeHandle(ref, () => ({ commit: () => {} }), [])
 
     return (
         <div className="test-editor">
-            <div className="meta-card" style={{ display: 'grid', gap: 8, marginBottom: 8 }}>
-                <div className="field" style={{ margin: 0 }}>
-                    <label className="label-sm">Zephyr key</label>
+            <div className="editor-hero">
+                <div className="editor-hero-copy">Test Case</div>
+                <div className="field editor-name-field">
+                    <label className="label-sm">Name</label>
                     <input
-                        className="input"
-                        value={getLink('zephyr')}
-                        onChange={(e) => upsertLink('zephyr', e.target.value)}
-                        placeholder="Example: PROD-T6079 or 6079"
+                        value={test.name}
+                        onChange={(e) => onChange({ name: e.target.value })}
+                        className="input editor-name-input"
+                        placeholder="Enter test name..."
                     />
                 </div>
-                <div className="field" style={{ margin: 0 }}>
-                    <label className="label-sm">Allure ID</label>
-                    <input
-                        className="input"
-                        value={getLink('allure')}
-                        onChange={(e) => upsertLink('allure', e.target.value)}
-                        placeholder="Example: 12345"
-                    />
+                <div className="editor-summary-row">
+                    {summaryItems.map((item) => (
+                        <span key={item} className="editor-summary-chip">
+                            {item}
+                        </span>
+                    ))}
                 </div>
             </div>
 
-            <div className="field">
-                <label className="label-sm">Name</label>
-                <input
-                    value={test.name}
-                    onChange={(e) => onChange({ name: e.target.value })}
-                    className="input"
-                    placeholder="Enter test name..."
-                />
-            </div>
+            <StepsPanel
+                owner={{ type: 'test', id: test.id }}
+                steps={test.steps}
+                onChange={(next) => onChange({ steps: next })}
+                allTests={allTests}
+                sharedSteps={sharedSteps}
+                resolveRefs={resolveRefs}
+                inspectRefs={inspectRefs}
+                onOpenRef={openResolvedRef}
+                focusStepId={focusStepId}
+                onApply={() => {}}
+                onActivateEditorApi={setActiveEditorApi}
+                onCreateSharedFromStep={handleCreateSharedFromStep}
+                onOpenShared={handleOpenShared}
+                onInsertText={insertIntoActiveEditor}
+            />
 
             <SectionHeader
                 title="Shared Library"
@@ -222,24 +240,11 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                 />
             )}
 
-            <StepsPanel
-                owner={{ type: 'test', id: test.id }}
-                steps={test.steps}
-                onChange={(next) => onChange({ steps: next })}
-                allTests={allTests}
-                sharedSteps={sharedSteps}
-                resolveRefs={resolveRefs}
-                inspectRefs={inspectRefs}
-                onOpenRef={openResolvedRef}
-                focusStepId={focusStepId}
-                onApply={() => {}}
-                onActivateEditorApi={setActiveEditorApi}
-                onCreateSharedFromStep={handleCreateSharedFromStep}
-                onOpenShared={handleOpenShared}
-                onInsertText={insertIntoActiveEditor}
+            <SectionHeader
+                title="Details"
+                open={showDetails}
+                onToggle={() => setShowDetails((current) => !current)}
             />
-
-            <SectionHeader title="Details" open={showDetails} onToggle={() => setShowDetails((current) => !current)} />
             {showDetails && (
                 <DetailsPanel
                     description={test.description ?? ''}
@@ -256,6 +261,18 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
             )}
 
             <SectionHeader
+                title="Parameters"
+                open={showMeta}
+                onToggle={() => setShowMeta((current) => !current)}
+            />
+            {showMeta && (
+                <ParamsPanel
+                    meta={(test.meta as TestMeta) ?? { tags: [] }}
+                    onChange={(nextMeta) => onChange({ meta: nextMeta })}
+                />
+            )}
+
+            <SectionHeader
                 title="Attachments"
                 open={showAttachments}
                 count={test.attachments?.length ?? 0}
@@ -268,16 +285,64 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                 />
             )}
 
-            <SectionHeader title="Parameters" open={showMeta} onToggle={() => setShowMeta((current) => !current)} />
-            {showMeta && (
-                <ParamsPanel
-                    meta={(test.meta as TestMeta) ?? { tags: [] }}
-                    onChange={(nextMeta) => onChange({ meta: nextMeta })}
-                />
+            <SectionHeader
+                title="External Links"
+                open={showLinks}
+                count={externalLinksCount}
+                onToggle={() => setShowLinks((current) => !current)}
+            />
+            {showLinks && (
+                <div className="meta-card editor-links-card">
+                    <div className="editor-links-copy">
+                        Provider IDs live here so they stay available, but they do not compete with the test content for attention.
+                    </div>
+                    <div className="editor-links-grid">
+                        <div className="field" style={{ margin: 0 }}>
+                            <label className="label-sm">Zephyr key</label>
+                            <input
+                                className="input"
+                                value={zephyrLink}
+                                onChange={(e) => upsertLink('zephyr', e.target.value)}
+                                placeholder="Example: PROD-T6079 or 6079"
+                            />
+                        </div>
+                        <div className="field" style={{ margin: 0 }}>
+                            <label className="label-sm">Allure ID</label>
+                            <input
+                                className="input"
+                                value={allureLink}
+                                onChange={(e) => upsertLink('allure', e.target.value)}
+                                placeholder="Example: 12345"
+                            />
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     )
 })
+
+function useStoredToggle(key: string, initialValue: boolean) {
+    const [value, setValue] = React.useState(() => {
+        try {
+            const stored = window.localStorage.getItem(key)
+            if (stored == null) return initialValue
+            return stored === '1'
+        } catch {
+            return initialValue
+        }
+    })
+
+    React.useEffect(() => {
+        try {
+            window.localStorage.setItem(key, value ? '1' : '0')
+        } catch {
+            // local persistence is best-effort only
+        }
+    }, [key, value])
+
+    return [value, setValue] as const
+}
 
 const SectionHeader = ({
     title,
@@ -294,7 +359,7 @@ const SectionHeader = ({
 }) => (
     <div className="section-header" data-spoiler data-nopress>
         <button type="button" onClick={onToggle}>
-            <span style={{ width: 14, textAlign: 'center' }}>{open ? '▾' : '▸'}</span>
+            <span style={{ width: 14, textAlign: 'center' }}>{open ? '-' : '+'}</span>
             <span>
                 {title}
                 {typeof count === 'number' ? ` (${count})` : ''}
