@@ -9,6 +9,7 @@ import {
     type TestCaseLink,
     type TestMeta,
 } from './domain'
+import { buildPreviewStepDiffRows, summarizePreviewSteps, summarizePreviewText, type PreviewStepDiffRow } from './previewDiff'
 import { findNode, findParentFolder, insertChild, isFolder, mapTests, moveNode as moveTreeNode } from './tree'
 import { fromProviderPayload } from '@providers/mappers'
 import type { ProviderTest } from '@providers/types'
@@ -34,6 +35,7 @@ export interface ZephyrImportDiff {
     label: string
     local: string
     remote: string
+    stepRows?: PreviewStepDiffRow[]
 }
 
 export interface ZephyrImportPreviewItem {
@@ -442,8 +444,21 @@ function diffImportedFields(
 ): ZephyrImportDiff[] {
     const diffs: ZephyrImportDiff[] = []
     pushDiff(diffs, 'name', 'Name', local.name, remote.name)
-    pushDiff(diffs, 'description', 'Description', summarizeText(local.description), summarizeText(remote.description))
-    pushDiff(diffs, 'steps', 'Steps', summarizeSteps(local), summarizeSteps(remote))
+    pushDiff(
+        diffs,
+        'description',
+        'Description',
+        summarizePreviewText(local.description),
+        summarizePreviewText(remote.description)
+    )
+    pushDiff(
+        diffs,
+        'steps',
+        'Steps',
+        summarizePreviewSteps(local.steps),
+        summarizePreviewSteps(remote.steps),
+        buildPreviewStepDiffRows(local.steps, remote.steps)
+    )
     pushDiff(diffs, 'meta', 'Meta', summarizeMeta(local.meta), summarizeMeta(remote.meta))
     pushDiff(diffs, 'attachments', 'Attachments', summarizeAttachments(local), summarizeAttachments(remote))
 
@@ -455,7 +470,13 @@ function diffImportedFields(
 function diffNewImportedFields(remote: TestCase, targetFolderLabel: string): ZephyrImportDiff[] {
     return [
         { field: 'name', label: 'Name', local: 'New local test', remote: remote.name },
-        { field: 'steps', label: 'Steps', local: 'No local version', remote: summarizeSteps(remote) },
+        {
+            field: 'steps',
+            label: 'Steps',
+            local: 'No local version',
+            remote: summarizePreviewSteps(remote.steps),
+            stepRows: buildPreviewStepDiffRows([], remote.steps),
+        },
         { field: 'meta', label: 'Meta', local: 'No local version', remote: summarizeMeta(remote.meta) },
         { field: 'folder', label: 'Folder', local: 'Will be created', remote: targetFolderLabel },
     ]
@@ -466,10 +487,12 @@ function pushDiff(
     field: ZephyrImportDiffField,
     label: string,
     local: string,
-    remote: string
+    remote: string,
+    stepRows?: PreviewStepDiffRow[]
 ) {
-    if (local === remote) return
-    diffs.push({ field, label, local, remote })
+    const hasStepChanges = !!stepRows?.some((row) => row.changed)
+    if (local === remote && !hasStepChanges) return
+    diffs.push({ field, label, local, remote, ...(stepRows?.length ? { stepRows } : {}) })
 }
 
 function summarizeSteps(test: Pick<TestCase, 'steps'>): string {

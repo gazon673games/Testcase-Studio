@@ -1,4 +1,5 @@
 import { mdToHtml, looksLikeHtml } from './markdown'
+import { buildPreviewStepDiffRows, summarizePreviewSteps, summarizePreviewText, type PreviewStepDiffRow } from './previewDiff'
 import { buildExport } from './export'
 import { buildRefCatalog, resolveRefsInText } from './refs'
 import { nowISO, type RootState, type TestCase, type TestMeta } from './domain'
@@ -20,6 +21,7 @@ export interface ZephyrPublishDiff {
     label: string
     local: string
     remote: string
+    stepRows?: PreviewStepDiffRow[]
 }
 
 export interface ZephyrPublishPreviewItem {
@@ -263,21 +265,34 @@ function buildPreviewItem(
 function diffPayloadAgainstRemote(local: ProviderTest, remote: ProviderTest): ZephyrPublishDiff[] {
     const diffs: ZephyrPublishDiff[] = []
     pushDiff(diffs, 'name', 'Name', local.name, remote.name)
-    pushDiff(diffs, 'description', 'Description', summarizeText(local.description), summarizeText(remote.description))
-    pushDiff(diffs, 'steps', 'Steps', summarizeProviderSteps(local.steps), summarizeProviderSteps(remote.steps))
+    pushDiff(
+        diffs,
+        'description',
+        'Description',
+        summarizePreviewText(local.description),
+        summarizePreviewText(remote.description)
+    )
+    pushDiff(
+        diffs,
+        'steps',
+        'Steps',
+        summarizePreviewSteps(local.steps),
+        summarizePreviewSteps(remote.steps),
+        buildPreviewStepDiffRows(local.steps, remote.steps)
+    )
     pushDiff(
         diffs,
         'objective',
         'Objective',
-        summarizeText(safeString(local.extras?.objective)),
-        summarizeText(safeString(remote.extras?.objective))
+        summarizePreviewText(safeString(local.extras?.objective)),
+        summarizePreviewText(safeString(remote.extras?.objective))
     )
     pushDiff(
         diffs,
         'preconditions',
         'Preconditions',
-        summarizeText(safeString(local.extras?.preconditions)),
-        summarizeText(safeString(remote.extras?.preconditions))
+        summarizePreviewText(safeString(local.extras?.preconditions)),
+        summarizePreviewText(safeString(remote.extras?.preconditions))
     )
     pushDiff(diffs, 'folder', 'Folder', safeString(local.extras?.folder) ?? 'No folder', safeString(remote.extras?.folder) ?? 'No folder')
     pushDiff(diffs, 'labels', 'Labels', summarizeLabels(local.extras?.labels), summarizeLabels(remote.extras?.labels))
@@ -287,7 +302,13 @@ function diffPayloadAgainstRemote(local: ProviderTest, remote: ProviderTest): Ze
 function buildCreateDiffs(local: ProviderTest): ZephyrPublishDiff[] {
     return [
         { field: 'name', label: 'Name', local: local.name, remote: 'No remote testcase' },
-        { field: 'steps', label: 'Steps', local: summarizeProviderSteps(local.steps), remote: 'No remote testcase' },
+        {
+            field: 'steps',
+            label: 'Steps',
+            local: summarizePreviewSteps(local.steps),
+            remote: 'No remote testcase',
+            stepRows: buildPreviewStepDiffRows(local.steps, []),
+        },
         {
             field: 'folder',
             label: 'Folder',
@@ -374,10 +395,12 @@ function pushDiff(
     field: ZephyrPublishDiffField,
     label: string,
     local: string,
-    remote: string
+    remote: string,
+    stepRows?: PreviewStepDiffRow[]
 ) {
-    if (local === remote) return
-    diffs.push({ field, label, local, remote })
+    const hasStepChanges = !!stepRows?.some((row) => row.changed)
+    if (local === remote && !hasStepChanges) return
+    diffs.push({ field, label, local, remote, ...(stepRows?.length ? { stepRows } : {}) })
 }
 
 function safeString(value: unknown): string | undefined {
