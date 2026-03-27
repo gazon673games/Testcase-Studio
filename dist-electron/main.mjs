@@ -1,8 +1,9 @@
-import { app as w, BrowserWindow as F, ipcMain as K } from "electron";
-import c from "node:path";
-import { promises as m } from "fs";
-import C, { randomUUID as H } from "crypto";
-import j from "keytar";
+import { app as S, BrowserWindow as z, ipcMain as tt } from "electron";
+import d from "node:path";
+import { readFile as et } from "node:fs/promises";
+import { promises as w } from "fs";
+import Z, { randomUUID as k } from "crypto";
+import $ from "keytar";
 const f = {
   LOAD_STATE: "LOAD_STATE",
   SAVE_STATE: "SAVE_STATE",
@@ -12,447 +13,511 @@ const f = {
   ZEPHYR_GET_TESTCASE: "ZEPHYR_GET_TESTCASE",
   ZEPHYR_SEARCH_TESTCASES: "ZEPHYR_SEARCH_TESTCASES",
   ZEPHYR_UPSERT_TESTCASE: "ZEPHYR_UPSERT_TESTCASE",
+  ZEPHYR_UPLOAD_ATTACHMENT: "ZEPHYR_UPLOAD_ATTACHMENT",
+  ZEPHYR_DELETE_ATTACHMENT: "ZEPHYR_DELETE_ATTACHMENT",
   WRITE_STATE_SNAPSHOT: "WRITE_STATE_SNAPSHOT",
   WRITE_PUBLISH_LOG: "WRITE_PUBLISH_LOG"
-}, b = new Uint8Array(256);
-let A = b.length;
-function Q() {
-  return A > b.length - 16 && (C.randomFillSync(b), A = 0), b.slice(A, A += 16);
+}, R = new Uint8Array(256);
+let U = R.length;
+function nt() {
+  return U > R.length - 16 && (Z.randomFillSync(R), U = 0), R.slice(U, U += 16);
 }
-const p = [];
+const u = [];
 for (let t = 0; t < 256; ++t)
-  p.push((t + 256).toString(16).slice(1));
-function X(t, n = 0) {
-  return p[t[n + 0]] + p[t[n + 1]] + p[t[n + 2]] + p[t[n + 3]] + "-" + p[t[n + 4]] + p[t[n + 5]] + "-" + p[t[n + 6]] + p[t[n + 7]] + "-" + p[t[n + 8]] + p[t[n + 9]] + "-" + p[t[n + 10]] + p[t[n + 11]] + p[t[n + 12]] + p[t[n + 13]] + p[t[n + 14]] + p[t[n + 15]];
+  u.push((t + 256).toString(16).slice(1));
+function rt(t, e = 0) {
+  return u[t[e + 0]] + u[t[e + 1]] + u[t[e + 2]] + u[t[e + 3]] + "-" + u[t[e + 4]] + u[t[e + 5]] + "-" + u[t[e + 6]] + u[t[e + 7]] + "-" + u[t[e + 8]] + u[t[e + 9]] + "-" + u[t[e + 10]] + u[t[e + 11]] + u[t[e + 12]] + u[t[e + 13]] + u[t[e + 14]] + u[t[e + 15]];
 }
-const L = {
-  randomUUID: C.randomUUID
+const F = {
+  randomUUID: Z.randomUUID
 };
-function v(t, n, e) {
-  if (L.randomUUID && !t)
-    return L.randomUUID();
+function at(t, e, n) {
+  if (F.randomUUID && !t)
+    return F.randomUUID();
   t = t || {};
-  const r = t.random || (t.rng || Q)();
-  return r[6] = r[6] & 15 | 64, r[8] = r[8] & 63 | 128, X(r);
+  const r = t.random || (t.rng || nt)();
+  return r[6] = r[6] & 15 | 64, r[8] = r[8] & 63 | 128, rt(r);
 }
-function tt() {
+function st() {
   return (/* @__PURE__ */ new Date()).toISOString();
 }
-function i(t) {
+function c(t) {
   if (typeof t != "string") return t == null ? void 0 : String(t);
-  const n = t.trim();
-  return n.length ? n : void 0;
-}
-function nt(t) {
-  return typeof t == "boolean" ? t : void 0;
-}
-function g(t) {
-  return typeof t == "string" && t.trim() ? t.trim() : v();
-}
-function z(t) {
-  return typeof t == "string" && t.trim() ? t : tt();
-}
-function et(t) {
-  if (!t || typeof t != "object") return null;
-  const n = typeof t.name == "string" ? t.name : "attachment", e = typeof t.pathOrDataUrl == "string" ? t.pathOrDataUrl : typeof t.path == "string" ? t.path : "";
-  return !n && !e ? null : {
-    id: g(t.id),
-    name: n,
-    pathOrDataUrl: e
-  };
-}
-function rt(t) {
-  if (t && typeof t.id == "string" && t.id.trim()) return `id:${t.id.trim()}`;
-  const n = typeof t?.name == "string" ? t.name : "", e = typeof t?.pathOrDataUrl == "string" ? t.pathOrDataUrl : typeof t?.path == "string" ? t.path : "";
-  return `path:${n}::${e}`;
-}
-function G(t) {
-  const n = /* @__PURE__ */ new Map();
-  for (const e of t) {
-    const r = et(e);
-    r && n.set(rt(e), r);
-  }
-  return [...n.values()];
-}
-function x(t) {
-  return {
-    id: g(t?.id),
-    text: typeof t?.text == "string" ? t.text : "",
-    export: nt(t?.export)
-  };
-}
-function at(t) {
-  return {
-    id: g(t?.id),
-    title: i(t?.title),
-    text: i(t?.text)
-  };
+  const e = t.trim();
+  return e.length ? e : void 0;
 }
 function it(t) {
-  const n = [];
-  for (const e of t) {
-    const r = e && typeof e == "object" ? e.provider : void 0, a = e && typeof e == "object" ? e.externalId : void 0;
-    (r === "zephyr" || r === "allure") && typeof a == "string" && a.trim() && n.push({ provider: r, externalId: a.trim() });
-  }
-  return n;
+  return typeof t == "boolean" ? t : void 0;
 }
-function st(t) {
-  if (!t || typeof t != "object") return {};
-  const n = {};
-  for (const [e, r] of Object.entries(t))
-    r != null && (n[e] = typeof r == "string" ? r : String(r));
-  return n;
+function E(t) {
+  return typeof t == "string" && t.trim() ? t.trim() : at();
+}
+function B(t) {
+  return typeof t == "string" && t.trim() ? t : st();
 }
 function ot(t) {
-  return {
-    tags: Array.isArray(t?.tags) ? t.tags.map((n) => String(n)) : [],
-    params: st(t?.params),
-    objective: i(t?.objective),
-    preconditions: i(t?.preconditions),
-    status: i(t?.status),
-    priority: i(t?.priority),
-    component: i(t?.component),
-    owner: i(t?.owner),
-    folder: i(t?.folder),
-    estimated: i(t?.estimated),
-    testType: i(t?.testType),
-    automation: i(t?.automation),
-    assignedTo: i(t?.assignedTo)
-  };
-}
-function k(t) {
-  const n = t ?? {}, e = Array.isArray(n?.internal?.meta?.attachments) ? n.internal.meta.attachments : [], r = i(
-    n.raw?.providerStepId ?? n?.providerStepId ?? n?.internal?.meta?.providerStepId
-  ), a = n.internal && typeof n.internal == "object" && n.internal.meta && typeof n.internal.meta == "object" ? { ...n.internal.meta } : void 0;
-  return a && "attachments" in a && delete a.attachments, {
-    id: g(n.id),
-    action: i(n.action),
-    data: i(n.data),
-    expected: i(n.expected),
-    text: i(n.text) ?? i(n.action) ?? "",
-    raw: {
-      action: i(n.raw?.action) ?? i(n.action),
-      data: i(n.raw?.data) ?? i(n.data),
-      expected: i(n.raw?.expected) ?? i(n.expected),
-      ...r ? { providerStepId: r } : {}
-    },
-    subSteps: Array.isArray(n.subSteps) ? n.subSteps.map(at) : [],
-    internal: {
-      note: i(n.internal?.note),
-      url: i(n.internal?.url),
-      meta: a && Object.keys(a).length ? a : void 0,
-      parts: {
-        action: Array.isArray(n.internal?.parts?.action) ? n.internal.parts.action.map(x) : [],
-        data: Array.isArray(n.internal?.parts?.data) ? n.internal.parts.data.map(x) : [],
-        expected: Array.isArray(n.internal?.parts?.expected) ? n.internal.parts.expected.map(x) : []
-      }
-    },
-    usesShared: i(n.usesShared),
-    attachments: G([
-      ...Array.isArray(n.attachments) ? n.attachments : [],
-      ...e
-    ])
-  };
-}
-function D(t) {
-  const n = t ?? {};
-  return {
-    id: g(n.id),
-    name: typeof n.name == "string" && n.name.trim() ? n.name : "Untitled Test",
-    description: i(n.description) ?? "",
-    steps: Array.isArray(n.steps) ? n.steps.map(k) : [],
-    attachments: G(Array.isArray(n.attachments) ? n.attachments : []),
-    links: it(Array.isArray(n.links) ? n.links : []),
-    updatedAt: z(n.updatedAt),
-    meta: ot(n.meta),
-    exportCfg: {
-      enabled: typeof n.exportCfg?.enabled == "boolean" ? n.exportCfg.enabled : !0
-    }
+  if (!t || typeof t != "object") return null;
+  const e = typeof t.name == "string" ? t.name : "attachment", n = typeof t.pathOrDataUrl == "string" ? t.pathOrDataUrl : typeof t.path == "string" ? t.path : "";
+  return !e && !n ? null : {
+    id: E(t.id),
+    name: e,
+    pathOrDataUrl: n
   };
 }
 function ct(t) {
-  return Array.isArray(t?.children) ? B(t, i(t?.name) ?? "Folder") : D(t);
+  if (t && typeof t.id == "string" && t.id.trim()) return `id:${t.id.trim()}`;
+  const e = typeof t?.name == "string" ? t.name : "", n = typeof t?.pathOrDataUrl == "string" ? t.pathOrDataUrl : typeof t?.path == "string" ? t.path : "";
+  return `path:${e}::${n}`;
 }
-function B(t, n = "Folder") {
+function G(t) {
+  const e = /* @__PURE__ */ new Map();
+  for (const n of t) {
+    const r = ot(n);
+    r && e.set(ct(n), r);
+  }
+  return [...e.values()];
+}
+function D(t) {
+  return {
+    id: E(t?.id),
+    text: typeof t?.text == "string" ? t.text : "",
+    export: it(t?.export)
+  };
+}
+function dt(t) {
+  return {
+    id: E(t?.id),
+    title: c(t?.title),
+    text: c(t?.text)
+  };
+}
+function lt(t) {
+  const e = [];
+  for (const n of t) {
+    const r = n && typeof n == "object" ? n.provider : void 0, a = n && typeof n == "object" ? n.externalId : void 0;
+    (r === "zephyr" || r === "allure") && typeof a == "string" && a.trim() && e.push({ provider: r, externalId: a.trim() });
+  }
+  return e;
+}
+function ht(t) {
+  if (!t || typeof t != "object") return {};
+  const e = {};
+  for (const [n, r] of Object.entries(t))
+    r != null && (e[n] = typeof r == "string" ? r : String(r));
+  return e;
+}
+function mt(t) {
+  return {
+    tags: Array.isArray(t?.tags) ? t.tags.map((e) => String(e)) : [],
+    params: ht(t?.params),
+    objective: c(t?.objective),
+    preconditions: c(t?.preconditions),
+    status: c(t?.status),
+    priority: c(t?.priority),
+    component: c(t?.component),
+    owner: c(t?.owner),
+    folder: c(t?.folder),
+    estimated: c(t?.estimated),
+    testType: c(t?.testType),
+    automation: c(t?.automation),
+    assignedTo: c(t?.assignedTo)
+  };
+}
+function Y(t) {
+  const e = t ?? {}, n = Array.isArray(e?.internal?.meta?.attachments) ? e.internal.meta.attachments : [], r = c(
+    e.raw?.providerStepId ?? e?.providerStepId ?? e?.internal?.meta?.providerStepId
+  ), a = e.internal && typeof e.internal == "object" && e.internal.meta && typeof e.internal.meta == "object" ? { ...e.internal.meta } : void 0;
+  return a && "attachments" in a && delete a.attachments, {
+    id: E(e.id),
+    action: c(e.action),
+    data: c(e.data),
+    expected: c(e.expected),
+    text: c(e.text) ?? c(e.action) ?? "",
+    raw: {
+      action: c(e.raw?.action) ?? c(e.action),
+      data: c(e.raw?.data) ?? c(e.data),
+      expected: c(e.raw?.expected) ?? c(e.expected),
+      ...r ? { providerStepId: r } : {}
+    },
+    subSteps: Array.isArray(e.subSteps) ? e.subSteps.map(dt) : [],
+    internal: {
+      note: c(e.internal?.note),
+      url: c(e.internal?.url),
+      meta: a && Object.keys(a).length ? a : void 0,
+      parts: {
+        action: Array.isArray(e.internal?.parts?.action) ? e.internal.parts.action.map(D) : [],
+        data: Array.isArray(e.internal?.parts?.data) ? e.internal.parts.data.map(D) : [],
+        expected: Array.isArray(e.internal?.parts?.expected) ? e.internal.parts.expected.map(D) : []
+      }
+    },
+    usesShared: c(e.usesShared),
+    attachments: G([
+      ...Array.isArray(e.attachments) ? e.attachments : [],
+      ...n
+    ])
+  };
+}
+function C(t) {
   const e = t ?? {};
   return {
-    id: g(e.id),
-    name: typeof e.name == "string" && e.name.trim() ? e.name : n,
-    children: Array.isArray(e.children) ? e.children.map(ct) : []
+    id: E(e.id),
+    name: typeof e.name == "string" && e.name.trim() ? e.name : "Untitled Test",
+    description: c(e.description) ?? "",
+    steps: Array.isArray(e.steps) ? e.steps.map(Y) : [],
+    attachments: G(Array.isArray(e.attachments) ? e.attachments : []),
+    links: lt(Array.isArray(e.links) ? e.links : []),
+    updatedAt: B(e.updatedAt),
+    meta: mt(e.meta),
+    exportCfg: {
+      enabled: typeof e.exportCfg?.enabled == "boolean" ? e.exportCfg.enabled : !0
+    }
   };
-}
-function Z(t) {
-  const n = t ?? {};
-  return {
-    id: g(n.id),
-    name: typeof n.name == "string" && n.name.trim() ? n.name : "Shared Step",
-    steps: Array.isArray(n.steps) ? n.steps.map(k) : [],
-    updatedAt: z(n.updatedAt)
-  };
-}
-function N(t) {
-  const n = t ?? {};
-  return {
-    root: B(n.root, "Root"),
-    sharedSteps: Array.isArray(n.sharedSteps) ? n.sharedSteps.map(Z) : []
-  };
-}
-const I = "tests_repo", J = "root", Y = "folder.json", W = "shared_steps.json", dt = ".snapshots", lt = ".publish-logs";
-function R() {
-  return w.isPackaged ? c.dirname(w.getPath("exe")) : process.cwd();
-}
-function pt(t) {
-  return t.toLowerCase().replace(/[^a-z0-9\u0400-\u04FF]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "node";
 }
 function ut(t) {
+  return Array.isArray(t?.children) ? J(t, c(t?.name) ?? "Folder") : C(t);
+}
+function J(t, e = "Folder") {
+  const n = t ?? {};
+  return {
+    id: E(n.id),
+    name: typeof n.name == "string" && n.name.trim() ? n.name : e,
+    children: Array.isArray(n.children) ? n.children.map(ut) : []
+  };
+}
+function W(t) {
+  const e = t ?? {};
+  return {
+    id: E(e.id),
+    name: typeof e.name == "string" && e.name.trim() ? e.name : "Shared Step",
+    steps: Array.isArray(e.steps) ? e.steps.map(Y) : [],
+    updatedAt: B(e.updatedAt)
+  };
+}
+function H(t) {
+  const e = t ?? {};
+  return {
+    root: J(e.root, "Root"),
+    sharedSteps: Array.isArray(e.sharedSteps) ? e.sharedSteps.map(W) : []
+  };
+}
+const I = "tests_repo", q = "root", M = "folder.json", V = "shared_steps.json", pt = ".snapshots", wt = ".publish-logs";
+function j() {
+  return S.isPackaged ? d.dirname(S.getPath("exe")) : process.cwd();
+}
+function ft(t) {
+  return t.toLowerCase().replace(/[^a-z0-9\u0400-\u04FF]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "node";
+}
+function St(t) {
   return t.includes("test.json");
 }
 async function y(t) {
-  await m.mkdir(t, { recursive: !0 });
+  await w.mkdir(t, { recursive: !0 });
 }
-async function V(t) {
+async function K(t) {
   try {
-    const n = await m.readFile(t, "utf-8");
-    return JSON.parse(n);
+    const e = await w.readFile(t, "utf-8");
+    return JSON.parse(e);
   } catch {
     return null;
   }
 }
-async function mt(t) {
-  return V(c.join(t, Y));
+async function yt(t) {
+  return K(d.join(t, M));
 }
-async function St(t) {
-  const n = await V(c.join(t, W));
-  return Array.isArray(n) ? n.map(Z) : [];
+async function Et(t) {
+  const e = await K(d.join(t, V));
+  return Array.isArray(e) ? e.map(W) : [];
 }
-async function ht() {
-  const t = c.join(R(), I), n = c.join(t, J);
-  await y(n);
-  async function e(d, S) {
-    const u = await m.readdir(d);
-    if (ut(u)) {
-      const s = await m.readFile(c.join(d, "test.json"), "utf-8");
-      return D(JSON.parse(s));
+async function At() {
+  const t = d.join(j(), I), e = d.join(t, q);
+  await y(e);
+  async function n(o, m) {
+    const l = await w.readdir(o);
+    if (St(l)) {
+      const s = await w.readFile(d.join(o, "test.json"), "utf-8");
+      return C(JSON.parse(s));
     }
-    const l = await mt(d), o = {
-      id: typeof l?.id == "string" && l.id.trim() ? l.id : H(),
-      name: typeof l?.name == "string" && l.name.trim() ? l.name : S,
+    const h = await yt(o), i = {
+      id: typeof h?.id == "string" && h.id.trim() ? h.id : k(),
+      name: typeof h?.name == "string" && h.name.trim() ? h.name : m,
       children: []
     };
-    for (const s of u) {
-      const h = c.join(d, s);
-      (await m.lstat(h)).isDirectory() && o.children.push(await e(h, s));
+    for (const s of l) {
+      const p = d.join(o, s);
+      (await w.lstat(p)).isDirectory() && i.children.push(await n(p, s));
     }
-    return o;
+    return i;
   }
-  const r = await e(n, "Root"), a = await St(t);
-  return N({ root: r, sharedSteps: a });
+  const r = await n(e, "Root"), a = await Et(t);
+  return H({ root: r, sharedSteps: a });
 }
-async function ft(t) {
-  const n = N(t), e = c.join(R(), I), r = c.join(e, J);
+async function gt(t) {
+  const e = H(t), n = d.join(j(), I), r = d.join(n, q);
   await y(r);
-  async function a(d, S) {
-    await y(d), await m.writeFile(
-      c.join(d, Y),
-      JSON.stringify({ id: S.id, name: S.name }, null, 2),
+  async function a(o, m) {
+    await y(o), await w.writeFile(
+      d.join(o, M),
+      JSON.stringify({ id: m.id, name: m.name }, null, 2),
       "utf-8"
     );
-    const u = /* @__PURE__ */ new Map();
-    for (const o of S.children) {
-      if ("children" in o) {
-        u.set(c.join(d, o.name), { node: o });
+    const l = /* @__PURE__ */ new Map();
+    for (const i of m.children) {
+      if ("children" in i) {
+        l.set(d.join(o, i.name), { node: i });
         continue;
       }
-      const s = pt(o.name), h = o.id?.slice(0, 6) ?? H().slice(0, 6);
-      u.set(c.join(d, `${s}__${h}`), { node: o });
+      const s = ft(i.name), p = i.id?.slice(0, 6) ?? k().slice(0, 6);
+      l.set(d.join(o, `${s}__${p}`), { node: i });
     }
-    for (const [o, s] of u.entries())
-      "children" in s.node ? await a(o, s.node) : (await y(o), await y(c.join(o, "attachments")), await m.writeFile(
-        c.join(o, "test.json"),
-        JSON.stringify(D(s.node), null, 2),
+    for (const [i, s] of l.entries())
+      "children" in s.node ? await a(i, s.node) : (await y(i), await y(d.join(i, "attachments")), await w.writeFile(
+        d.join(i, "test.json"),
+        JSON.stringify(C(s.node), null, 2),
         "utf-8"
       ));
-    const l = await m.readdir(d);
-    for (const o of l) {
-      const s = c.join(d, o);
-      (await m.lstat(s)).isDirectory() && (u.has(s) || await m.rm(s, { recursive: !0, force: !0 }));
+    const h = await w.readdir(o);
+    for (const i of h) {
+      const s = d.join(o, i);
+      (await w.lstat(s)).isDirectory() && (l.has(s) || await w.rm(s, { recursive: !0, force: !0 }));
     }
   }
-  await a(r, n.root), await m.writeFile(
-    c.join(e, W),
-    JSON.stringify(n.sharedSteps, null, 2),
+  await a(r, e.root), await w.writeFile(
+    d.join(n, V),
+    JSON.stringify(e.sharedSteps, null, 2),
     "utf-8"
   );
 }
-async function wt(t, n = "snapshot", e) {
-  const r = N(t), a = c.join(R(), I, dt);
+async function Tt(t, e = "snapshot", n) {
+  const r = H(t), a = d.join(j(), I, pt);
   await y(a);
-  const d = c.join(a, `${n}-${q()}.json`);
-  return await m.writeFile(
-    d,
-    JSON.stringify({ createdAt: (/* @__PURE__ */ new Date()).toISOString(), kind: n, meta: e ?? {}, state: r }, null, 2),
+  const o = d.join(a, `${e}-${Q()}.json`);
+  return await w.writeFile(
+    o,
+    JSON.stringify({ createdAt: (/* @__PURE__ */ new Date()).toISOString(), kind: e, meta: n ?? {}, state: r }, null, 2),
     "utf-8"
-  ), d;
+  ), o;
 }
-async function yt(t) {
-  const n = c.join(R(), I, lt);
-  await y(n);
-  const e = c.join(n, `publish-${q()}.json`);
-  return await m.writeFile(e, JSON.stringify(t, null, 2), "utf-8"), e;
+async function _t(t) {
+  const e = d.join(j(), I, wt);
+  await y(e);
+  const n = d.join(e, `publish-${Q()}.json`);
+  return await w.writeFile(n, JSON.stringify(t, null, 2), "utf-8"), n;
 }
-function q() {
-  const t = /* @__PURE__ */ new Date(), n = [
+function Q() {
+  const t = /* @__PURE__ */ new Date(), e = [
     t.getFullYear(),
     String(t.getMonth() + 1).padStart(2, "0"),
     String(t.getDate()).padStart(2, "0")
-  ].join(""), e = [
+  ].join(""), n = [
     String(t.getHours()).padStart(2, "0"),
     String(t.getMinutes()).padStart(2, "0"),
     String(t.getSeconds()).padStart(2, "0")
   ].join("-");
-  return `${n}-${e}`;
+  return `${e}-${n}`;
 }
-const P = "testshub-atlassian";
-function gt() {
-  return w.isPackaged ? c.dirname(w.getPath("exe")) : process.cwd();
+const x = "testshub-atlassian";
+function bt() {
+  return S.isPackaged ? d.dirname(S.getPath("exe")) : process.cwd();
 }
-const $ = c.join(gt(), "tests_repo", ".settings.json");
-async function At(t) {
-  await m.mkdir(c.dirname(t), { recursive: !0 });
+const N = d.join(bt(), "tests_repo", ".settings.json");
+async function Ut(t) {
+  await w.mkdir(d.dirname(t), { recursive: !0 });
 }
-async function E() {
+async function A() {
   try {
-    const t = await m.readFile($, "utf-8"), n = JSON.parse(t), e = n.login ?? "", r = n.baseUrl ?? "", a = e ? !!await j.getPassword(P, e) : !1;
-    return { login: e, baseUrl: r, hasSecret: a };
+    const t = await w.readFile(N, "utf-8"), e = JSON.parse(t), n = e.login ?? "", r = e.baseUrl ?? "", a = n ? !!await $.getPassword(x, n) : !1;
+    return { login: n, baseUrl: r, hasSecret: a };
   } catch {
     return { login: "", baseUrl: "", hasSecret: !1 };
   }
 }
-async function Et(t, n, e) {
-  await At($);
-  const r = { login: t, baseUrl: e };
-  await m.writeFile($, JSON.stringify(r, null, 2), "utf-8"), t && typeof n == "string" && n.length > 0 && await j.setPassword(P, t, n);
-  const a = t ? !!await j.getPassword(P, t) : !1;
-  return { login: t, baseUrl: e ?? "", hasSecret: a };
+async function Pt(t, e, n) {
+  await Ut(N);
+  const r = { login: t, baseUrl: n };
+  await w.writeFile(N, JSON.stringify(r, null, 2), "utf-8"), t && typeof e == "string" && e.length > 0 && await $.setPassword(x, t, e);
+  const a = t ? !!await $.getPassword(x, t) : !1;
+  return { login: t, baseUrl: n ?? "", hasSecret: a };
 }
-async function T(t) {
-  return t ? await j.getPassword(P, t) : null;
+async function g(t) {
+  return t ? await $.getPassword(x, t) : null;
 }
-function U(t) {
+function _(t) {
   return (t || "").replace(/\/+$/, "");
 }
-function O(t) {
+function b(t) {
   return Buffer.from(t, "utf8").toString("base64");
 }
-function Tt(t) {
-  t.handle(f.LOAD_STATE, async (n, e) => {
+function Rt(t) {
+  const n = String(t ?? "").match(/^data:([^;,]+)?(?:;charset=[^;,]+)?(;base64)?,(.*)$/i);
+  if (!n)
+    throw new Error("NOT_A_DATA_URL");
+  const r = n[3] ?? "";
+  return n[2] ? Buffer.from(r, "base64") : Buffer.from(decodeURIComponent(r), "utf8");
+}
+function $t(t) {
+  t.handle(f.LOAD_STATE, async (e, n) => {
     try {
-      return await ht();
+      return await At();
     } catch {
-      return e;
+      return n;
     }
-  }), t.handle(f.SAVE_STATE, async (n, e) => (await ft(e), !0)), t.handle(f.WRITE_STATE_SNAPSHOT, async (n, e) => await wt(e.state, e.kind, e.meta)), t.handle(f.WRITE_PUBLISH_LOG, async (n, e) => await yt(e)), t.handle(f.LOAD_SETTINGS, async () => await E()), t.handle(
+  }), t.handle(f.SAVE_STATE, async (e, n) => (await gt(n), !0)), t.handle(f.WRITE_STATE_SNAPSHOT, async (e, n) => await Tt(n.state, n.kind, n.meta)), t.handle(f.WRITE_PUBLISH_LOG, async (e, n) => await _t(n)), t.handle(f.LOAD_SETTINGS, async () => await A()), t.handle(
     f.SAVE_SETTINGS,
-    async (n, e) => await Et(e.login, e.passwordOrToken, e.baseUrl)
+    async (e, n) => await Pt(n.login, n.passwordOrToken, n.baseUrl)
   ), t.handle(
     f.GET_ATLASSIAN_SECRET,
-    async (n, e) => await T(e.login) ?? ""
+    async (e, n) => await g(n.login) ?? ""
   ), t.handle(
     f.ZEPHYR_GET_TESTCASE,
-    async (n, e) => {
-      const r = await E(), a = r.login || "", d = U(r.baseUrl || "");
+    async (e, n) => {
+      const r = await A(), a = r.login || "", o = _(r.baseUrl || "");
       if (!a) throw new Error("Atlassian login is empty in settings");
-      if (!d) throw new Error("Atlassian baseUrl is empty in settings");
-      const S = await T(a) || "";
-      if (!S) throw new Error("Atlassian password is not stored in keychain");
-      const u = `${d}/rest/atm/1.0/testcase/${encodeURIComponent(e.ref)}`, l = `Basic ${O(`${a}:${S}`)}`, o = await fetch(u, {
+      if (!o) throw new Error("Atlassian baseUrl is empty in settings");
+      const m = await g(a) || "";
+      if (!m) throw new Error("Atlassian password is not stored in keychain");
+      const l = `${o}/rest/atm/1.0/testcase/${encodeURIComponent(n.ref)}`, h = `Basic ${b(`${a}:${m}`)}`, i = await fetch(l, {
         method: "GET",
-        headers: { Authorization: l, Accept: "application/json" }
+        headers: { Authorization: h, Accept: "application/json" }
       });
-      if (!o.ok) {
-        const s = await o.text().catch(() => "");
+      if (!i.ok) {
+        const s = await i.text().catch(() => "");
         throw new Error(
-          `Zephyr(${e.by}) ${o.status} ${o.statusText}` + (s ? ` – ${s.slice(0, 300)}` : "")
+          `Zephyr(${n.by}) ${i.status} ${i.statusText}` + (s ? ` – ${s.slice(0, 300)}` : "")
         );
       }
-      return await o.json();
+      return await i.json();
     }
   ), t.handle(
     f.ZEPHYR_SEARCH_TESTCASES,
-    async (n, e) => {
-      const r = await E(), a = r.login || "", d = U(r.baseUrl || "");
+    async (e, n) => {
+      const r = await A(), a = r.login || "", o = _(r.baseUrl || "");
       if (!a) throw new Error("Atlassian login is empty in settings");
-      if (!d) throw new Error("Atlassian baseUrl is empty in settings");
-      const S = await T(a) || "";
-      if (!S) throw new Error("Atlassian password is not stored in keychain");
-      const u = String(e.query ?? "").trim();
-      if (!u) throw new Error("Zephyr search query is empty");
-      const l = new URL(`${d}/rest/atm/1.0/testcase/search`);
-      l.searchParams.set("query", u), l.searchParams.set("startAt", String(Math.max(0, Number(e.startAt ?? 0) || 0))), l.searchParams.set("maxResults", String(Math.max(1, Number(e.maxResults ?? 100) || 100)));
-      const o = `Basic ${O(`${a}:${S}`)}`, s = await fetch(l, {
+      if (!o) throw new Error("Atlassian baseUrl is empty in settings");
+      const m = await g(a) || "";
+      if (!m) throw new Error("Atlassian password is not stored in keychain");
+      const l = String(n.query ?? "").trim();
+      if (!l) throw new Error("Zephyr search query is empty");
+      const h = new URL(`${o}/rest/atm/1.0/testcase/search`);
+      h.searchParams.set("query", l), h.searchParams.set("startAt", String(Math.max(0, Number(n.startAt ?? 0) || 0))), h.searchParams.set("maxResults", String(Math.max(1, Number(n.maxResults ?? 100) || 100)));
+      const i = `Basic ${b(`${a}:${m}`)}`, s = await fetch(h, {
         method: "GET",
-        headers: { Authorization: o, Accept: "application/json" }
+        headers: { Authorization: i, Accept: "application/json" }
       });
       if (!s.ok) {
-        const h = await s.text().catch(() => "");
+        const p = await s.text().catch(() => "");
         throw new Error(
-          `Zephyr(search) ${s.status} ${s.statusText}` + (h ? ` – ${h.slice(0, 300)}` : "")
+          `Zephyr(search) ${s.status} ${s.statusText}` + (p ? ` – ${p.slice(0, 300)}` : "")
         );
       }
       return await s.json();
     }
   ), t.handle(
     f.ZEPHYR_UPSERT_TESTCASE,
-    async (n, e) => {
-      const r = await E(), a = r.login || "", d = U(r.baseUrl || "");
+    async (e, n) => {
+      const r = await A(), a = r.login || "", o = _(r.baseUrl || "");
       if (!a) throw new Error("Atlassian login is empty in settings");
-      if (!d) throw new Error("Atlassian baseUrl is empty in settings");
-      const S = await T(a) || "";
-      if (!S) throw new Error("Atlassian password is not stored in keychain");
-      const u = typeof e.ref == "string" && e.ref.trim() ? e.ref.trim() : "", l = u ? `${d}/rest/atm/1.0/testcase/${encodeURIComponent(u)}` : `${d}/rest/atm/1.0/testcase`, o = `Basic ${O(`${a}:${S}`)}`, s = await fetch(l, {
-        method: u ? "PUT" : "POST",
+      if (!o) throw new Error("Atlassian baseUrl is empty in settings");
+      const m = await g(a) || "";
+      if (!m) throw new Error("Atlassian password is not stored in keychain");
+      const l = typeof n.ref == "string" && n.ref.trim() ? n.ref.trim() : "", h = l ? `${o}/rest/atm/1.0/testcase/${encodeURIComponent(l)}` : `${o}/rest/atm/1.0/testcase`, i = `Basic ${b(`${a}:${m}`)}`, s = await fetch(h, {
+        method: l ? "PUT" : "POST",
         headers: {
-          Authorization: o,
+          Authorization: i,
           Accept: "application/json",
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(e.body ?? {})
+        body: JSON.stringify(n.body ?? {})
       });
       if (!s.ok) {
-        const h = await s.text().catch(() => "");
+        const p = await s.text().catch(() => "");
         throw new Error(
-          `Zephyr(upsert) ${s.status} ${s.statusText}` + (h ? ` – ${h.slice(0, 400)}` : "")
+          `Zephyr(upsert) ${s.status} ${s.statusText}` + (p ? ` – ${p.slice(0, 400)}` : "")
         );
       }
       return await s.json().catch(() => ({}));
     }
+  ), t.handle(
+    f.ZEPHYR_UPLOAD_ATTACHMENT,
+    async (e, n) => {
+      const r = await A(), a = r.login || "", o = _(r.baseUrl || "");
+      if (!a) throw new Error("Atlassian login is empty in settings");
+      if (!o) throw new Error("Atlassian baseUrl is empty in settings");
+      const m = await g(a) || "";
+      if (!m) throw new Error("Atlassian password is not stored in keychain");
+      const l = String(n.testCaseKey ?? "").trim();
+      if (!l) throw new Error("Zephyr attachment upload requires a test case key");
+      const h = String(n.attachment?.name ?? "").trim() || "attachment", i = String(n.attachment?.pathOrDataUrl ?? "");
+      if (!i) throw new Error(`Attachment "${h}" has no file content`);
+      let s;
+      try {
+        s = Rt(i);
+      } catch {
+        s = await et(i);
+      }
+      const p = `Basic ${b(`${a}:${m}`)}`, O = new FormData();
+      O.append("file", new Blob([s]), h);
+      const v = `${o}/rest/atm/1.0/testcase/${encodeURIComponent(l)}/attachments`, T = await fetch(v, {
+        method: "POST",
+        body: O,
+        headers: { Authorization: p }
+      });
+      if (!T.ok) {
+        const L = await T.text().catch(() => "");
+        throw new Error(
+          `Zephyr(upload attachment) ${T.status} ${T.statusText}` + (L ? ` – ${L.slice(0, 400)}` : "")
+        );
+      }
+      return await T.json().catch(() => ({}));
+    }
+  ), t.handle(
+    f.ZEPHYR_DELETE_ATTACHMENT,
+    async (e, n) => {
+      const r = await A(), a = r.login || "", o = _(r.baseUrl || "");
+      if (!a) throw new Error("Atlassian login is empty in settings");
+      if (!o) throw new Error("Atlassian baseUrl is empty in settings");
+      const m = await g(a) || "";
+      if (!m) throw new Error("Atlassian password is not stored in keychain");
+      const l = String(n.attachmentId ?? "").trim();
+      if (!l) throw new Error("Zephyr attachment delete requires an attachment id");
+      const h = `Basic ${b(`${a}:${m}`)}`, i = `${o}/rest/atm/1.0/attachment/${encodeURIComponent(l)}`, s = await fetch(i, {
+        method: "DELETE",
+        headers: { Authorization: h, Accept: "application/json" }
+      });
+      if (!s.ok) {
+        const p = await s.text().catch(() => "");
+        throw new Error(
+          `Zephyr(delete attachment) ${s.status} ${s.statusText}` + (p ? ` – ${p.slice(0, 300)}` : "")
+        );
+      }
+      return !0;
+    }
   );
 }
-let _ = null;
-async function M() {
-  _ = new F({
+let P = null;
+async function X() {
+  P = new z({
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: c.join(w.getAppPath(), "electron", "preload.cjs"),
+      preload: d.join(S.getAppPath(), "electron", "preload.cjs"),
       contextIsolation: !0,
       nodeIntegration: !1
     }
   });
   const t = process.env.ELECTRON_RENDERER_URL || "http://localhost:5173";
   try {
-    await _.loadURL(t), _.webContents.openDevTools({ mode: "detach" });
-  } catch (n) {
-    console.error("Failed to load renderer dev URL:", t, n), await _.loadFile(c.join(w.getAppPath(), "dist", "index.html"));
+    await P.loadURL(t), P.webContents.openDevTools({ mode: "detach" });
+  } catch (e) {
+    console.error("Failed to load renderer dev URL:", t, e), await P.loadFile(d.join(S.getAppPath(), "dist", "index.html"));
   }
 }
-w.whenReady().then(() => {
-  Tt(K), M();
+S.whenReady().then(() => {
+  $t(tt), X();
 });
-w.on("window-all-closed", () => {
-  process.platform !== "darwin" && w.quit();
+S.on("window-all-closed", () => {
+  process.platform !== "darwin" && S.quit();
 });
-w.on("activate", () => {
-  F.getAllWindows().length === 0 && M();
+S.on("activate", () => {
+  z.getAllWindows().length === 0 && X();
 });
 //# sourceMappingURL=main.mjs.map

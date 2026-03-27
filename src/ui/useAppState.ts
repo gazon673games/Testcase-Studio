@@ -57,6 +57,7 @@ export function useAppState() {
     const [state, setState] = React.useState<RootState | null>(null)
     const [selectedId, setSelectedId] = React.useState<ID | null>(null)
     const [focusStepId, setFocusStepId] = React.useState<string | null>(null)
+    const [dirtyTestIds, setDirtyTestIds] = React.useState<Set<string>>(() => new Set())
 
     const providers = React.useMemo(
         () => ({ zephyr: new ZephyrHttpProvider(), allure: new AllureStubProvider() }),
@@ -76,6 +77,30 @@ export function useAppState() {
         await saveState(next)
     }
 
+    function markDirty(testIds: string[]) {
+        const ids = testIds.map((id) => String(id || '').trim()).filter(Boolean)
+        if (!ids.length) return
+        setDirtyTestIds((current) => {
+            const next = new Set(current)
+            ids.forEach((id) => next.add(id))
+            return next
+        })
+    }
+
+    function clearDirty(testIds?: string[]) {
+        if (!testIds || !testIds.length) {
+            setDirtyTestIds(new Set())
+            return
+        }
+        const ids = testIds.map((id) => String(id || '').trim()).filter(Boolean)
+        if (!ids.length) return
+        setDirtyTestIds((current) => {
+            const next = new Set(current)
+            ids.forEach((id) => next.delete(id))
+            return next
+        })
+    }
+
     function getSelected(): Node | null {
         if (!state || !selectedId) return null
         return findNode(state.root, selectedId) as Node | null
@@ -87,7 +112,7 @@ export function useAppState() {
     }
 
     function getImportDestination() {
-        if (!state) return { folderId: '', label: 'Root' }
+        if (!state) return { folderId: '', label: translate('defaults.root') }
         const selected = getSelected()
         const folder =
             !selected
@@ -102,7 +127,7 @@ export function useAppState() {
     }
 
     function getPublishSelection() {
-        if (!state) return { label: 'Root', tests: [] as TestCase[] }
+        if (!state) return { label: translate('defaults.root'), tests: [] as TestCase[] }
         const selected = getSelected()
         if (!selected) return { label: describeFolderPath(state.root, state.root.id), tests: mapTests(state.root) }
         if (!isFolder(selected)) return { label: selected.name, tests: [selected] }
@@ -130,6 +155,7 @@ export function useAppState() {
         const next = structuredClone(state)
         insertChild(next.root, parentId, test)
         await persist(next)
+        markDirty([test.id])
         setSelectedId(test.id)
         setFocusStepId(first.id)
     }
@@ -178,6 +204,7 @@ export function useAppState() {
         else {
             node.name = newName
             node.updatedAt = nowISO()
+            markDirty([node.id])
         }
 
         await persist(next)
@@ -207,7 +234,10 @@ export function useAppState() {
     }
 
     async function save() {
-        if (state) await saveState(state)
+        if (state) {
+            await saveState(state)
+            clearDirty()
+        }
     }
 
     async function updateTest(
@@ -222,6 +252,7 @@ export function useAppState() {
         Object.assign(node, patch)
         node.updatedAt = nowISO()
         await persist(next)
+        markDirty([testId])
     }
 
     async function addSharedStep(name = translate('defaults.sharedStep'), steps: Step[] = []) {
@@ -256,8 +287,12 @@ export function useAppState() {
         next.sharedSteps = next.sharedSteps.filter((item) => item.id !== sharedId)
 
         for (const test of mapTests(next.root)) {
+            const beforeLength = test.steps.length
             test.steps = test.steps.filter((step) => step.usesShared !== sharedId)
-            test.updatedAt = nowISO()
+            if (test.steps.length !== beforeLength) {
+                test.updatedAt = nowISO()
+                markDirty([test.id])
+            }
         }
 
         await persist(next)
@@ -273,6 +308,7 @@ export function useAppState() {
         node.steps.splice(insertAt, 0, mkSharedPlaceholder(sharedId))
         node.updatedAt = nowISO()
         await persist(next)
+        markDirty([testId])
     }
 
     async function pull() {
@@ -295,6 +331,7 @@ export function useAppState() {
         target.updatedAt = patch.updatedAt ?? nowISO()
 
         await persist(next)
+        clearDirty([target.id])
     }
 
     async function push() {
@@ -324,6 +361,7 @@ export function useAppState() {
         const next = structuredClone(state)
         const result = sync.applyZephyrImport(next, preview)
         await persist(next)
+        clearDirty(preview.items.map((item) => item.localTestId ?? ''))
         return result
     }
 
@@ -347,6 +385,7 @@ export function useAppState() {
         const next = structuredClone(state)
         const result = await sync.publishZephyrPreview(next, preview)
         await persist(next)
+        clearDirty(preview.items.map((item) => item.testId))
 
         const logPath = await apiClient.writePublishLog({
             kind: 'zephyr-publish',
@@ -383,6 +422,7 @@ export function useAppState() {
     return {
         state,
         selectedId,
+        dirtyTestIds,
         select,
         addFolder,
         addTest,

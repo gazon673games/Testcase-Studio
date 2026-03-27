@@ -330,7 +330,6 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
             : []),
         { label: t('steps.clone'), onClick: props.onClone },
         { label: t('steps.addBelow'), onClick: props.onAddNext },
-        { label: t('steps.remove'), onClick: props.onRemove, danger: true },
     ]
 
     if (step.usesShared) {
@@ -345,7 +344,6 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                 : []),
             { label: t('steps.clone'), onClick: props.onClone },
             { label: t('steps.addBelow'), onClick: props.onAddNext },
-            { label: t('steps.remove'), onClick: props.onRemove, danger: true },
         ]
 
         return (
@@ -375,7 +373,17 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                         </div>
                     </div>
                     <span className="spacer" />
-                    <StepOverflowMenu actions={sharedActions} />
+                    <div className="step-header-actions">
+                        <button
+                            type="button"
+                            className="btn-icon step-remove-btn"
+                            title={t('steps.remove')}
+                            onClick={props.onRemove}
+                        >
+                            x
+                        </button>
+                        <StepOverflowMenu actions={sharedActions} />
+                    </div>
                 </div>
 
                 <div className="shared-ref-body">
@@ -509,7 +517,17 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                     </div>
                 </div>
                 <span className="spacer" />
-                <StepOverflowMenu actions={normalActions} />
+                <div className="step-header-actions">
+                    <button
+                        type="button"
+                        className="btn-icon step-remove-btn"
+                        title={t('steps.remove')}
+                        onClick={props.onRemove}
+                    >
+                        x
+                    </button>
+                    <StepOverflowMenu actions={normalActions} />
+                </div>
             </div>
 
             <div className={`step-grid ${isNarrow ? 'stack' : ''}`}>

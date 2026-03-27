@@ -1,10 +1,13 @@
 import * as React from 'react'
-import type { Folder, Step, TestCase } from '@core/domain'
-import { isFolder } from '@core/tree'
+import type { Folder, SharedStep, Step, TestCase } from '@core/domain'
+import { buildRefCatalog, renderRefsInText } from '@core/refs'
+import { isFolder, mapTests } from '@core/tree'
 import { translate, useUiPreferences } from './preferences'
 
 type Props = {
     root: Folder
+    sharedSteps: SharedStep[]
+    dirtyTestIds: Set<string>
     selectedId: string | null
     onSelect: (id: string) => void
     onMove: (nodeId: string, targetFolderId: string) => Promise<boolean> | boolean
@@ -59,6 +62,11 @@ export function Tree(props: Props) {
     const rowRefs = React.useRef<Record<string, HTMLElement | null>>({})
     const selectedKey = makeNodeKey(props.selectedId ?? props.root.id)
     const [focusedKey, setFocusedKey] = React.useState(selectedKey)
+    const refCatalog = React.useMemo(() => buildRefCatalog(mapTests(props.root), props.sharedSteps), [props.root, props.sharedSteps])
+    const resolveDisplayText = React.useCallback(
+        (value: string | undefined) => toPreviewishPlainText(renderRefsInText(String(value ?? ''), refCatalog, { mode: 'plain' })),
+        [refCatalog]
+    )
 
     React.useEffect(() => {
         setExpanded((current) => {
@@ -69,7 +77,10 @@ export function Tree(props: Props) {
         })
     }, [props.root.id])
 
-    const visibleItems = React.useMemo(() => flattenVisibleItems(props.root, expanded, t), [props.root, expanded, t])
+    const visibleItems = React.useMemo(
+        () => flattenVisibleItems(props.root, expanded, t, resolveDisplayText),
+        [props.root, expanded, resolveDisplayText, t]
+    )
     const visibleKeys = React.useMemo(() => visibleItems.map((item) => item.key), [visibleItems])
 
     React.useEffect(() => {
@@ -241,6 +252,7 @@ export function Tree(props: Props) {
             <div role="tree" aria-label={t('tree.navigator')}>
                 <NodeView
                     node={props.root}
+                    dirtyTestIds={props.dirtyTestIds}
                     depth={0}
                     selectedId={props.selectedId}
                     focusedKey={focusedKey}
@@ -265,6 +277,7 @@ export function Tree(props: Props) {
                     cancelRename={cancelRename}
                     onOpenStep={props.onOpenStep}
                     t={t}
+                    resolveDisplayText={resolveDisplayText}
                 />
             </div>
 
@@ -314,6 +327,8 @@ type NodeViewProps = {
     cancelRename(): void
     onOpenStep(testId: string, stepId: string): void
     t(key: string, params?: Record<string, string | number>): string
+    resolveDisplayText(value: string | undefined): string
+    dirtyTestIds: Set<string>
 }
 
 function NodeView(props: NodeViewProps) {
@@ -336,6 +351,8 @@ function NodeView(props: NodeViewProps) {
         cancelRename,
         onOpenStep,
         t,
+        resolveDisplayText,
+        dirtyTestIds,
     } = props
 
     const id = node.id
@@ -353,7 +370,7 @@ function NodeView(props: NodeViewProps) {
     const itemLabel = isDir
         ? t('tree.itemCount', { count: itemCount })
         : t('tree.stepCount', { count: itemCount })
-    const syncStatus = resolveNodeSyncStatus(node)
+    const syncStatus = resolveNodeSyncStatus(node, dirtyTestIds)
     const item: VisibleItem = {
         key,
         kind: isDir ? 'folder' : 'test',
@@ -465,7 +482,7 @@ function NodeView(props: NodeViewProps) {
                             <div style={treeNameStyle}>{node.name}</div>
                             {!isDir && (
                                 <div style={treeSecondaryStyle}>
-                                    {summarizeStepHeadline(node.steps, t)}
+                                    {summarizeStepHeadline(node.steps, t, resolveDisplayText)}
                                 </div>
                             )}
                         </div>
@@ -529,6 +546,8 @@ function NodeView(props: NodeViewProps) {
                                     cancelRename={cancelRename}
                                     onOpenStep={onOpenStep}
                                     t={t}
+                                    resolveDisplayText={resolveDisplayText}
+                                    dirtyTestIds={dirtyTestIds}
                                 />
                             ))}
                         </div>
@@ -545,6 +564,7 @@ function NodeView(props: NodeViewProps) {
                             registerRowRef={registerRowRef}
                             onOpenStep={onOpenStep}
                             t={t}
+                            resolveDisplayText={resolveDisplayText}
                         />
                     )
             )}
@@ -563,6 +583,7 @@ function StepsList({
     registerRowRef,
     onOpenStep,
     t,
+    resolveDisplayText,
 }: {
     testId: string
     parentKey: string
@@ -574,6 +595,7 @@ function StepsList({
     registerRowRef(key: string, element: HTMLElement | null): void
     onOpenStep: (testId: string, stepId: string) => void
     t: (key: string, params?: Record<string, string | number>) => string
+    resolveDisplayText(value: string | undefined): string
 }) {
     const offset = 24 + depth * 14
 
@@ -595,7 +617,7 @@ function StepsList({
                     depth,
                     hasChildren: false,
                     expanded: false,
-                    name: summarizeStepLabel(step),
+                    name: summarizeStepLabel(step, t, resolveDisplayText),
                 }
                 const focused = key === focusedKey
 
@@ -623,7 +645,7 @@ function StepsList({
                     >
                         <span style={stepIndexStyle}>{index + 1}</span>
                         <div style={{ minWidth: 0, display: 'grid', gap: 2 }}>
-                            <div style={stepLabelStyle}>{summarizeStepLabel(step, t)}</div>
+                            <div style={stepLabelStyle}>{summarizeStepLabel(step, t, resolveDisplayText)}</div>
                             {details.length ? <div style={stepMetaStyle}>{details.join(' / ')}</div> : null}
                         </div>
                     </div>
@@ -635,18 +657,26 @@ function StepsList({
 
 function summarizeStepHeadline(
     steps: Step[],
-    t: (key: string, params?: Record<string, string | number>) => string = translate
+    t: (key: string, params?: Record<string, string | number>) => string = translate,
+    resolveDisplayText: (value: string | undefined) => string = (value) => String(value ?? '')
 ): string {
     if (!steps.length) return t('tree.noSteps')
-    const first = summarizePlainText(steps[0].action || steps[0].text || t('tree.untitledStep'), 42, t)
+    const first = summarizePlainText(resolveDisplayText(buildCompositeActionText(steps[0]) || t('tree.untitledStep')), 42, t)
     return steps.length === 1 ? first : `${first} +${steps.length - 1}`
 }
 
 function summarizeStepLabel(
     step: Step,
-    t: (key: string, params?: Record<string, string | number>) => string = translate
+    t: (key: string, params?: Record<string, string | number>) => string = translate,
+    resolveDisplayText: (value: string | undefined) => string = (value) => String(value ?? '')
 ): string {
-    return summarizePlainText(step.action || step.text || t('tree.untitledStep'), 68, t)
+    return summarizePlainText(resolveDisplayText(buildCompositeActionText(step) || t('tree.untitledStep')), 68, t)
+}
+
+function buildCompositeActionText(step: Pick<Step, 'action' | 'text' | 'internal'>): string {
+    const topLevel = String(step.action ?? step.text ?? '').trim()
+    const blocks = (step.internal?.parts?.action ?? []).map((part) => String(part.text ?? '').trim()).filter(Boolean)
+    return [topLevel, ...blocks].filter(Boolean).join('\n').trim()
 }
 
 function summarizePlainText(
@@ -654,9 +684,22 @@ function summarizePlainText(
     maxLength: number,
     t: (key: string, params?: Record<string, string | number>) => string = translate
 ): string {
-    const text = value.replace(/\s+/g, ' ').trim()
+    const text = value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
     if (!text) return t('tree.untitled')
     return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text
+}
+
+function toPreviewishPlainText(value: string): string {
+    return String(value ?? '')
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_full, alt: string, src: string) => alt || src || '')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/__([^_]+)__/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
 }
 
 function Menu({
@@ -750,7 +793,8 @@ const MenuItem = React.forwardRef<
 function flattenVisibleItems(
     root: Folder,
     expanded: Set<string>,
-    t: (key: string, params?: Record<string, string | number>) => string = translate
+    t: (key: string, params?: Record<string, string | number>) => string = translate,
+    resolveDisplayText: (value: string | undefined) => string = (value) => String(value ?? '')
 ) {
     const walk = (node: ViewNode, depth: number, parentKey?: string): VisibleItem[] => {
         const id = node.id
@@ -784,7 +828,7 @@ function flattenVisibleItems(
                     depth: depth + 1,
                     hasChildren: false,
                     expanded: false,
-                    name: summarizeStepLabel(step, t),
+                    name: summarizeStepLabel(step, t, resolveDisplayText),
                 })
             }
         }
@@ -795,12 +839,12 @@ function flattenVisibleItems(
     return walk(root, 0)
 }
 
-function resolveNodeSyncStatus(node: ViewNode): SyncStatus | null {
-    if (!isFolder(node)) return resolveTestSyncStatus(node)
+function resolveNodeSyncStatus(node: ViewNode, dirtyTestIds: Set<string>): SyncStatus | null {
+    if (!isFolder(node)) return resolveTestSyncStatus(node, dirtyTestIds)
 
     let sawSynced = false
     for (const child of node.children) {
-        const status = resolveNodeSyncStatus(child)
+        const status = resolveNodeSyncStatus(child, dirtyTestIds)
         if (status === 'conflict') return 'conflict'
         if (status === 'dirty') return 'dirty'
         if (status === 'synced') sawSynced = true
@@ -808,9 +852,10 @@ function resolveNodeSyncStatus(node: ViewNode): SyncStatus | null {
     return sawSynced ? 'synced' : null
 }
 
-function resolveTestSyncStatus(test: TestCase): SyncStatus | null {
+function resolveTestSyncStatus(test: TestCase, dirtyTestIds: Set<string>): SyncStatus | null {
     const params = test.meta?.params ?? {}
     if (safeString(params[IMPORT_CONFLICT_REMOTE_KEY])) return 'conflict'
+    if (dirtyTestIds.has(test.id)) return 'dirty'
 
     const linkedZephyrId =
         test.links.find((link) => link.provider === 'zephyr')?.externalId ??
@@ -819,11 +864,7 @@ function resolveTestSyncStatus(test: TestCase): SyncStatus | null {
         safeString(params[PUBLISH_REMOTE_KEY])
 
     if (!linkedZephyrId) return null
-
-    const baselineAt = Math.max(parseTimestamp(params[IMPORT_IMPORTED_AT_KEY]), parseTimestamp(params[PUBLISH_AT_KEY]))
-    if (!baselineAt) return 'dirty'
-
-    return parseTimestamp(test.updatedAt) <= baselineAt ? 'synced' : 'dirty'
+    return 'synced'
 }
 
 function formatSyncStatusLabel(

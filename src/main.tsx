@@ -237,6 +237,8 @@ function AppShell() {
                 >
                     <Tree
                         root={app.state.root}
+                        sharedSteps={app.state.sharedSteps}
+                        dirtyTestIds={app.dirtyTestIds}
                         selectedId={app.selectedId}
                         onSelect={selectWithCommit}
                         onMove={app.moveNode}

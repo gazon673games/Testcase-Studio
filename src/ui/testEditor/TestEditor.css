@@ -63,13 +63,25 @@
 }
 .editor-name-field {
     margin: 0;
-    max-width: min(100%, 860px);
+    max-width: min(100%, 920px);
+    padding: 10px 12px 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    background: var(--bg-soft);
+    box-sizing: border-box;
+}
+.editor-name-field .label-sm {
+    margin-bottom: 6px;
 }
 .editor-name-input {
     font-size: 18px;
     font-weight: 700;
-    padding-top: 11px;
-    padding-bottom: 11px;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 10px;
 }
 .editor-side-button {
     min-width: 108px;
@@ -245,6 +257,23 @@
 }
 .step-overflow {
     position: relative;
+}
+.step-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.step-remove-btn {
+    min-width: 28px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-color: var(--danger-border);
+    color: var(--danger-text);
+}
+.step-remove-btn:hover {
+    background: var(--danger-bg);
+    border-color: var(--danger-border);
 }
 .step-overflow-trigger {
     min-width: 58px;

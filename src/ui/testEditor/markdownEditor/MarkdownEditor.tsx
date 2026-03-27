@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { ResolvedWikiRef } from '@core/refs'
+import { buildRefCatalog, formatResolvedRefBrokenReason, formatResolvedRefLabel, renderRefsInText, type ResolvedWikiRef } from '@core/refs'
 import './MarkdownEditor.css'
 import { useUiPreferences } from '../../preferences'
 
@@ -287,7 +287,7 @@ function getCaretAnchor(el: HTMLTextAreaElement): CaretAnchor | null {
 }
 
 function trimText(src: string, limit = 60) {
-    const text = String(src ?? '').replace(/\s+/g, ' ').trim()
+    const text = toPreviewishPlainText(String(src ?? ''))
     return text.length > limit ? `${text.slice(0, limit - 1)}…` : text
 }
 
@@ -304,19 +304,48 @@ type OwnerMatch = {
     prefix: 'id' | 'shared'
 }
 
-function getStepBody(step: RefStep) {
-    return step.action || step.text || step.data || step.expected || ''
+function getStepBody(
+    step: RefStep,
+    resolveDisplayText: (value: string | undefined) => string = (value) => String(value ?? '')
+) {
+    return resolveDisplayText(buildCompositeFieldText(step, 'action') || step.data || step.expected || '')
 }
 
 function getStepKinds(
     step: RefStep,
-    t: (key: string, params?: Record<string, string | number>) => string
+    t: (key: string, params?: Record<string, string | number>) => string,
+    resolveDisplayText: (value: string | undefined) => string = (value) => String(value ?? '')
 ): Array<{ kind: 'action' | 'data' | 'expected'; label: string; text: string }> {
     return [
-        { kind: 'action', label: t('steps.action'), text: step.action || step.text || '' },
-        { kind: 'data', label: t('steps.data'), text: step.data || '' },
-        { kind: 'expected', label: t('steps.expected'), text: step.expected || '' },
+        { kind: 'action', label: t('steps.action'), text: resolveDisplayText(buildCompositeFieldText(step, 'action')) },
+        { kind: 'data', label: t('steps.data'), text: resolveDisplayText(buildCompositeFieldText(step, 'data')) },
+        { kind: 'expected', label: t('steps.expected'), text: resolveDisplayText(buildCompositeFieldText(step, 'expected')) },
     ]
+}
+
+function buildCompositeFieldText(step: RefStep, kind: 'action' | 'data' | 'expected'): string {
+    const topLevel = String(
+        kind === 'action'
+            ? step.action ?? step.text ?? ''
+            : kind === 'data'
+                ? step.data ?? ''
+                : step.expected ?? ''
+    ).trim()
+    const blocks = (step.internal?.parts?.[kind] ?? []).map((part) => String(part.text ?? '').trim()).filter(Boolean)
+    return [topLevel, ...blocks].filter(Boolean).join('\n').trim()
+}
+
+function toPreviewishPlainText(value: string): string {
+    return String(value ?? '')
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_full, alt: string, src: string) => alt || src || '')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/__([^_]+)__/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
 }
 
 function findOwnerMatch(ownerQuery: string, allTests: RefTest[], sharedSteps: RefShared[]): OwnerMatch | null {
@@ -410,7 +439,8 @@ function makeStepSuggestions(
     stepFilter: string,
     allTests: RefTest[],
     sharedSteps: RefShared[],
-    t: (key: string, params?: Record<string, string | number>) => string
+    t: (key: string, params?: Record<string, string | number>) => string,
+    resolveDisplayText: (value: string | undefined) => string
 ): AutoItem[] {
     const ownerMatch = findOwnerMatch(ownerQuery, allTests, sharedSteps)
     if (!ownerMatch) return []
@@ -421,10 +451,12 @@ function makeStepSuggestions(
     return owner.steps
         .map((step, index) => {
             const idx = index + 1
-            const hay = `${idx} ${String(step.id ?? '').toLowerCase()} ${getStepBody(step).toLowerCase()}`
+            const displayBody = getStepBody(step, resolveDisplayText)
+            const rawBody = step.action || step.text || step.data || step.expected || ''
+            const hay = `${idx} ${String(step.id ?? '').toLowerCase()} ${rawBody.toLowerCase()} ${displayBody.toLowerCase()}`
             if (filter && !hay.includes(filter)) return null
             return {
-                label: `#${idx} - ${trimText(getStepBody(step) || t('steps.stepNumber', { index: idx }))}`,
+                label: `#${idx} - ${trimText(displayBody || t('steps.stepNumber', { index: idx }))}`,
                 insert: `${prefix}:${owner.id}#${step.id ?? idx}.`,
                 stage: 'step' as const,
                 continues: true,
@@ -440,7 +472,8 @@ function makeFieldSuggestions(
     fieldFilter: string,
     allTests: RefTest[],
     sharedSteps: RefShared[],
-    t: (key: string, params?: Record<string, string | number>) => string
+    t: (key: string, params?: Record<string, string | number>) => string,
+    resolveDisplayText: (value: string | undefined) => string
 ): AutoItem[] {
     const ownerMatch = findOwnerMatch(ownerQuery, allTests, sharedSteps)
     if (!ownerMatch) return []
@@ -449,13 +482,13 @@ function makeFieldSuggestions(
     if (!stepMatch) return []
 
     const filter = fieldFilter.toLowerCase()
-    return getStepKinds(stepMatch.step, t)
+    return getStepKinds(stepMatch.step, t, resolveDisplayText)
         .map((variant) => {
             const parts = stepMatch.step.internal?.parts?.[variant.kind] ?? []
             const hay = `${variant.kind} ${variant.label} ${variant.text}`.toLowerCase()
             if (filter && !hay.includes(filter)) return null
             return {
-                label: `${variant.label} - ${trimText(variant.text || getStepBody(stepMatch.step) || variant.label)}`,
+                label: `${variant.label} - ${trimText(variant.text || getStepBody(stepMatch.step, resolveDisplayText) || variant.label)}`,
                 insert: `${ownerMatch.prefix}:${ownerMatch.owner.id}#${stepMatch.step.id ?? stepMatch.index + 1}.${variant.kind}${parts.length > 0 ? '@' : ''}`,
                 stage: 'field' as const,
                 continues: parts.length > 0,
@@ -472,7 +505,8 @@ function makePartSuggestions(
     partFilter: string,
     allTests: RefTest[],
     sharedSteps: RefShared[],
-    t: (key: string, params?: Record<string, string | number>) => string
+    t: (key: string, params?: Record<string, string | number>) => string,
+    resolveDisplayText: (value: string | undefined) => string
 ): AutoItem[] {
     const ownerMatch = findOwnerMatch(ownerQuery, allTests, sharedSteps)
     if (!ownerMatch) return []
@@ -486,7 +520,7 @@ function makePartSuggestions(
     const parts = stepMatch.step.internal?.parts?.[kind] ?? []
     const filter = partFilter.toLowerCase()
     const baseInsert = `${ownerMatch.prefix}:${ownerMatch.owner.id}#${stepMatch.step.id ?? stepMatch.index + 1}.${kind}`
-    const fieldText = getStepKinds(stepMatch.step, t).find((item) => item.kind === kind)?.text ?? ''
+    const fieldText = getStepKinds(stepMatch.step, t, resolveDisplayText).find((item) => item.kind === kind)?.text ?? ''
     const items: AutoItem[] = []
 
     if (!filter || `${t('markdown.wholeField')} ${kind} ${fieldText}`.toLowerCase().includes(filter)) {
@@ -498,10 +532,11 @@ function makePartSuggestions(
     }
 
     parts.forEach((part, partIndex) => {
-        const hay = `${kind} part ${partIndex + 1} ${part.text ?? ''}`.toLowerCase()
+        const displayText = resolveDisplayText(part.text ?? '')
+        const hay = `${kind} part ${partIndex + 1} ${part.text ?? ''} ${displayText}`.toLowerCase()
         if (filter && !hay.includes(filter)) return
         items.push({
-            label: `#${partIndex + 1} - ${trimText(part.text ?? '')}`,
+            label: `#${partIndex + 1} - ${trimText(displayText)}`,
             insert: `${baseInsert}@${part.id ?? partIndex + 1}`,
             stage: 'part',
         })
@@ -665,6 +700,14 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     const [acStage, setAcStage] = React.useState<AutoStage>('owner')
     const [anchor, setAnchor] = React.useState<{ top: number; left: number } | null>(null)
     const [range, setRange] = React.useState<{ from: number; to: number } | null>(null)
+    const suggestionCatalog = React.useMemo(
+        () => buildRefCatalog(allTests as unknown as any[], sharedSteps as unknown as any[]),
+        [allTests, sharedSteps]
+    )
+    const resolveSuggestionText = React.useCallback(
+        (src: string | undefined) => toPreviewishPlainText(renderRefsInText(String(src ?? ''), suggestionCatalog, { mode: 'plain' })),
+        [suggestionCatalog]
+    )
 
     const updateSuggestions = React.useCallback((el: HTMLTextAreaElement, text = value, caretOverride?: number) => {
         const caret = caretOverride ?? el.selectionStart
@@ -714,7 +757,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
 
             if (dotPos === -1) {
                 stage = 'step'
-                items = makeStepSuggestions(ownerQuery, afterHash.trim(), allTests, sharedSteps, t)
+                items = makeStepSuggestions(ownerQuery, afterHash.trim(), allTests, sharedSteps, t, resolveSuggestionText)
             } else if (atPos === -1) {
                 stage = 'field'
                 items = makeFieldSuggestions(
@@ -723,7 +766,8 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                     afterHash.slice(dotPos + 1).trim(),
                     allTests,
                     sharedSteps,
-                    t
+                    t,
+                    resolveSuggestionText
                 )
             } else {
                 stage = 'part'
@@ -734,7 +778,8 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                     afterHash.slice(atPos + 1).trim(),
                     allTests,
                     sharedSteps,
-                    t
+                    t,
+                    resolveSuggestionText
                 )
             }
         }
@@ -743,7 +788,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         setAcItems(items)
         setAcIndex(0)
         setAcOpen(items.length > 0)
-    }, [allTests, sharedSteps, t, value])
+    }, [allTests, resolveSuggestionText, sharedSteps, t, value])
 
     function applySuggestion(item: AutoItem) {
         const el = taRef.current
@@ -805,16 +850,16 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
 
     const toolbar = !hideToolbar && active && !preview ? (
         <div className="md-toolbar" onMouseDown={(e) => e.preventDefault()}>
-            <button type="button" className="md-btn" title="Bold" onClick={() => doWrap('**', '**')}>B</button>
-            <button type="button" className="md-btn" title="Italic" onClick={() => doWrap('*', '*')}><i>I</i></button>
-            <button type="button" className="md-btn" title="Underline" onClick={() => doWrap('__', '__')}><u>U</u></button>
+            <button type="button" className="md-btn" title={t('markdown.bold')} onClick={() => doWrap('**', '**')}>B</button>
+            <button type="button" className="md-btn" title={t('markdown.italic')} onClick={() => doWrap('*', '*')}><i>I</i></button>
+            <button type="button" className="md-btn" title={t('markdown.underline')} onClick={() => doWrap('__', '__')}><u>U</u></button>
             <div className="divider" />
-            <button type="button" className="md-btn" title="Bulleted list" onClick={() => doInsertPrefix('-')}>*</button>
-            <button type="button" className="md-btn" title="Numbered list" onClick={() => doInsertPrefix('1.')}>1.</button>
+            <button type="button" className="md-btn" title={t('markdown.bulletedList')} onClick={() => doInsertPrefix('-')}>*</button>
+            <button type="button" className="md-btn" title={t('markdown.numberedList')} onClick={() => doInsertPrefix('1.')}>1.</button>
             <div className="divider" />
-            <button type="button" className="md-btn" title="Code" onClick={() => doWrap('`', '`')}>{'</>'}</button>
-            <button type="button" className="md-btn" title="Link" onClick={() => doWrap('[', '](url)')}>Link</button>
-            <button type="button" className="md-btn" title="Image" onClick={() => doWrap('![', '](image.png)')}>Img</button>
+            <button type="button" className="md-btn" title={t('markdown.code')} onClick={() => doWrap('`', '`')}>{'</>'}</button>
+            <button type="button" className="md-btn" title={t('markdown.link')} onClick={() => doWrap('[', '](url)')}>{t('markdown.link')}</button>
+            <button type="button" className="md-btn" title={t('markdown.image')} onClick={() => doWrap('![', '](image.png)')}>{t('markdown.image')}</button>
             {typeof onTogglePreview === 'function' && (
                 <>
                     <div className="divider" />
@@ -878,6 +923,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                         left={anchor.left}
                         stage={acStage}
                         stageLabel={t(`markdown.stage.${acStage}`)}
+                        emptyLabel={t('markdown.noMatches')}
                         items={acItems}
                         index={acIndex}
                         onPick={applySuggestion}
@@ -898,16 +944,20 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                             onClick={() => {
                                 if (refInfo.ok) onOpenRef?.(refInfo)
                             }}
-                            title={refInfo.ok ? refInfo.preview : refInfo.brokenReason ?? t('steps.brokenLink')}
+                            title={refInfo.ok ? refInfo.preview : formatResolvedRefBrokenReason(refInfo, t)}
                         >
-                            {refInfo.ok ? trimText(refInfo.label, 44) : `Broken: ${trimText(refInfo.body, 32)}`}
+                            {refInfo.ok
+                                ? trimText(formatResolvedRefLabel(refInfo, t), 44)
+                                : `${t('markdown.brokenPrefix')}: ${trimText(refInfo.body, 32)}`}
                         </button>
                     ))}
                     {hoveredRef && (
                         <div className={`md-ref-preview ${hoveredRef.ok ? 'ok' : 'broken'}`}>
-                            <div className="md-ref-preview-title">{hoveredRef.ok ? hoveredRef.label : t('steps.brokenLink')}</div>
+                            <div className="md-ref-preview-title">
+                                {hoveredRef.ok ? formatResolvedRefLabel(hoveredRef, t) : t('steps.brokenLink')}
+                            </div>
                             <div className="md-ref-preview-body">
-                                {hoveredRef.ok ? hoveredRef.preview : hoveredRef.brokenReason ?? hoveredRef.raw}
+                                {hoveredRef.ok ? hoveredRef.preview : formatResolvedRefBrokenReason(hoveredRef, t)}
                             </div>
                             {hoveredRef.ok && onOpenRef && (
                                 <button
@@ -916,7 +966,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                                     onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => onOpenRef(hoveredRef)}
                                 >
-                                    Open source
+                                    {t('markdown.openSource')}
                                 </button>
                             )}
                         </div>
@@ -932,13 +982,14 @@ type AutocompleteBoxProps = {
     left: number
     stage: AutoStage
     stageLabel: string
+    emptyLabel: string
     items: AutoItem[]
     index: number
     onPick(item: AutoItem): void
     onClose(): void
 }
 
-const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({ top, left, stage, stageLabel, items, index, onPick, onClose }) => {
+const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({ top, left, stage, stageLabel, emptyLabel, items, index, onPick, onClose }) => {
     React.useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose()
@@ -954,10 +1005,10 @@ const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({ top, left, stage, sta
     }, [onClose])
 
     return (
-        <div className="autocomplete" style={{ top, left }} role="listbox" aria-label={`Wiki references suggestions: ${stage}`}>
+        <div className="autocomplete" style={{ top, left }} role="listbox" aria-label={stageLabel}>
             <div className="autocomplete-stage">{stageLabel}</div>
             {items.length === 0 ? (
-                <div className="autocomplete-empty">No matches</div>
+                <div className="autocomplete-empty">{emptyLabel}</div>
             ) : (
                 items.map((item, itemIndex) => (
                     <div
