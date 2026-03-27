@@ -105,6 +105,14 @@ function AppShell() {
                     onChange={(p: any) => a.updateTest((selected as any).id, p)}
                     focusStepId={a.focusStepId}
                     allTests={allTests}
+                    sharedSteps={a.state.sharedSteps}
+                    onAddSharedStep={a.addSharedStep}
+                    onAddSharedStepFromStep={a.addSharedStepFromStep}
+                    onUpdateSharedStep={a.updateSharedStep}
+                    onDeleteSharedStep={a.deleteSharedStep}
+                    onInsertSharedReference={(sharedId: string) => a.insertSharedReference((selected as any).id, sharedId)}
+                    onOpenStep={a.openStep}
+                    onOpenTest={a.select}
                 />
             </React.Suspense>
         )

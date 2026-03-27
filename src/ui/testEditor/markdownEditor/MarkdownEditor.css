@@ -164,3 +164,79 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 
 /* утилита для внешних подписей/лейблов */
 .md-editor .muted { font-size: 12px; color: #666; }
+
+.md-editor .md-ref-strip {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.md-editor .md-ref-pill {
+    border: 1px solid #d7e4ff;
+    border-radius: 999px;
+    background: #f4f8ff;
+    color: #35507a;
+    font-size: 11px;
+    line-height: 1.2;
+    padding: 5px 9px;
+    cursor: pointer;
+}
+
+.md-editor .md-ref-pill.ok:hover {
+    background: #eaf2ff;
+    border-color: #bbcffc;
+}
+
+.md-editor .md-ref-pill.broken {
+    border-color: #f1c6cb;
+    background: #fff4f5;
+    color: #8f2733;
+}
+
+.md-editor .md-ref-preview {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 10;
+    width: min(420px, 100%);
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #d7e4ff;
+    background: #fff;
+    box-shadow: 0 12px 30px rgba(0,0,0,.12);
+}
+
+.md-editor .md-ref-preview.broken {
+    border-color: #f1c6cb;
+    background: #fffafb;
+}
+
+.md-editor .md-ref-preview-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #243b63;
+    margin-bottom: 6px;
+}
+
+.md-editor .md-ref-preview-body {
+    color: #4e5f7a;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.md-editor .md-ref-open {
+    margin-top: 8px;
+    border: 1px solid #c9d8fb;
+    border-radius: 8px;
+    background: #f3f7ff;
+    color: #244269;
+    font-size: 12px;
+    padding: 5px 9px;
+    cursor: pointer;
+}
+
+.md-editor .md-ref-open:hover {
+    background: #eaf2ff;
+}

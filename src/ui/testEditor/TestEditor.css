@@ -130,6 +130,11 @@
     background: #edf8ed;
     color: #2c6b39;
 }
+.step-chip-broken {
+    border-color: #f1c6cb;
+    background: #fff4f5;
+    color: #8f2733;
+}
 .step-actions {
     display: flex;
     flex-wrap: wrap;
@@ -164,6 +169,11 @@
 .cell-head { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:6px; }
 .cell-head-main { display:flex; align-items:center; gap:6px; min-width:0; }
 .cell-title { font-size:12px; color:#666; font-weight:600; }
+.cell-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
 .cell-chip {
     display: inline-flex;
     align-items: center;
@@ -190,6 +200,12 @@
     border-radius: 10px;
     background: #fbfcff;
 }
+.part-row-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-bottom: 6px;
+}
 .part-remove {
     position: absolute;
     top: 8px;
@@ -213,6 +229,165 @@
 .step-footer {
     border-top: 1px solid #f2f4f8;
     background: linear-gradient(180deg, rgba(250,251,254,0) 0%, rgba(250,251,254,0.9) 100%);
+}
+.shared-ref-card {
+    overflow: hidden;
+}
+.shared-ref-body {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+}
+.shared-ref-copy {
+    color: #5a6780;
+    line-height: 1.45;
+}
+.shared-ref-copy.broken {
+    color: #8f2733;
+}
+.shared-ref-preview {
+    display: grid;
+    gap: 6px;
+}
+.shared-ref-preview-item {
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #d7e4ff;
+    background: #f6f9ff;
+    color: #2c476d;
+    cursor: pointer;
+}
+.shared-ref-preview-item:hover {
+    background: #eef4ff;
+}
+
+.shared-library {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.shared-library-sidebar,
+.shared-library-main {
+    border: 1px solid #e5eaf3;
+    border-radius: 12px;
+    background: #fff;
+}
+.shared-library-sidebar {
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+    align-content: start;
+}
+.shared-library-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.shared-library-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #243b63;
+}
+.shared-library-empty {
+    color: #5a6780;
+    line-height: 1.45;
+}
+.shared-library-empty.main {
+    padding: 18px;
+}
+.shared-library-list {
+    display: grid;
+    gap: 8px;
+}
+.shared-library-item {
+    text-align: left;
+    border: 1px solid #d9e4f7;
+    border-radius: 10px;
+    background: #f8fbff;
+    padding: 10px;
+    cursor: pointer;
+}
+.shared-library-item.active {
+    border-color: #9fb8ef;
+    background: #eef4ff;
+    box-shadow: inset 0 0 0 1px #bdd0f5;
+}
+.shared-library-item-title {
+    font-weight: 600;
+    color: #27466f;
+    margin-bottom: 4px;
+}
+.shared-library-item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: #6a7890;
+    font-size: 11px;
+}
+.shared-library-main {
+    padding: 12px;
+    display: grid;
+    gap: 12px;
+}
+.shared-library-toolbar {
+    display: flex;
+    align-items: end;
+    gap: 12px;
+}
+.shared-library-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.shared-library-usage-card {
+    border: 1px solid #e6ecf7;
+    border-radius: 12px;
+    background: #fbfcff;
+    padding: 12px;
+}
+.shared-library-usage-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #243b63;
+    margin-bottom: 8px;
+}
+.shared-library-usage-empty {
+    color: #66758d;
+}
+.shared-library-usage-list {
+    display: grid;
+    gap: 8px;
+}
+.shared-library-usage-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    text-align: left;
+    padding: 9px 10px;
+    border-radius: 10px;
+    border: 1px solid #dfe8f7;
+    background: #fff;
+    cursor: pointer;
+}
+.shared-library-usage-kind {
+    font-size: 11px;
+    color: #37557f;
+    background: #eef4ff;
+    border-radius: 999px;
+    padding: 3px 7px;
+}
+.shared-library-usage-name {
+    color: #243b63;
+    font-weight: 600;
+    min-width: 0;
+}
+.shared-library-usage-source {
+    color: #6b7890;
+    font-size: 12px;
 }
 
 /* общие карточки */
@@ -305,6 +480,16 @@
     }
     .step-actions .btn-small {
         flex: 1 1 auto;
+    }
+    .shared-library {
+        grid-template-columns: 1fr;
+    }
+    .shared-library-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .shared-library-actions {
+        width: 100%;
     }
 }
 
