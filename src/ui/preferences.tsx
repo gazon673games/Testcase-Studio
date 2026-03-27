@@ -366,6 +366,11 @@ Object.assign(messages.ru, {
     'markdown.action': 'Действие',
     'markdown.data': 'Данные',
     'markdown.expected': 'Ожидаемый результат',
+    'markdown.wholeField': 'Целое поле',
+    'markdown.stage.owner': '1. Тест',
+    'markdown.stage.step': '2. Шаг',
+    'markdown.stage.field': '3. Поле',
+    'markdown.stage.part': '4. Part',
 
     'shared.title': 'Общие шаги',
     'shared.new': '+ Новый общий',
@@ -482,6 +487,11 @@ Object.assign(messages.en, {
     'markdown.action': 'Action',
     'markdown.data': 'Data',
     'markdown.expected': 'Expected',
+    'markdown.wholeField': 'Whole field',
+    'markdown.stage.owner': '1. Test',
+    'markdown.stage.step': '2. Step',
+    'markdown.stage.field': '3. Field',
+    'markdown.stage.part': '4. Part',
 
     'shared.title': 'Shared steps',
     'shared.new': '+ New shared',

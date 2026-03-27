@@ -181,6 +181,18 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px;
     box-shadow: var(--shadow-soft);
 }
+.md-editor .autocomplete-stage {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 7px 10px;
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--bg);
+    border-bottom: 1px solid var(--border-soft);
+}
 .md-editor .autocomplete-empty { padding: 8px; color: var(--text-dim); }
 .md-editor .autocomplete-item {
     padding: 6px 10px;

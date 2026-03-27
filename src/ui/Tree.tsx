@@ -69,7 +69,7 @@ export function Tree(props: Props) {
         })
     }, [props.root.id])
 
-    const visibleItems = React.useMemo(() => flattenVisibleItems(props.root, expanded), [props.root, expanded])
+    const visibleItems = React.useMemo(() => flattenVisibleItems(props.root, expanded, t), [props.root, expanded, t])
     const visibleKeys = React.useMemo(() => visibleItems.map((item) => item.key), [visibleItems])
 
     React.useEffect(() => {
@@ -747,7 +747,11 @@ const MenuItem = React.forwardRef<
     )
 })
 
-function flattenVisibleItems(root: Folder, expanded: Set<string>) {
+function flattenVisibleItems(
+    root: Folder,
+    expanded: Set<string>,
+    t: (key: string, params?: Record<string, string | number>) => string = translate
+) {
     const walk = (node: ViewNode, depth: number, parentKey?: string): VisibleItem[] => {
         const id = node.id
         const key = makeNodeKey(id)

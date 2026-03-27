@@ -291,12 +291,85 @@ function trimText(src: string, limit = 60) {
     return text.length > limit ? `${text.slice(0, limit - 1)}…` : text
 }
 
+type AutoStage = 'owner' | 'step' | 'field' | 'part'
+type AutoItem = {
+    label: string
+    insert: string
+    stage: AutoStage
+    continues?: boolean
+}
+
+type OwnerMatch = {
+    owner: RefTest | RefShared
+    prefix: 'id' | 'shared'
+}
+
+function getStepBody(step: RefStep) {
+    return step.action || step.text || step.data || step.expected || ''
+}
+
+function getStepKinds(
+    step: RefStep,
+    t: (key: string, params?: Record<string, string | number>) => string
+): Array<{ kind: 'action' | 'data' | 'expected'; label: string; text: string }> {
+    return [
+        { kind: 'action', label: t('steps.action'), text: step.action || step.text || '' },
+        { kind: 'data', label: t('steps.data'), text: step.data || '' },
+        { kind: 'expected', label: t('steps.expected'), text: step.expected || '' },
+    ]
+}
+
+function findOwnerMatch(ownerQuery: string, allTests: RefTest[], sharedSteps: RefShared[]): OwnerMatch | null {
+    const lowerOwner = ownerQuery.trim().toLowerCase()
+    if (!lowerOwner) return null
+
+    if (lowerOwner.startsWith('shared:')) {
+        const token = lowerOwner.slice(7).trim()
+        const owner = sharedSteps.find((item) =>
+            item.id.toLowerCase().startsWith(token) || item.name.toLowerCase().startsWith(token)
+        )
+        return owner ? { owner, prefix: 'shared' } : null
+    }
+
+    if (lowerOwner.startsWith('id:')) {
+        const token = lowerOwner.slice(3).trim()
+        const owner = allTests.find((test) =>
+            test.id.toLowerCase().startsWith(token) || test.name.toLowerCase().startsWith(token)
+        )
+        return owner ? { owner, prefix: 'id' } : null
+    }
+
+    const testOwner = allTests.find((test) => test.name.toLowerCase().startsWith(lowerOwner))
+    if (testOwner) return { owner: testOwner, prefix: 'id' }
+
+    const sharedOwner = sharedSteps.find((item) => item.name.toLowerCase().startsWith(lowerOwner))
+    return sharedOwner ? { owner: sharedOwner, prefix: 'shared' } : null
+}
+
+function findStepMatch(owner: RefTest | RefShared, stepToken: string): { step: RefStep; index: number } | null {
+    const token = stepToken.trim().toLowerCase()
+    if (!token) return null
+
+    const numeric = Number(token)
+    if (Number.isInteger(numeric) && numeric >= 1 && numeric <= owner.steps.length) {
+        return { step: owner.steps[numeric - 1], index: numeric - 1 }
+    }
+
+    const indexMatch = owner.steps.findIndex((step, index) => {
+        const idx = String(index + 1)
+        const hay = `${idx} ${String(step.id ?? '').toLowerCase()} ${getStepBody(step).toLowerCase()}`
+        return hay.includes(token)
+    })
+
+    return indexMatch === -1 ? null : { step: owner.steps[indexMatch], index: indexMatch }
+}
+
 function makeOwnerSuggestions(
     allTests: RefTest[],
     sharedSteps: RefShared[],
     query: string,
     t: (key: string, params?: Record<string, string | number>) => string
-): Array<{ label: string; insert: string }> {
+): AutoItem[] {
     const lower = query.toLowerCase()
     const idQuery = lower.startsWith('id:') ? query.slice(3).trim().toLowerCase() : ''
     const sharedQuery = lower.startsWith('shared:') ? query.slice(7).trim().toLowerCase() : ''
@@ -308,7 +381,12 @@ function makeOwnerSuggestions(
             return test.name.toLowerCase().includes(lower)
         })
         .slice(0, 10)
-        .map((test) => ({ label: t('markdown.testLabel', { name: test.name }), insert: `id:${test.id}#` }))
+        .map((test) => ({
+            label: t('markdown.testLabel', { name: test.name }),
+            insert: `id:${test.id}#`,
+            stage: 'owner',
+            continues: true,
+        }))
 
     const shared = sharedSteps
         .filter((item) => {
@@ -317,7 +395,12 @@ function makeOwnerSuggestions(
             return item.name.toLowerCase().includes(lower)
         })
         .slice(0, 10)
-        .map((item) => ({ label: t('markdown.sharedLabel', { name: item.name }), insert: `shared:${item.id}#` }))
+        .map((item) => ({
+            label: t('markdown.sharedLabel', { name: item.name }),
+            insert: `shared:${item.id}#`,
+            stage: 'owner',
+            continues: true,
+        }))
 
     return [...tests, ...shared]
 }
@@ -326,57 +409,105 @@ function makeStepSuggestions(
     ownerQuery: string,
     stepFilter: string,
     allTests: RefTest[],
-    sharedSteps: RefShared[]
-) {
-    const lowerOwner = ownerQuery.toLowerCase()
-    const owner =
-        lowerOwner.startsWith('shared:')
-            ? sharedSteps.find((item) => item.id.toLowerCase().startsWith(ownerQuery.slice(7).trim().toLowerCase()))
-            : lowerOwner.startsWith('id:')
-                ? allTests.find((test) => test.id.toLowerCase().startsWith(ownerQuery.slice(3).trim().toLowerCase()))
-                : allTests.find((test) => test.name.toLowerCase().startsWith(lowerOwner))
+    sharedSteps: RefShared[],
+    t: (key: string, params?: Record<string, string | number>) => string
+): AutoItem[] {
+    const ownerMatch = findOwnerMatch(ownerQuery, allTests, sharedSteps)
+    if (!ownerMatch) return []
 
-    if (!owner) return []
-    const ownerPrefix = sharedSteps.some((item) => item.id === owner.id) ? 'shared' : 'id'
+    const { owner, prefix } = ownerMatch
     const filter = stepFilter.toLowerCase()
-    const items: Array<{ label: string; insert: string }> = []
 
-    owner.steps.forEach((step, index) => {
-        const idx = index + 1
-        const head = step.action || step.text || ''
-        const data = step.data || ''
-        const expected = step.expected || ''
-        const variants: Array<{ kind: 'action' | 'data' | 'expected'; text: string }> = [
-            { kind: 'action', text: head },
-            { kind: 'data', text: data },
-            { kind: 'expected', text: expected },
-        ]
-
-        for (const variant of variants) {
-            const insert = `${ownerPrefix}:${owner.id}#${step.id ?? idx}.${variant.kind}`
-            const hay = `${idx} ${String(step.id ?? '')} ${variant.kind} ${head} ${data} ${expected}`.toLowerCase()
-            if (!filter || hay.includes(filter)) {
-                items.push({
-                    label: `#${idx}.${variant.kind} - ${trimText(variant.text || head || data || expected)}`,
-                    insert,
-                })
+    return owner.steps
+        .map((step, index) => {
+            const idx = index + 1
+            const hay = `${idx} ${String(step.id ?? '').toLowerCase()} ${getStepBody(step).toLowerCase()}`
+            if (filter && !hay.includes(filter)) return null
+            return {
+                label: `#${idx} - ${trimText(getStepBody(step) || t('steps.stepNumber', { index: idx }))}`,
+                insert: `${prefix}:${owner.id}#${step.id ?? idx}.`,
+                stage: 'step' as const,
+                continues: true,
             }
+        })
+        .filter((item): item is AutoItem => Boolean(item))
+        .slice(0, 20)
+}
 
-            const parts = step.internal?.parts?.[variant.kind] ?? []
-            parts.forEach((part, partIndex) => {
-                const partInsert = `${ownerPrefix}:${owner.id}#${step.id ?? idx}.${variant.kind}@${part.id ?? partIndex + 1}`
-                const partHay = `${hay} part ${partIndex + 1} ${part.text ?? ''}`.toLowerCase()
-                if (!filter || partHay.includes(filter)) {
-                    items.push({
-                        label: `#${idx}.${variant.kind}@${partIndex + 1} - ${trimText(part.text ?? '')}`,
-                        insert: partInsert,
-                    })
-                }
-            })
-        }
+function makeFieldSuggestions(
+    ownerQuery: string,
+    stepToken: string,
+    fieldFilter: string,
+    allTests: RefTest[],
+    sharedSteps: RefShared[],
+    t: (key: string, params?: Record<string, string | number>) => string
+): AutoItem[] {
+    const ownerMatch = findOwnerMatch(ownerQuery, allTests, sharedSteps)
+    if (!ownerMatch) return []
+
+    const stepMatch = findStepMatch(ownerMatch.owner, stepToken)
+    if (!stepMatch) return []
+
+    const filter = fieldFilter.toLowerCase()
+    return getStepKinds(stepMatch.step, t)
+        .map((variant) => {
+            const parts = stepMatch.step.internal?.parts?.[variant.kind] ?? []
+            const hay = `${variant.kind} ${variant.label} ${variant.text}`.toLowerCase()
+            if (filter && !hay.includes(filter)) return null
+            return {
+                label: `${variant.label} - ${trimText(variant.text || getStepBody(stepMatch.step) || variant.label)}`,
+                insert: `${ownerMatch.prefix}:${ownerMatch.owner.id}#${stepMatch.step.id ?? stepMatch.index + 1}.${variant.kind}${parts.length > 0 ? '@' : ''}`,
+                stage: 'field' as const,
+                continues: parts.length > 0,
+            }
+        })
+        .filter((item): item is AutoItem => Boolean(item))
+        .slice(0, 6)
+}
+
+function makePartSuggestions(
+    ownerQuery: string,
+    stepToken: string,
+    fieldToken: string,
+    partFilter: string,
+    allTests: RefTest[],
+    sharedSteps: RefShared[],
+    t: (key: string, params?: Record<string, string | number>) => string
+): AutoItem[] {
+    const ownerMatch = findOwnerMatch(ownerQuery, allTests, sharedSteps)
+    if (!ownerMatch) return []
+
+    const stepMatch = findStepMatch(ownerMatch.owner, stepToken)
+    if (!stepMatch) return []
+
+    const normalizedField = fieldToken.trim().toLowerCase()
+    if (!['action', 'data', 'expected'].includes(normalizedField)) return []
+    const kind = normalizedField as 'action' | 'data' | 'expected'
+    const parts = stepMatch.step.internal?.parts?.[kind] ?? []
+    const filter = partFilter.toLowerCase()
+    const baseInsert = `${ownerMatch.prefix}:${ownerMatch.owner.id}#${stepMatch.step.id ?? stepMatch.index + 1}.${kind}`
+    const fieldText = getStepKinds(stepMatch.step, t).find((item) => item.kind === kind)?.text ?? ''
+    const items: AutoItem[] = []
+
+    if (!filter || `${t('markdown.wholeField')} ${kind} ${fieldText}`.toLowerCase().includes(filter)) {
+        items.push({
+            label: `${t('markdown.wholeField')} - ${trimText(fieldText)}`,
+            insert: baseInsert,
+            stage: 'part',
+        })
+    }
+
+    parts.forEach((part, partIndex) => {
+        const hay = `${kind} part ${partIndex + 1} ${part.text ?? ''}`.toLowerCase()
+        if (filter && !hay.includes(filter)) return
+        items.push({
+            label: `#${partIndex + 1} - ${trimText(part.text ?? '')}`,
+            insert: `${baseInsert}@${part.id ?? partIndex + 1}`,
+            stage: 'part',
+        })
     })
 
-    return items.slice(0, 60)
+    return items.slice(0, 20)
 }
 
 export function MarkdownEditor(props: MarkdownEditorProps) {
@@ -529,8 +660,9 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     }, [preview])
 
     const [acOpen, setAcOpen] = React.useState(false)
-    const [acItems, setAcItems] = React.useState<Array<{ label: string; insert: string }>>([])
+    const [acItems, setAcItems] = React.useState<AutoItem[]>([])
     const [acIndex, setAcIndex] = React.useState(0)
+    const [acStage, setAcStage] = React.useState<AutoStage>('owner')
     const [anchor, setAnchor] = React.useState<{ top: number; left: number } | null>(null)
     const [range, setRange] = React.useState<{ from: number; to: number } | null>(null)
 
@@ -568,31 +700,66 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         setRange({ from: start, to: caret })
 
         const hashPos = query.indexOf('#')
-        const items =
-            hashPos === -1
-                ? makeOwnerSuggestions(allTests, sharedSteps, query.trim(), t)
-                : makeStepSuggestions(query.slice(0, hashPos).trim(), query.slice(hashPos + 1).trim(), allTests, sharedSteps)
+        let stage: AutoStage = 'owner'
+        let items: AutoItem[] = []
 
+        if (hashPos === -1) {
+            stage = 'owner'
+            items = makeOwnerSuggestions(allTests, sharedSteps, query.trim(), t)
+        } else {
+            const ownerQuery = query.slice(0, hashPos).trim()
+            const afterHash = query.slice(hashPos + 1)
+            const dotPos = afterHash.indexOf('.')
+            const atPos = afterHash.indexOf('@')
+
+            if (dotPos === -1) {
+                stage = 'step'
+                items = makeStepSuggestions(ownerQuery, afterHash.trim(), allTests, sharedSteps, t)
+            } else if (atPos === -1) {
+                stage = 'field'
+                items = makeFieldSuggestions(
+                    ownerQuery,
+                    afterHash.slice(0, dotPos).trim(),
+                    afterHash.slice(dotPos + 1).trim(),
+                    allTests,
+                    sharedSteps,
+                    t
+                )
+            } else {
+                stage = 'part'
+                items = makePartSuggestions(
+                    ownerQuery,
+                    afterHash.slice(0, dotPos).trim(),
+                    afterHash.slice(dotPos + 1, atPos).trim(),
+                    afterHash.slice(atPos + 1).trim(),
+                    allTests,
+                    sharedSteps,
+                    t
+                )
+            }
+        }
+
+        setAcStage(stage)
         setAcItems(items)
         setAcIndex(0)
         setAcOpen(items.length > 0)
-    }, [allTests, sharedSteps, value])
+    }, [allTests, sharedSteps, t, value])
 
-    function applySuggestion(item: { label: string; insert: string }) {
+    function applySuggestion(item: AutoItem) {
         const el = taRef.current
         if (!el || !range) return
         const left = value.slice(0, range.from)
-        const right = value.slice(range.to)
+        const continueSelection = Boolean(item.continues)
+        const right = value.slice(range.to).replace(/^\]\]+/, '')
         const nextValue = `${left}[[${item.insert}]]${right}`
-        const continueToSteps = item.insert.endsWith('#')
         onChange(nextValue)
         requestAnimationFrame(() => {
             el.focus()
-            const pos = continueToSteps
+            const pos = continueSelection
                 ? left.length + 2 + item.insert.length
                 : (left + '[[' + item.insert + ']]').length
             el.selectionStart = el.selectionEnd = pos
-            if (continueToSteps) {
+            if (continueSelection) {
                 updateSuggestions(el, nextValue, pos)
             } else {
                 setAcOpen(false)
@@ -626,6 +793,11 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     function onCursorActivity() {
         const el = taRef.current
         if (el) updateSuggestions(el)
+    }
+
+    function onKeyUp(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+        if (acOpen && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) return
+        onCursorActivity()
     }
 
     const refs = React.useMemo(() => (inspectRefs ? inspectRefs(value) : []), [inspectRefs, value])
@@ -670,7 +842,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                     value={value}
                     onChange={onChangeWrapped}
                     onKeyDown={onKeyDown}
-                    onKeyUp={onCursorActivity}
+                    onKeyUp={onKeyUp}
                     onClick={onCursorActivity}
                     onFocus={() => {
                         setActive(true)
@@ -704,6 +876,8 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                     <AutocompleteBox
                         top={anchor.top}
                         left={anchor.left}
+                        stage={acStage}
+                        stageLabel={t(`markdown.stage.${acStage}`)}
                         items={acItems}
                         index={acIndex}
                         onPick={applySuggestion}
@@ -753,17 +927,18 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     )
 }
 
-type AutoItem = { label: string; insert: string }
 type AutocompleteBoxProps = {
     top: number
     left: number
+    stage: AutoStage
+    stageLabel: string
     items: AutoItem[]
     index: number
     onPick(item: AutoItem): void
     onClose(): void
 }
 
-const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({ top, left, items, index, onPick, onClose }) => {
+const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({ top, left, stage, stageLabel, items, index, onPick, onClose }) => {
     React.useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose()
@@ -779,7 +954,8 @@ const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({ top, left, items, ind
     }, [onClose])
 
     return (
-        <div className="autocomplete" style={{ top, left }} role="listbox" aria-label="Wiki references suggestions">
+        <div className="autocomplete" style={{ top, left }} role="listbox" aria-label={`Wiki references suggestions: ${stage}`}>
+            <div className="autocomplete-stage">{stageLabel}</div>
             {items.length === 0 ? (
                 <div className="autocomplete-empty">No matches</div>
             ) : (

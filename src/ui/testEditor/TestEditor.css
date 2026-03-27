@@ -61,7 +61,10 @@
     align-items: center;
     gap: 8px;
 }
-.editor-name-field { margin: 0; }
+.editor-name-field {
+    margin: 0;
+    max-width: min(100%, 860px);
+}
 .editor-name-input {
     font-size: 18px;
     font-weight: 700;
