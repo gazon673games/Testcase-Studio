@@ -456,6 +456,7 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                     onChange={setTop}
                     placeholder={`${label}...`}
                     preview={preview}
+                    className="md-editor--step"
                     resolveRefs={props.resolveRefs}
                     inspectRefs={props.inspectRefs}
                     onOpenRef={props.onOpenRef}
@@ -601,6 +602,7 @@ function PartItemRow({
                 placeholder={label}
                 rows={2}
                 preview={preview}
+                className="md-editor--step"
                 resolveRefs={resolveRefs}
                 inspectRefs={inspectRefs}
                 onOpenRef={onOpenRef}

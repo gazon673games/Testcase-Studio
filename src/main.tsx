@@ -61,8 +61,8 @@ function AppShell() {
             }
         }
 
-        window.addEventListener('keydown', onKey)
-        return () => window.removeEventListener('keydown', onKey)
+        document.addEventListener('keydown', onKey, true)
+        return () => document.removeEventListener('keydown', onKey, true)
     }, [handleSave])
 
     React.useEffect(() => {
@@ -127,6 +127,53 @@ function AppShell() {
         [app, push, t]
     )
 
+    const handlePull = React.useCallback(async () => {
+        try {
+            const result = await app.pull()
+            if (result.status === 'ok') {
+                push({
+                    kind: 'success',
+                    text: t('toast.pullSuccess', { externalId: result.externalId || 'Zephyr' }),
+                    ttl: 2600,
+                })
+                return
+            }
+
+            push({
+                kind: 'error',
+                text: t(result.status === 'no-link' ? 'toast.pullNoLink' : 'toast.pullNoSelection'),
+                ttl: 2800,
+            })
+        } catch (error) {
+            push({
+                kind: 'error',
+                text: t('toast.pullFailed', {
+                    message: error instanceof Error ? error.message : String(error),
+                }),
+                ttl: 4200,
+            })
+        }
+    }, [app, push, t])
+
+    const handleQuickSync = React.useCallback(async () => {
+        try {
+            const result = await app.syncAll()
+            push({
+                kind: 'success',
+                text: t('toast.quickSyncSuccess', { count: result.count }),
+                ttl: 3000,
+            })
+        } catch (error) {
+            push({
+                kind: 'error',
+                text: t('toast.quickSyncFailed', {
+                    message: error instanceof Error ? error.message : String(error),
+                }),
+                ttl: 4200,
+            })
+        }
+    }, [app, push, t])
+
     const selectWithCommit = React.useCallback(
         (id: string) => {
             editorRef.current?.commit?.()
@@ -152,7 +199,7 @@ function AppShell() {
 
     const canDelete = !!selected && selected.id !== app.state.root.id
     const canExport = !!selectedTest
-    const canPull = !!selectedTest && (selectedTest.links?.length ?? 0) > 0
+    const canPull = !!selectedTest
     const canPublish = publishSelection.tests.length > 0
     const canSyncAll = allTests.some((test) => (test.links?.length ?? 0) > 0)
 
@@ -277,8 +324,8 @@ function AppShell() {
                                 onClose={() => setSyncCenterOpen(false)}
                                 onOpenImport={() => setImportOpen(true)}
                                 onOpenPublish={() => setPublishOpen(true)}
-                                onPull={() => void app.pull()}
-                                onSyncAll={() => void app.syncAll()}
+                                onPull={() => void handlePull()}
+                                onSyncAll={() => void handleQuickSync()}
                             />
                         </>
                     ) : null}

@@ -43,6 +43,13 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 
 .md-editor .md-input-wrap { position: relative; }
 
+.md-editor.md-editor--step {
+    --md-font-size: 13px;
+    --md-line-height: 1.4;
+    --md-pad-v: 6px;
+    --md-min-rows: 2;
+}
+
 .md-editor .md-textarea {
     width: 100%;
     padding: 8px 10px;
@@ -58,6 +65,17 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     resize: none;        /* высоту управляем сами */
     overflow: hidden;    /* никогда не скроллим внутри поля */
     scrollbar-width: none;
+}
+.md-editor.md-editor--step .md-textarea,
+.md-editor.md-editor--step .md-preview,
+.md-editor.md-editor--step .md-preview.measurer {
+    padding: 6px 8px;
+    font-size: 13px;
+    line-height: 1.4;
+    border-radius: 7px;
+}
+.md-editor.md-editor--step .md-toolbar {
+    margin: 2px 0 3px;
 }
 .md-editor .md-textarea::-webkit-scrollbar { display: none; }
 .md-editor .md-textarea::-webkit-resizer { display: none; }
@@ -108,7 +126,10 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 /* overlay-превью поверх textarea */
 .md-editor .md-preview {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: auto;
     padding: 8px 10px;
     border-radius: 8px;
     border: 1px solid var(--border);
@@ -118,7 +139,16 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     overflow-wrap: anywhere;
     box-sizing: border-box;
     pointer-events: auto;
-    overflow: auto;
+    overflow: hidden;
+}
+
+.md-editor .md-preview.measurer {
+    inset: auto;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    overflow: hidden;
 }
 
 .md-editor .md-preview.md-preview--editable {

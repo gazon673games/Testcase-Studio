@@ -37,6 +37,10 @@ import { apiClient } from '@ipc/client'
 import { translate } from './preferences'
 
 type Node = Folder | TestCase
+type PullResult =
+    | { status: 'ok'; testId: string; externalId: string }
+    | { status: 'no-selection' | 'not-a-test' | 'no-link' }
+type SyncAllResult = { status: 'ok'; count: number }
 
 function mkSharedPlaceholder(sharedId: string): Step {
     return {
@@ -311,13 +315,15 @@ export function useAppState() {
         markDirty([testId])
     }
 
-    async function pull() {
-        if (!state) return
+    async function pull(): Promise<PullResult> {
+        if (!state) return { status: 'no-selection' }
         const node = getSelected()
-        if (!node || isFolder(node) || node.links.length === 0) return
+        if (!node) return { status: 'no-selection' }
+        if (isFolder(node)) return { status: 'not-a-test' }
+        if (node.links.length === 0) return { status: 'no-link' }
 
         const remote = await sync.pullPreferZephyr(node)
-        if (!remote) return
+        if (!remote) return { status: 'no-link' }
 
         const next = structuredClone(state)
         const target = findNode(next.root, node.id) as TestCase
@@ -332,6 +338,14 @@ export function useAppState() {
 
         await persist(next)
         clearDirty([target.id])
+        return {
+            status: 'ok',
+            testId: target.id,
+            externalId: node.links.find((link) => link.provider === 'zephyr')?.externalId
+                ?? node.links[0]?.externalId
+                ?? remote.id
+                ?? '',
+        }
     }
 
     async function push() {
@@ -341,11 +355,14 @@ export function useAppState() {
         await sync.pushTest(node, node.links[0], state)
     }
 
-    async function syncAll() {
-        if (!state) return
+    async function syncAll(): Promise<SyncAllResult> {
+        if (!state) return { status: 'ok', count: 0 }
         const next = structuredClone(state)
+        const tests = mapTests(next.root)
         await sync.twoWaySync(next)
         await persist(next)
+        clearDirty(tests.map((test) => test.id))
+        return { status: 'ok', count: tests.length }
     }
 
     async function previewZephyrImport(

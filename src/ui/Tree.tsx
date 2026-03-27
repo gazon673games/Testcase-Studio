@@ -46,13 +46,7 @@ type VisibleItem =
           name: string
       }
 
-type SyncStatus = 'dirty' | 'synced' | 'conflict'
-
-const IMPORT_IMPORTED_AT_KEY = '__zephyrImport.importedAt'
-const IMPORT_REMOTE_KEY_KEY = '__zephyrImport.remoteKey'
-const IMPORT_CONFLICT_REMOTE_KEY = '__zephyrImport.conflictRemoteKey'
-const PUBLISH_AT_KEY = '__zephyrPublish.publishedAt'
-const PUBLISH_REMOTE_KEY = '__zephyrPublish.remoteKey'
+type SyncStatus = 'dirty'
 
 export function Tree(props: Props) {
     const { t } = useUiPreferences()
@@ -842,36 +836,16 @@ function flattenVisibleItems(
 function resolveNodeSyncStatus(node: ViewNode, dirtyTestIds: Set<string>): SyncStatus | null {
     if (!isFolder(node)) return resolveTestSyncStatus(node, dirtyTestIds)
 
-    let sawSynced = false
     for (const child of node.children) {
         const status = resolveNodeSyncStatus(child, dirtyTestIds)
-        if (status === 'conflict') return 'conflict'
         if (status === 'dirty') return 'dirty'
-        if (status === 'synced') sawSynced = true
     }
-    return sawSynced ? 'synced' : null
+    return null
 }
 
 function resolveTestSyncStatus(test: TestCase, dirtyTestIds: Set<string>): SyncStatus | null {
-    const params = test.meta?.params ?? {}
-    if (safeString(params[IMPORT_CONFLICT_REMOTE_KEY])) return 'conflict'
     if (dirtyTestIds.has(test.id)) return 'dirty'
-
-    const linkedZephyrId =
-        test.links.find((link) => link.provider === 'zephyr')?.externalId ??
-        safeString(params.key) ??
-        safeString(params[IMPORT_REMOTE_KEY_KEY]) ??
-        safeString(params[PUBLISH_REMOTE_KEY])
-
-    if (!linkedZephyrId) return null
-    return 'synced'
-}
-
-function formatSyncStatusLabel(
-    status: SyncStatus,
-    t: (key: string, params?: Record<string, string | number>) => string
-): string {
-    return status === 'conflict' ? t('tree.sync.conflict') : t('tree.sync.synced')
+    return null
 }
 
 function renderSyncStatusBadge(
@@ -888,8 +862,7 @@ function renderSyncStatusBadge(
             />
         )
     }
-
-    return <span style={treeStatusPillStyle(status)}>{formatSyncStatusLabel(status, t)}</span>
+    return null
 }
 
 function ChevronIcon({ open }: { open: boolean }) {
@@ -915,16 +888,6 @@ function ChevronIcon({ open }: { open: boolean }) {
             />
         </svg>
     )
-}
-
-function parseTimestamp(value: unknown): number {
-    const timestamp = Date.parse(String(value ?? '').trim())
-    return Number.isFinite(timestamp) ? timestamp : 0
-}
-
-function safeString(value: unknown): string {
-    const next = typeof value === 'string' ? value.trim() : value == null ? '' : String(value).trim()
-    return next || ''
 }
 
 function clampMenuPosition(x: number, y: number) {
@@ -1020,22 +983,6 @@ const kindBadgeStyle: React.CSSProperties = {
     fontWeight: 700,
     flexShrink: 0,
 }
-
-const treeStatusPillStyle = (status: SyncStatus): React.CSSProperties => ({
-    display: 'inline-flex',
-    alignItems: 'center',
-    minHeight: 22,
-    padding: '0 8px',
-    borderRadius: 999,
-    fontSize: 11,
-    fontWeight: 700,
-    flexShrink: 0,
-    ...(status === 'conflict'
-        ? { background: 'var(--danger-bg)', color: 'var(--danger-text)' }
-        : status === 'dirty'
-            ? { background: 'var(--warning-bg)', color: 'var(--warning-text)' }
-            : { background: 'var(--success-bg)', color: 'var(--success-text)' }),
-})
 
 const treeDirtyIndicatorStyle: React.CSSProperties = {
     width: 10,

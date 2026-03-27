@@ -281,8 +281,8 @@ function getCaretAnchor(el: HTMLTextAreaElement): CaretAnchor | null {
     document.body.removeChild(mirror)
 
     const height = markerRect.height || parseFloat(styles.lineHeight) || 18
-    const top = markerRect.top + window.scrollY - el.scrollTop
-    const left = markerRect.left + window.scrollX - el.scrollLeft
+    const top = markerRect.top - el.scrollTop
+    const left = markerRect.left - el.scrollLeft
     return { top, left, bottom: top + height }
 }
 
@@ -572,20 +572,61 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     const [active, setActive] = React.useState(false)
     const [hoveredRef, setHoveredRef] = React.useState<ResolvedWikiRef | null>(null)
 
+    const dispatchTextareaInput = React.useCallback((el: HTMLTextAreaElement) => {
+        const event =
+            typeof InputEvent === 'function'
+                ? new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText' })
+                : new Event('input', { bubbles: true })
+        el.dispatchEvent(event)
+    }, [])
+
+    const applyNativeEdit = React.useCallback((
+        from: number,
+        to: number,
+        nextText: string,
+        selectionStart?: number,
+        selectionEnd?: number
+    ) => {
+        const el = taRef.current
+        if (!el) return null
+        el.focus()
+        el.setSelectionRange(from, to)
+
+        let usedNativeInsert = false
+        try {
+            usedNativeInsert =
+                typeof document !== 'undefined' &&
+                typeof document.execCommand === 'function' &&
+                document.execCommand('insertText', false, nextText)
+        } catch {
+            usedNativeInsert = false
+        }
+
+        if (!usedNativeInsert) {
+            el.setRangeText(nextText, from, to, 'end')
+            dispatchTextareaInput(el)
+        }
+
+        if (typeof selectionStart === 'number') {
+            el.selectionStart = selectionStart
+            el.selectionEnd = typeof selectionEnd === 'number' ? selectionEnd : selectionStart
+        }
+        return el.value
+    }, [dispatchTextareaInput])
+
     const doWrap = React.useCallback((before: string, after: string) => {
         const el = taRef.current
         if (!el) return
         const start = Math.min(el.selectionStart, el.selectionEnd)
         const end = Math.max(el.selectionStart, el.selectionEnd)
-        const left = value.slice(0, start)
         const mid = value.slice(start, end)
-        const right = value.slice(end)
-        onChange(left + before + mid + after + right)
+        const inserted = `${before}${mid}${after}`
+        const selection = start + inserted.length
+        applyNativeEdit(start, end, inserted, selection, selection)
         requestAnimationFrame(() => {
-            el.selectionStart = el.selectionEnd = start + before.length + mid.length + after.length
             el.focus()
         })
-    }, [onChange, value])
+    }, [applyNativeEdit])
 
     const doInsertPrefix = React.useCallback((prefix: string) => {
         const el = taRef.current
@@ -624,16 +665,13 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         if (!el) return
         const start = Math.min(el.selectionStart, el.selectionEnd)
         const end = Math.max(el.selectionStart, el.selectionEnd)
-        const left = value.slice(0, start)
-        const right = value.slice(end)
-        const nextValue = `${left}${text}${right}`
-        onChange(nextValue)
+        const pos = start + text.length
+        applyNativeEdit(start, end, text, pos, pos)
         requestAnimationFrame(() => {
-            const pos = left.length + text.length
             el.focus()
             el.selectionStart = el.selectionEnd = pos
         })
-    }, [onChange, value])
+    }, [applyNativeEdit])
 
     const editorApi = React.useMemo<MarkdownEditorApi>(() => ({
         wrap: doWrap,
@@ -663,20 +701,27 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     const syncHeights = React.useCallback(() => {
         const textarea = taRef.current
         if (!textarea) return
+        const previewElement = previewRef.current
+
+        textarea.style.height = 'auto'
+        if (previewElement) previewElement.style.height = 'auto'
 
         const measurer = measurerRef.current
         if (measurer) measurer.offsetHeight
-        const targetHeight = measurer?.scrollHeight ?? previewRef.current?.scrollHeight ?? textarea.scrollHeight
+        const textHeight = textarea.scrollHeight
+        const previewHeight = measurer?.scrollHeight ?? 0
+        const targetHeight = preview
+            ? Math.max(textHeight, previewHeight)
+            : textHeight
 
-        textarea.style.height = 'auto'
         textarea.style.overflow = 'hidden'
         textarea.style.height = `${targetHeight}px`
 
-        if (previewRef.current) {
-            previewRef.current.style.height = `${targetHeight}px`
-            previewRef.current.style.overflow = 'auto'
+        if (previewElement) {
+            previewElement.style.height = `${targetHeight}px`
+            previewElement.style.overflow = 'hidden'
         }
-    }, [])
+    }, [preview])
 
     React.useLayoutEffect(() => {
         syncHeights()
@@ -726,18 +771,18 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         const menuHeight = 260
         const gutter = 12
         const fallbackRect = el.getBoundingClientRect()
-        const minLeft = window.scrollX + gutter
-        const maxLeft = Math.max(minLeft, window.scrollX + window.innerWidth - menuWidth - gutter)
+        const minLeft = gutter
+        const maxLeft = Math.max(minLeft, window.innerWidth - menuWidth - gutter)
         const left = caretAnchor
             ? Math.max(minLeft, Math.min(caretAnchor.left, maxLeft))
-            : fallbackRect.left + window.scrollX + 8
+            : fallbackRect.left + 8
         const top = caretAnchor
             ? (
-                caretAnchor.bottom + menuHeight + gutter <= window.scrollY + window.innerHeight
+                caretAnchor.bottom + menuHeight + gutter <= window.innerHeight
                     ? caretAnchor.bottom + 6
-                    : Math.max(window.scrollY + gutter, caretAnchor.top - menuHeight - 6)
+                    : Math.max(gutter, caretAnchor.top - menuHeight - 6)
             )
-            : fallbackRect.bottom + window.scrollY
+            : fallbackRect.bottom
 
         setAnchor({ top, left })
         setRange({ from: start, to: caret })
@@ -793,19 +838,20 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     function applySuggestion(item: AutoItem) {
         const el = taRef.current
         if (!el || !range) return
-        const left = value.slice(0, range.from)
         const continueSelection = Boolean(item.continues)
-        const right = value.slice(range.to).replace(/^\]\]+/, '')
-        const nextValue = `${left}[[${item.insert}]]${right}`
-        onChange(nextValue)
+        const trailing = value.slice(range.to)
+        const trimmedTrailing = trailing.replace(/^\]\]+/, '')
+        const trimmedCount = trailing.length - trimmedTrailing.length
+        const inserted = `[[${item.insert}]]`
+        const leftLength = range.from
+        const nextCaret = continueSelection
+            ? leftLength + 2 + item.insert.length
+            : leftLength + inserted.length
+        const nextValue = applyNativeEdit(range.from, range.to + trimmedCount, inserted, nextCaret, nextCaret) ?? value
         requestAnimationFrame(() => {
             el.focus()
-            const pos = continueSelection
-                ? left.length + 2 + item.insert.length
-                : (left + '[[' + item.insert + ']]').length
-            el.selectionStart = el.selectionEnd = pos
             if (continueSelection) {
-                updateSuggestions(el, nextValue, pos)
+                updateSuggestions(el, nextValue, nextCaret)
             } else {
                 setAcOpen(false)
             }
