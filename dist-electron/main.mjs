@@ -1,7 +1,7 @@
-import { app as m, BrowserWindow as F, ipcMain as Y } from "electron";
-import s from "node:path";
-import { promises as l } from "fs";
-import P, { randomUUID as R } from "crypto";
+import { app as f, BrowserWindow as F, ipcMain as W } from "electron";
+import c from "node:path";
+import { promises as m } from "fs";
+import N, { randomUUID as $ } from "crypto";
 import _ from "keytar";
 const w = {
   LOAD_STATE: "LOAD_STATE",
@@ -9,100 +9,101 @@ const w = {
   LOAD_SETTINGS: "LOAD_SETTINGS",
   SAVE_SETTINGS: "SAVE_SETTINGS",
   GET_ATLASSIAN_SECRET: "GET_ATLASSIAN_SECRET",
-  ZEPHYR_GET_TESTCASE: "ZEPHYR_GET_TESTCASE"
+  ZEPHYR_GET_TESTCASE: "ZEPHYR_GET_TESTCASE",
+  ZEPHYR_SEARCH_TESTCASES: "ZEPHYR_SEARCH_TESTCASES"
 }, T = new Uint8Array(256);
 let g = T.length;
-function M() {
-  return g > T.length - 16 && (P.randomFillSync(T), g = 0), T.slice(g, g += 16);
+function K() {
+  return g > T.length - 16 && (N.randomFillSync(T), g = 0), T.slice(g, g += 16);
 }
-const d = [];
+const l = [];
 for (let t = 0; t < 256; ++t)
-  d.push((t + 256).toString(16).slice(1));
-function q(t, n = 0) {
-  return d[t[n + 0]] + d[t[n + 1]] + d[t[n + 2]] + d[t[n + 3]] + "-" + d[t[n + 4]] + d[t[n + 5]] + "-" + d[t[n + 6]] + d[t[n + 7]] + "-" + d[t[n + 8]] + d[t[n + 9]] + "-" + d[t[n + 10]] + d[t[n + 11]] + d[t[n + 12]] + d[t[n + 13]] + d[t[n + 14]] + d[t[n + 15]];
+  l.push((t + 256).toString(16).slice(1));
+function Q(t, e = 0) {
+  return l[t[e + 0]] + l[t[e + 1]] + l[t[e + 2]] + l[t[e + 3]] + "-" + l[t[e + 4]] + l[t[e + 5]] + "-" + l[t[e + 6]] + l[t[e + 7]] + "-" + l[t[e + 8]] + l[t[e + 9]] + "-" + l[t[e + 10]] + l[t[e + 11]] + l[t[e + 12]] + l[t[e + 13]] + l[t[e + 14]] + l[t[e + 15]];
 }
-const U = {
-  randomUUID: P.randomUUID
+const P = {
+  randomUUID: N.randomUUID
 };
-function K(t, n, e) {
-  if (U.randomUUID && !t)
-    return U.randomUUID();
+function X(t, e, n) {
+  if (P.randomUUID && !t)
+    return P.randomUUID();
   t = t || {};
-  const r = t.random || (t.rng || M)();
-  return r[6] = r[6] & 15 | 64, r[8] = r[8] & 63 | 128, q(r);
+  const r = t.random || (t.rng || K)();
+  return r[6] = r[6] & 15 | 64, r[8] = r[8] & 63 | 128, Q(r);
 }
-function Q() {
+function v() {
   return (/* @__PURE__ */ new Date()).toISOString();
 }
 function a(t) {
   if (typeof t != "string") return t == null ? void 0 : String(t);
-  const n = t.trim();
-  return n.length ? n : void 0;
-}
-function X(t) {
-  return typeof t == "boolean" ? t : void 0;
-}
-function h(t) {
-  return typeof t == "string" && t.trim() ? t.trim() : K();
-}
-function N(t) {
-  return typeof t == "string" && t.trim() ? t : Q();
-}
-function v(t) {
-  if (!t || typeof t != "object") return null;
-  const n = typeof t.name == "string" ? t.name : "attachment", e = typeof t.pathOrDataUrl == "string" ? t.pathOrDataUrl : typeof t.path == "string" ? t.path : "";
-  return !n && !e ? null : {
-    id: h(t.id),
-    name: n,
-    pathOrDataUrl: e
-  };
+  const e = t.trim();
+  return e.length ? e : void 0;
 }
 function tt(t) {
-  if (t && typeof t.id == "string" && t.id.trim()) return `id:${t.id.trim()}`;
-  const n = typeof t?.name == "string" ? t.name : "", e = typeof t?.pathOrDataUrl == "string" ? t.pathOrDataUrl : typeof t?.path == "string" ? t.path : "";
-  return `path:${n}::${e}`;
+  return typeof t == "boolean" ? t : void 0;
 }
-function z(t) {
-  const n = /* @__PURE__ */ new Map();
-  for (const e of t) {
-    const r = v(e);
-    r && n.set(tt(e), r);
-  }
-  return [...n.values()];
+function S(t) {
+  return typeof t == "string" && t.trim() ? t.trim() : X();
 }
-function j(t) {
-  return {
-    id: h(t?.id),
-    text: typeof t?.text == "string" ? t.text : "",
-    export: X(t?.export)
+function C(t) {
+  return typeof t == "string" && t.trim() ? t : v();
+}
+function et(t) {
+  if (!t || typeof t != "object") return null;
+  const e = typeof t.name == "string" ? t.name : "attachment", n = typeof t.pathOrDataUrl == "string" ? t.pathOrDataUrl : typeof t.path == "string" ? t.path : "";
+  return !e && !n ? null : {
+    id: S(t.id),
+    name: e,
+    pathOrDataUrl: n
   };
 }
 function nt(t) {
+  if (t && typeof t.id == "string" && t.id.trim()) return `id:${t.id.trim()}`;
+  const e = typeof t?.name == "string" ? t.name : "", n = typeof t?.pathOrDataUrl == "string" ? t.pathOrDataUrl : typeof t?.path == "string" ? t.path : "";
+  return `path:${e}::${n}`;
+}
+function z(t) {
+  const e = /* @__PURE__ */ new Map();
+  for (const n of t) {
+    const r = et(n);
+    r && e.set(nt(n), r);
+  }
+  return [...e.values()];
+}
+function b(t) {
   return {
-    id: h(t?.id),
+    id: S(t?.id),
+    text: typeof t?.text == "string" ? t.text : "",
+    export: tt(t?.export)
+  };
+}
+function rt(t) {
+  return {
+    id: S(t?.id),
     title: a(t?.title),
     text: a(t?.text)
   };
 }
-function et(t) {
-  const n = [];
-  for (const e of t) {
-    const r = e && typeof e == "object" ? e.provider : void 0, i = e && typeof e == "object" ? e.externalId : void 0;
-    (r === "zephyr" || r === "allure") && typeof i == "string" && i.trim() && n.push({ provider: r, externalId: i.trim() });
-  }
-  return n;
-}
-function rt(t) {
-  if (!t || typeof t != "object") return {};
-  const n = {};
-  for (const [e, r] of Object.entries(t))
-    r != null && (n[e] = typeof r == "string" ? r : String(r));
-  return n;
-}
 function at(t) {
+  const e = [];
+  for (const n of t) {
+    const r = n && typeof n == "object" ? n.provider : void 0, i = n && typeof n == "object" ? n.externalId : void 0;
+    (r === "zephyr" || r === "allure") && typeof i == "string" && i.trim() && e.push({ provider: r, externalId: i.trim() });
+  }
+  return e;
+}
+function it(t) {
+  if (!t || typeof t != "object") return {};
+  const e = {};
+  for (const [n, r] of Object.entries(t))
+    r != null && (e[n] = typeof r == "string" ? r : String(r));
+  return e;
+}
+function st(t) {
   return {
-    tags: Array.isArray(t?.tags) ? t.tags.map((n) => String(n)) : [],
-    params: rt(t?.params),
+    tags: Array.isArray(t?.tags) ? t.tags.map((e) => String(e)) : [],
+    params: it(t?.params),
     objective: a(t?.objective),
     preconditions: a(t?.preconditions),
     status: a(t?.status),
@@ -117,230 +118,254 @@ function at(t) {
   };
 }
 function L(t) {
-  const n = t ?? {}, e = Array.isArray(n?.internal?.meta?.attachments) ? n.internal.meta.attachments : [], r = a(
-    n.raw?.providerStepId ?? n?.providerStepId ?? n?.internal?.meta?.providerStepId
-  ), i = n.internal && typeof n.internal == "object" && n.internal.meta && typeof n.internal.meta == "object" ? { ...n.internal.meta } : void 0;
+  const e = t ?? {}, n = Array.isArray(e?.internal?.meta?.attachments) ? e.internal.meta.attachments : [], r = a(
+    e.raw?.providerStepId ?? e?.providerStepId ?? e?.internal?.meta?.providerStepId
+  ), i = e.internal && typeof e.internal == "object" && e.internal.meta && typeof e.internal.meta == "object" ? { ...e.internal.meta } : void 0;
   return i && "attachments" in i && delete i.attachments, {
-    id: h(n.id),
-    action: a(n.action),
-    data: a(n.data),
-    expected: a(n.expected),
-    text: a(n.text) ?? a(n.action) ?? "",
+    id: S(e.id),
+    action: a(e.action),
+    data: a(e.data),
+    expected: a(e.expected),
+    text: a(e.text) ?? a(e.action) ?? "",
     raw: {
-      action: a(n.raw?.action) ?? a(n.action),
-      data: a(n.raw?.data) ?? a(n.data),
-      expected: a(n.raw?.expected) ?? a(n.expected),
+      action: a(e.raw?.action) ?? a(e.action),
+      data: a(e.raw?.data) ?? a(e.data),
+      expected: a(e.raw?.expected) ?? a(e.expected),
       ...r ? { providerStepId: r } : {}
     },
-    subSteps: Array.isArray(n.subSteps) ? n.subSteps.map(nt) : [],
+    subSteps: Array.isArray(e.subSteps) ? e.subSteps.map(rt) : [],
     internal: {
-      note: a(n.internal?.note),
-      url: a(n.internal?.url),
+      note: a(e.internal?.note),
+      url: a(e.internal?.url),
       meta: i && Object.keys(i).length ? i : void 0,
       parts: {
-        action: Array.isArray(n.internal?.parts?.action) ? n.internal.parts.action.map(j) : [],
-        data: Array.isArray(n.internal?.parts?.data) ? n.internal.parts.data.map(j) : [],
-        expected: Array.isArray(n.internal?.parts?.expected) ? n.internal.parts.expected.map(j) : []
+        action: Array.isArray(e.internal?.parts?.action) ? e.internal.parts.action.map(b) : [],
+        data: Array.isArray(e.internal?.parts?.data) ? e.internal.parts.data.map(b) : [],
+        expected: Array.isArray(e.internal?.parts?.expected) ? e.internal.parts.expected.map(b) : []
       }
     },
-    usesShared: a(n.usesShared),
+    usesShared: a(e.usesShared),
     attachments: z([
-      ...Array.isArray(n.attachments) ? n.attachments : [],
-      ...e
+      ...Array.isArray(e.attachments) ? e.attachments : [],
+      ...n
     ])
   };
 }
-function I(t) {
-  const n = t ?? {};
+function R(t) {
+  const e = t ?? {};
   return {
-    id: h(n.id),
-    name: typeof n.name == "string" && n.name.trim() ? n.name : "Untitled Test",
-    description: a(n.description) ?? "",
-    steps: Array.isArray(n.steps) ? n.steps.map(L) : [],
-    attachments: z(Array.isArray(n.attachments) ? n.attachments : []),
-    links: et(Array.isArray(n.links) ? n.links : []),
-    updatedAt: N(n.updatedAt),
-    meta: at(n.meta),
+    id: S(e.id),
+    name: typeof e.name == "string" && e.name.trim() ? e.name : "Untitled Test",
+    description: a(e.description) ?? "",
+    steps: Array.isArray(e.steps) ? e.steps.map(L) : [],
+    attachments: z(Array.isArray(e.attachments) ? e.attachments : []),
+    links: at(Array.isArray(e.links) ? e.links : []),
+    updatedAt: C(e.updatedAt),
+    meta: st(e.meta),
     exportCfg: {
-      enabled: typeof n.exportCfg?.enabled == "boolean" ? n.exportCfg.enabled : !0
+      enabled: typeof e.exportCfg?.enabled == "boolean" ? e.exportCfg.enabled : !0
     }
   };
 }
-function it(t) {
-  return Array.isArray(t?.children) ? $(t, a(t?.name) ?? "Folder") : I(t);
+function ot(t) {
+  return Array.isArray(t?.children) ? G(t, a(t?.name) ?? "Folder") : R(t);
 }
-function $(t, n = "Folder") {
+function G(t, e = "Folder") {
+  const n = t ?? {};
+  return {
+    id: S(n.id),
+    name: typeof n.name == "string" && n.name.trim() ? n.name : e,
+    children: Array.isArray(n.children) ? n.children.map(ot) : []
+  };
+}
+function k(t) {
   const e = t ?? {};
   return {
-    id: h(e.id),
-    name: typeof e.name == "string" && e.name.trim() ? e.name : n,
-    children: Array.isArray(e.children) ? e.children.map(it) : []
+    id: S(e.id),
+    name: typeof e.name == "string" && e.name.trim() ? e.name : "Shared Step",
+    steps: Array.isArray(e.steps) ? e.steps.map(L) : [],
+    updatedAt: C(e.updatedAt)
   };
 }
-function C(t) {
-  const n = t ?? {};
+function H(t) {
+  const e = t ?? {};
   return {
-    id: h(n.id),
-    name: typeof n.name == "string" && n.name.trim() ? n.name : "Shared Step",
-    steps: Array.isArray(n.steps) ? n.steps.map(L) : [],
-    updatedAt: N(n.updatedAt)
+    root: G(e.root, "Root"),
+    sharedSteps: Array.isArray(e.sharedSteps) ? e.sharedSteps.map(k) : []
   };
 }
-function G(t) {
-  const n = t ?? {};
-  return {
-    root: $(n.root, "Root"),
-    sharedSteps: Array.isArray(n.sharedSteps) ? n.sharedSteps.map(C) : []
-  };
+const Z = "tests_repo", B = "root", J = "folder.json", V = "shared_steps.json";
+function Y() {
+  return f.isPackaged ? c.dirname(f.getPath("exe")) : process.cwd();
 }
-const k = "tests_repo", H = "root", J = "folder.json", B = "shared_steps.json";
-function V() {
-  return m.isPackaged ? s.dirname(m.getPath("exe")) : process.cwd();
-}
-function ot(t) {
+function ct(t) {
   return t.toLowerCase().replace(/[^a-z0-9\u0400-\u04FF]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "node";
 }
-function st(t) {
+function dt(t) {
   return t.includes("test.json");
 }
 async function A(t) {
-  await l.mkdir(t, { recursive: !0 });
+  await m.mkdir(t, { recursive: !0 });
 }
-async function Z(t) {
+async function q(t) {
   try {
-    const n = await l.readFile(t, "utf-8");
-    return JSON.parse(n);
+    const e = await m.readFile(t, "utf-8");
+    return JSON.parse(e);
   } catch {
     return null;
   }
 }
-async function ct(t) {
-  return Z(s.join(t, J));
+async function lt(t) {
+  return q(c.join(t, J));
 }
-async function dt(t) {
-  const n = await Z(s.join(t, B));
-  return Array.isArray(n) ? n.map(C) : [];
+async function pt(t) {
+  const e = await q(c.join(t, V));
+  return Array.isArray(e) ? e.map(k) : [];
 }
-async function pt() {
-  const t = s.join(V(), k), n = s.join(t, H);
-  await A(n);
-  async function e(p, y) {
-    const f = await l.readdir(p);
-    if (st(f)) {
-      const c = await l.readFile(s.join(p, "test.json"), "utf-8");
-      return I(JSON.parse(c));
+async function mt() {
+  const t = c.join(Y(), Z), e = c.join(t, B);
+  await A(e);
+  async function n(d, h) {
+    const u = await m.readdir(d);
+    if (dt(u)) {
+      const o = await m.readFile(c.join(d, "test.json"), "utf-8");
+      return R(JSON.parse(o));
     }
-    const u = await ct(p), o = {
-      id: typeof u?.id == "string" && u.id.trim() ? u.id : R(),
-      name: typeof u?.name == "string" && u.name.trim() ? u.name : y,
+    const p = await lt(d), s = {
+      id: typeof p?.id == "string" && p.id.trim() ? p.id : $(),
+      name: typeof p?.name == "string" && p.name.trim() ? p.name : h,
       children: []
     };
-    for (const c of f) {
-      const S = s.join(p, c);
-      (await l.lstat(S)).isDirectory() && o.children.push(await e(S, c));
+    for (const o of u) {
+      const y = c.join(d, o);
+      (await m.lstat(y)).isDirectory() && s.children.push(await n(y, o));
     }
-    return o;
+    return s;
   }
-  const r = await e(n, "Root"), i = await dt(t);
-  return G({ root: r, sharedSteps: i });
+  const r = await n(e, "Root"), i = await pt(t);
+  return H({ root: r, sharedSteps: i });
 }
-async function lt(t) {
-  const n = G(t), e = s.join(V(), k), r = s.join(e, H);
+async function ut(t) {
+  const e = H(t), n = c.join(Y(), Z), r = c.join(n, B);
   await A(r);
-  async function i(p, y) {
-    await A(p), await l.writeFile(
-      s.join(p, J),
-      JSON.stringify({ id: y.id, name: y.name }, null, 2),
+  async function i(d, h) {
+    await A(d), await m.writeFile(
+      c.join(d, J),
+      JSON.stringify({ id: h.id, name: h.name }, null, 2),
       "utf-8"
     );
-    const f = /* @__PURE__ */ new Map();
-    for (const o of y.children) {
-      if ("children" in o) {
-        f.set(s.join(p, o.name), { node: o });
+    const u = /* @__PURE__ */ new Map();
+    for (const s of h.children) {
+      if ("children" in s) {
+        u.set(c.join(d, s.name), { node: s });
         continue;
       }
-      const c = ot(o.name), S = o.id?.slice(0, 6) ?? R().slice(0, 6);
-      f.set(s.join(p, `${c}__${S}`), { node: o });
+      const o = ct(s.name), y = s.id?.slice(0, 6) ?? $().slice(0, 6);
+      u.set(c.join(d, `${o}__${y}`), { node: s });
     }
-    for (const [o, c] of f.entries())
-      "children" in c.node ? await i(o, c.node) : (await A(o), await A(s.join(o, "attachments")), await l.writeFile(
-        s.join(o, "test.json"),
-        JSON.stringify(I(c.node), null, 2),
+    for (const [s, o] of u.entries())
+      "children" in o.node ? await i(s, o.node) : (await A(s), await A(c.join(s, "attachments")), await m.writeFile(
+        c.join(s, "test.json"),
+        JSON.stringify(R(o.node), null, 2),
         "utf-8"
       ));
-    const u = await l.readdir(p);
-    for (const o of u) {
-      const c = s.join(p, o);
-      (await l.lstat(c)).isDirectory() && (f.has(c) || await l.rm(c, { recursive: !0, force: !0 }));
+    const p = await m.readdir(d);
+    for (const s of p) {
+      const o = c.join(d, s);
+      (await m.lstat(o)).isDirectory() && (u.has(o) || await m.rm(o, { recursive: !0, force: !0 }));
     }
   }
-  await i(r, n.root), await l.writeFile(
-    s.join(e, B),
-    JSON.stringify(n.sharedSteps, null, 2),
+  await i(r, e.root), await m.writeFile(
+    c.join(n, V),
+    JSON.stringify(e.sharedSteps, null, 2),
     "utf-8"
   );
 }
 const x = "testshub-atlassian";
-function ut() {
-  return m.isPackaged ? s.dirname(m.getPath("exe")) : process.cwd();
+function ht() {
+  return f.isPackaged ? c.dirname(f.getPath("exe")) : process.cwd();
 }
-const b = s.join(ut(), "tests_repo", ".settings.json");
-async function mt(t) {
-  await l.mkdir(s.dirname(t), { recursive: !0 });
+const U = c.join(ht(), "tests_repo", ".settings.json");
+async function ft(t) {
+  await m.mkdir(c.dirname(t), { recursive: !0 });
 }
-async function D() {
+async function j() {
   try {
-    const t = await l.readFile(b, "utf-8"), n = JSON.parse(t), e = n.login ?? "", r = n.baseUrl ?? "", i = e ? !!await _.getPassword(x, e) : !1;
-    return { login: e, baseUrl: r, hasSecret: i };
+    const t = await m.readFile(U, "utf-8"), e = JSON.parse(t), n = e.login ?? "", r = e.baseUrl ?? "", i = n ? !!await _.getPassword(x, n) : !1;
+    return { login: n, baseUrl: r, hasSecret: i };
   } catch {
     return { login: "", baseUrl: "", hasSecret: !1 };
   }
 }
-async function ft(t, n, e) {
-  await mt(b);
-  const r = { login: t, baseUrl: e };
-  await l.writeFile(b, JSON.stringify(r, null, 2), "utf-8"), t && typeof n == "string" && n.length > 0 && await _.setPassword(x, t, n);
+async function yt(t, e, n) {
+  await ft(U);
+  const r = { login: t, baseUrl: n };
+  await m.writeFile(U, JSON.stringify(r, null, 2), "utf-8"), t && typeof e == "string" && e.length > 0 && await _.setPassword(x, t, e);
   const i = t ? !!await _.getPassword(x, t) : !1;
-  return { login: t, baseUrl: e ?? "", hasSecret: i };
+  return { login: t, baseUrl: n ?? "", hasSecret: i };
 }
-async function O(t) {
+async function I(t) {
   return t ? await _.getPassword(x, t) : null;
 }
-function yt(t) {
+function D(t) {
   return (t || "").replace(/\/+$/, "");
 }
-function ht(t) {
+function O(t) {
   return Buffer.from(t, "utf8").toString("base64");
 }
 function wt(t) {
-  t.handle(w.LOAD_STATE, async (n, e) => {
+  t.handle(w.LOAD_STATE, async (e, n) => {
     try {
-      return await pt();
+      return await mt();
     } catch {
-      return e;
+      return n;
     }
-  }), t.handle(w.SAVE_STATE, async (n, e) => (await lt(e), !0)), t.handle(w.LOAD_SETTINGS, async () => await D()), t.handle(
+  }), t.handle(w.SAVE_STATE, async (e, n) => (await ut(n), !0)), t.handle(w.LOAD_SETTINGS, async () => await j()), t.handle(
     w.SAVE_SETTINGS,
-    async (n, e) => await ft(e.login, e.passwordOrToken, e.baseUrl)
+    async (e, n) => await yt(n.login, n.passwordOrToken, n.baseUrl)
   ), t.handle(
     w.GET_ATLASSIAN_SECRET,
-    async (n, e) => await O(e.login) ?? ""
+    async (e, n) => await I(n.login) ?? ""
   ), t.handle(
     w.ZEPHYR_GET_TESTCASE,
-    async (n, e) => {
-      const r = await D(), i = r.login || "", p = yt(r.baseUrl || "");
+    async (e, n) => {
+      const r = await j(), i = r.login || "", d = D(r.baseUrl || "");
       if (!i) throw new Error("Atlassian login is empty in settings");
-      if (!p) throw new Error("Atlassian baseUrl is empty in settings");
-      const y = await O(i) || "";
-      if (!y) throw new Error("Atlassian password is not stored in keychain");
-      const f = `${p}/rest/atm/1.0/testcase/${encodeURIComponent(e.ref)}`, u = `Basic ${ht(`${i}:${y}`)}`, o = await fetch(f, {
+      if (!d) throw new Error("Atlassian baseUrl is empty in settings");
+      const h = await I(i) || "";
+      if (!h) throw new Error("Atlassian password is not stored in keychain");
+      const u = `${d}/rest/atm/1.0/testcase/${encodeURIComponent(n.ref)}`, p = `Basic ${O(`${i}:${h}`)}`, s = await fetch(u, {
         method: "GET",
-        headers: { Authorization: u, Accept: "application/json" }
+        headers: { Authorization: p, Accept: "application/json" }
+      });
+      if (!s.ok) {
+        const o = await s.text().catch(() => "");
+        throw new Error(
+          `Zephyr(${n.by}) ${s.status} ${s.statusText}` + (o ? ` – ${o.slice(0, 300)}` : "")
+        );
+      }
+      return await s.json();
+    }
+  ), t.handle(
+    w.ZEPHYR_SEARCH_TESTCASES,
+    async (e, n) => {
+      const r = await j(), i = r.login || "", d = D(r.baseUrl || "");
+      if (!i) throw new Error("Atlassian login is empty in settings");
+      if (!d) throw new Error("Atlassian baseUrl is empty in settings");
+      const h = await I(i) || "";
+      if (!h) throw new Error("Atlassian password is not stored in keychain");
+      const u = String(n.query ?? "").trim();
+      if (!u) throw new Error("Zephyr search query is empty");
+      const p = new URL(`${d}/rest/atm/1.0/testcase/search`);
+      p.searchParams.set("query", u), p.searchParams.set("startAt", String(Math.max(0, Number(n.startAt ?? 0) || 0))), p.searchParams.set("maxResults", String(Math.max(1, Number(n.maxResults ?? 100) || 100)));
+      const s = `Basic ${O(`${i}:${h}`)}`, o = await fetch(p, {
+        method: "GET",
+        headers: { Authorization: s, Accept: "application/json" }
       });
       if (!o.ok) {
-        const c = await o.text().catch(() => "");
+        const y = await o.text().catch(() => "");
         throw new Error(
-          `Zephyr(${e.by}) ${o.status} ${o.statusText}` + (c ? ` – ${c.slice(0, 300)}` : "")
+          `Zephyr(search) ${o.status} ${o.statusText}` + (y ? ` – ${y.slice(0, 300)}` : "")
         );
       }
       return await o.json();
@@ -348,12 +373,12 @@ function wt(t) {
   );
 }
 let E = null;
-async function W() {
+async function M() {
   E = new F({
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: s.join(m.getAppPath(), "electron", "preload.cjs"),
+      preload: c.join(f.getAppPath(), "electron", "preload.cjs"),
       contextIsolation: !0,
       nodeIntegration: !1
     }
@@ -361,17 +386,17 @@ async function W() {
   const t = process.env.ELECTRON_RENDERER_URL || "http://localhost:5173";
   try {
     await E.loadURL(t), E.webContents.openDevTools({ mode: "detach" });
-  } catch (n) {
-    console.error("Failed to load renderer dev URL:", t, n), await E.loadFile(s.join(m.getAppPath(), "dist", "index.html"));
+  } catch (e) {
+    console.error("Failed to load renderer dev URL:", t, e), await E.loadFile(c.join(f.getAppPath(), "dist", "index.html"));
   }
 }
-m.whenReady().then(() => {
-  wt(Y), W();
+f.whenReady().then(() => {
+  wt(W), M();
 });
-m.on("window-all-closed", () => {
-  process.platform !== "darwin" && m.quit();
+f.on("window-all-closed", () => {
+  process.platform !== "darwin" && f.quit();
 });
-m.on("activate", () => {
-  F.getAllWindows().length === 0 && W();
+f.on("activate", () => {
+  F.getAllWindows().length === 0 && M();
 });
 //# sourceMappingURL=main.mjs.map

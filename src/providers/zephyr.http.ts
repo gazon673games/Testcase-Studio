@@ -1,5 +1,5 @@
 // src/providers/zephyr.http.ts
-import type { ITestProvider, ProviderTest, ProviderStep } from './types'
+import type { ITestProvider, ProviderTest, ProviderStep, ProviderTestRef, SearchOptions } from './types'
 import { apiClient } from '@ipc/client'
 
 type ZephyrTestCaseResponse = {
@@ -97,9 +97,85 @@ export class ZephyrHttpProvider implements ITestProvider {
         }
     }
 
+    async searchTestsByQuery(query: string, opts: SearchOptions = {}): Promise<ProviderTestRef[]> {
+        const limit = Math.max(1, Math.min(Number(opts.maxResults ?? 100) || 100, 500))
+        const startAt = Math.max(0, Number(opts.startAt ?? 0) || 0)
+        const pageSize = Math.min(limit, 100)
+        const out: ProviderTestRef[] = []
+        const seen = new Set<string>()
+        let cursor = startAt
+
+        while (out.length < limit) {
+            const raw = await apiClient.zephyrSearchTestCases(query, cursor, Math.min(pageSize, limit - out.length))
+            const page = normalizeSearchPage(raw)
+            if (!page.items.length) break
+
+            for (const item of page.items) {
+                if (seen.has(item.ref)) continue
+                seen.add(item.ref)
+                out.push(item)
+                if (out.length >= limit) break
+            }
+
+            if (!page.hasMore) break
+            cursor = page.nextStartAt
+        }
+
+        return out
+    }
+
     async upsertTest(payload: ProviderTest): Promise<{ externalId: string }> {
         return { externalId: payload.id || '' }
     }
     async attach() {}
     async deleteAttachment() {}
+}
+
+function normalizeSearchPage(raw: any): { items: ProviderTestRef[]; hasMore: boolean; nextStartAt: number } {
+    const rawItems = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw?.items)
+            ? raw.items
+            : Array.isArray(raw?.values)
+                ? raw.values
+                : Array.isArray(raw?.results)
+                    ? raw.results
+                    : []
+
+    const items = rawItems
+        .map(normalizeSearchItem)
+        .filter((item): item is ProviderTestRef => Boolean(item))
+
+    const currentStartAt = toNumber(raw?.startAt ?? raw?.offset) ?? 0
+    const nextStartAt = currentStartAt + rawItems.length
+    const total = toNumber(raw?.total ?? raw?.totalCount ?? raw?.size)
+    const configuredPageSize = toNumber(raw?.maxResults ?? raw?.pageSize ?? raw?.limit)
+    const hasMore = total != null
+        ? nextStartAt < total
+        : configuredPageSize != null
+            ? rawItems.length >= configuredPageSize && rawItems.length > 0
+            : false
+
+    return { items, hasMore, nextStartAt }
+}
+
+function normalizeSearchItem(raw: any): ProviderTestRef | null {
+    const key = safeStr(raw?.key ?? raw?.testCaseKey ?? raw?.testCase?.key).trim()
+    const id = safeStr(raw?.id ?? raw?.testCase?.id).trim()
+    const ref = key || id
+    if (!ref) return null
+
+    return {
+        ref,
+        key: key || undefined,
+        name: safeStr(raw?.name ?? raw?.testCase?.name).trim() || undefined,
+        folder: safeStr(raw?.folder ?? raw?.testCase?.folder).trim() || undefined,
+        projectKey: safeStr(raw?.projectKey ?? raw?.project?.key ?? raw?.testCase?.projectKey).trim() || undefined,
+        updatedAt: safeStr(raw?.updatedOn ?? raw?.updatedAt ?? raw?.testCase?.updatedOn).trim() || undefined,
+    }
+}
+
+function toNumber(value: unknown): number | undefined {
+    const next = Number(value)
+    return Number.isFinite(next) ? next : undefined
 }

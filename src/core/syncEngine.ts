@@ -2,6 +2,14 @@ import type { ProviderTest, ITestProvider, PushOptions } from '@providers/types'
 import { fromProviderPayload, toProviderPayload } from '@providers/mappers'
 import type { ProviderKind, RootState, TestCase, TestCaseLink } from './domain'
 import { buildExport } from './export'
+import {
+    applyZephyrImportPreview,
+    buildZephyrImportPreview,
+    buildZephyrImportQuery,
+    type ZephyrImportApplyResult,
+    type ZephyrImportPreview,
+    type ZephyrImportRequest,
+} from './zephyrImport'
 
 export class SyncEngine {
     constructor(private providers: Record<ProviderKind, ITestProvider>) {}
@@ -31,6 +39,25 @@ export class SyncEngine {
         return null
     }
 
+    async previewZephyrImport(state: RootState, request: ZephyrImportRequest): Promise<ZephyrImportPreview> {
+        const zephyr = this.providerBy('zephyr')
+        const query = buildZephyrImportQuery(request)
+        const refs =
+            request.mode === 'keys'
+                ? [...new Set((request.refs ?? []).map((ref) => String(ref).trim()).filter(Boolean))]
+                : await this.collectZephyrRefs(zephyr, query, request.maxResults ?? 100)
+
+        const remotes = await Promise.all(
+            refs.map((ref) => zephyr.getTestDetails(ref, { includeAttachments: true }))
+        )
+
+        return buildZephyrImportPreview(state, request, remotes, query)
+    }
+
+    applyZephyrImport(state: RootState, preview: ZephyrImportPreview): ZephyrImportApplyResult {
+        return applyZephyrImportPreview(state, preview)
+    }
+
     async twoWaySync(state: RootState): Promise<void> {
         const tests = state.root ? this.collectTests(state) : []
         for (const test of tests) {
@@ -52,6 +79,12 @@ export class SyncEngine {
                 test.updatedAt = patch.updatedAt ?? new Date().toISOString()
             }
         }
+    }
+
+    private async collectZephyrRefs(provider: ITestProvider, query: string, maxResults: number): Promise<string[]> {
+        if (!provider.searchTestsByQuery) throw new Error('Current Zephyr provider does not support search import')
+        const refs = await provider.searchTestsByQuery(query, { maxResults })
+        return [...new Set(refs.map((item) => item.ref).filter(Boolean))]
     }
 
     private collectTests(state: RootState): TestCase[] {

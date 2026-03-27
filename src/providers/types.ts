@@ -5,6 +5,15 @@ export type ProviderStep = Pick<Step, 'action' | 'data' | 'expected' | 'text'> &
     providerStepId?: string
 }
 
+export interface ProviderTestRef {
+    ref: string
+    key?: string
+    name?: string
+    folder?: string
+    projectKey?: string
+    updatedAt?: string
+}
+
 export interface ProviderTest {
     id: string
     name: string
@@ -17,10 +26,15 @@ export interface ProviderTest {
 
 export interface PullOptions { includeAttachments?: boolean }
 export interface PushOptions { pushAttachments?: boolean }
+export interface SearchOptions {
+    maxResults?: number
+    startAt?: number
+}
 
 export interface ITestProvider {
     getTestDetails(externalId: string, opts?: PullOptions): Promise<ProviderTest>
     upsertTest(payload: ProviderTest, opts?: PushOptions): Promise<{ externalId: string }>
     attach(externalId: string, attachment: Attachment): Promise<void>
     deleteAttachment(externalId: string, attachmentId: string): Promise<void>
+    searchTestsByQuery?(query: string, opts?: SearchOptions): Promise<ProviderTestRef[]>
 }

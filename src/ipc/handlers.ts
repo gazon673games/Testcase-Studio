@@ -72,4 +72,41 @@ export function registerHandlers(ipcMain: IpcMain) {
             return await res.json()
         }
     )
+
+    ipcMain.handle(
+        CHANNELS.ZEPHYR_SEARCH_TESTCASES,
+        async (_e, payload: { query: string; startAt?: number; maxResults?: number }) => {
+            const settings = await loadUserSettings()
+            const login = settings.login || ''
+            const baseUrl = cleanBaseUrl(settings.baseUrl || '')
+            if (!login) throw new Error('Atlassian login is empty in settings')
+            if (!baseUrl) throw new Error('Atlassian baseUrl is empty in settings')
+
+            const password = (await getSecretMain(login)) || ''
+            if (!password) throw new Error('Atlassian password is not stored in keychain')
+
+            const query = String(payload.query ?? '').trim()
+            if (!query) throw new Error('Zephyr search query is empty')
+
+            const url = new URL(`${baseUrl}/rest/atm/1.0/testcase/search`)
+            url.searchParams.set('query', query)
+            url.searchParams.set('startAt', String(Math.max(0, Number(payload.startAt ?? 0) || 0)))
+            url.searchParams.set('maxResults', String(Math.max(1, Number(payload.maxResults ?? 100) || 100)))
+
+            const auth = `Basic ${b64(`${login}:${password}`)}`
+            const res = await fetch(url, {
+                method: 'GET',
+                headers: { Authorization: auth, Accept: 'application/json' },
+            })
+            if (!res.ok) {
+                const text = await res.text().catch(() => '')
+                throw new Error(
+                    `Zephyr(search) ${res.status} ${res.statusText}` +
+                    (text ? ` – ${text.slice(0, 300)}` : '')
+                )
+            }
+
+            return await res.json()
+        }
+    )
 }

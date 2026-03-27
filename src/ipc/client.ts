@@ -16,4 +16,7 @@ export const apiClient = {
     // ⬇️ теперь указываем, чем является ссылка: id | key
     zephyrGetTestCase: (ref: string, by: 'id' | 'key') =>
         window.api.invoke<any>(CHANNELS.ZEPHYR_GET_TESTCASE, { ref, by }),
+
+    zephyrSearchTestCases: (query: string, startAt = 0, maxResults = 100) =>
+        window.api.invoke<any>(CHANNELS.ZEPHYR_SEARCH_TESTCASES, { query, startAt, maxResults }),
 }

@@ -83,6 +83,12 @@ export class ZephyrMockProvider implements ITestProvider {
         }
     }
 
+    async searchTestsByQuery(_query: string): Promise<Array<{ ref: string; key?: string; name?: string }>> {
+        return [
+            { ref: 'PROD-T6079', key: 'PROD-T6079', name: '[CNTS E-03.01] Добавить файл к договору' },
+        ]
+    }
+
     async upsertTest(payload: ProviderTest): Promise<{ externalId: string }> {
         const generated = `PROD-T${Math.floor(1000 + Math.random() * 9000)}`
         return { externalId: payload.id || generated }
