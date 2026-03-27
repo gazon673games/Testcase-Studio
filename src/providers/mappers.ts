@@ -1,69 +1,62 @@
-// src/providers/mappers.ts
 import { v4 as uuid } from 'uuid'
-import type { Attachment, Step, TestCase, TestMeta } from '@core/domain'
-import type { ProviderTest, ProviderStep } from '@providers/types'
-import type { ExportTest, ExportStep } from '@core/export'
+import { normalizeStep, type Attachment, type Step, type TestCase, type TestMeta } from '@core/domain'
+import type { ProviderStep, ProviderTest } from '@providers/types'
+import type { ExportStep, ExportTest } from '@core/export'
 
 export function fromProviderPayload(
-    src: ProviderTest
+    src: ProviderTest,
+    previousSteps: Step[] = []
 ): Pick<TestCase, 'name' | 'description' | 'steps' | 'attachments' | 'updatedAt' | 'meta'> {
-    // базовые поля
     const name = src.name ?? ''
     const description = src.description ?? ''
-    const steps = mapProviderSteps(src.steps ?? [])
+    const steps = mapProviderSteps(src.steps ?? [], previousSteps)
     const attachments = (src.attachments ?? []).map(copyAttachment)
     const updatedAt = src.updatedAt ?? new Date().toISOString()
 
-    // ✨ раскладываем extras в params
     const params: Record<string, string> = {}
-
-    const put = (k: string, v: unknown) => {
-        if (v === undefined || v === null) return
-        if (Array.isArray(v) || typeof v === 'object') {
-            // сложные типы → JSON
-            params[k] = JSON.stringify(v)
-        } else {
-            params[k] = String(v)
+    const put = (key: string, value: unknown) => {
+        if (value === undefined || value === null) return
+        if (Array.isArray(value) || typeof value === 'object') {
+            params[key] = JSON.stringify(value)
+            return
         }
+        params[key] = String(value)
     }
 
-    const ex = src.extras ?? {}
-    // верхнеуровневые простые поля
-    put('key',            (ex as any).key)
-    put('keyNumber',      (ex as any).keyNumber)
-    put('status',         (ex as any).status)
-    put('priority',       (ex as any).priority)
-    put('component',      (ex as any).component)
-    put('projectKey',     (ex as any).projectKey)
-    put('folder',         (ex as any).folder)
-    put('latestVersion',  (ex as any).latestVersion)
-    put('lastTestResultStatus', (ex as any).lastTestResultStatus)
-    put('owner',          (ex as any).owner)
-    put('updatedBy',      (ex as any).updatedBy)
-    put('createdBy',      (ex as any).createdBy)
-    put('createdOn',      (ex as any).createdOn)
-    put('updatedOn',      (ex as any).updatedOn)
-    put('issueLinks',     (ex as any).issueLinks)
-    const objective     = (ex as any).objective ?? null
-    const preconditions = (ex as any).preconditions ?? null
+    const extras = src.extras ?? {}
+    put('key', (extras as any).key)
+    put('keyNumber', (extras as any).keyNumber)
+    put('status', (extras as any).status)
+    put('priority', (extras as any).priority)
+    put('component', (extras as any).component)
+    put('projectKey', (extras as any).projectKey)
+    put('folder', (extras as any).folder)
+    put('latestVersion', (extras as any).latestVersion)
+    put('lastTestResultStatus', (extras as any).lastTestResultStatus)
+    put('owner', (extras as any).owner)
+    put('updatedBy', (extras as any).updatedBy)
+    put('createdBy', (extras as any).createdBy)
+    put('createdOn', (extras as any).createdOn)
+    put('updatedOn', (extras as any).updatedOn)
+    put('issueLinks', (extras as any).issueLinks)
 
-    // customFields: объект → каждое поле отдельным ключом
-    const cf = (ex as any).customFields as Record<string, unknown> | undefined
-    if (cf && typeof cf === 'object') {
-        for (const [k, v] of Object.entries(cf)) put(`customFields.${k}`, v)
+    const objective = (extras as any).objective ?? null
+    const preconditions = (extras as any).preconditions ?? null
+
+    const customFields = (extras as any).customFields as Record<string, unknown> | undefined
+    if (customFields && typeof customFields === 'object') {
+        for (const [key, value] of Object.entries(customFields)) put(`customFields.${key}`, value)
     }
 
-    // parameters: объект с массивами → сериализуем оба массива
-    const par = (ex as any).parameters as { variables?: unknown[]; entries?: unknown[] } | undefined
-    if (par && typeof par === 'object') {
-        if ('variables' in par) put('parameters.variables', par.variables ?? [])
-        if ('entries'   in par) put('parameters.entries',   par.entries  ?? [])
+    const parameters = (extras as any).parameters as { variables?: unknown[]; entries?: unknown[] } | undefined
+    if (parameters && typeof parameters === 'object') {
+        if ('variables' in parameters) put('parameters.variables', parameters.variables ?? [])
+        if ('entries' in parameters) put('parameters.entries', parameters.entries ?? [])
     }
 
     const meta: TestMeta = {
         tags: [],
         params,
-        // 👇 добавили
         objective: objective == null ? undefined : String(objective),
         preconditions: preconditions == null ? undefined : String(preconditions),
     }
@@ -71,50 +64,128 @@ export function fromProviderPayload(
     return { name, description, steps, attachments, updatedAt, meta }
 }
 
-/* остальное — как было */
-export function toProviderPayload(test: Pick<TestCase, 'id' | 'name' | 'description' | 'steps' | 'attachments' | 'meta'> | ExportTest): ProviderTest {
+export function toProviderPayload(
+    test: Pick<TestCase, 'id' | 'name' | 'description' | 'steps' | 'attachments' | 'meta'> | ExportTest
+): ProviderTest {
     const id = (test as any).id
     const name = test.name
     const description = (test as any).description ?? ''
     const attachments = (test as any).attachments ?? []
     const stepsArray: Array<Step | ExportStep> = (test as any).steps ?? []
     const providerSteps = normalizeStepsForProvider(stepsArray)
-    return { id: id ?? String(Math.random()), name, description, steps: providerSteps, attachments: attachments.map(copyAttachment), updatedAt: new Date().toISOString() }
+    return {
+        id: id ?? String(Math.random()),
+        name,
+        description,
+        steps: providerSteps,
+        attachments: attachments.map(copyAttachment),
+        updatedAt: new Date().toISOString(),
+    }
 }
 
-function mapProviderSteps(src: ProviderStep[]): Step[] {
-    return (src ?? []).map(ps => ({
-        id: uuid(),
-        action: safeStr(ps.action),
-        data: safeStr(ps.data),
-        expected: safeStr(ps.expected),
-        text: safeStr(ps.text ?? ps.action),
+function mapProviderSteps(src: ProviderStep[], previousSteps: Step[] = []): Step[] {
+    const previous = previousSteps.map(normalizeStep)
+    const used = new Set<string>()
+    const byProviderId = new Map<string, Step[]>()
+    const bySignature = new Map<string, Step[]>()
 
-        // 🆕 сырец (как пришло)
-        raw: {
-            action: safeStr(ps.action),
-            data: safeStr(ps.data),
-            expected: safeStr(ps.expected),
-        },
+    for (const step of previous) {
+        const providerStepId = safeStr(step.raw?.providerStepId).trim()
+        if (providerStepId) pushToQueue(byProviderId, providerStepId, step)
+        pushToQueue(bySignature, stepSignature(step), step)
+    }
 
-        subSteps: [],
-        internal: { parts: { action: [], data: [], expected: [] } },
-        attachments: [],
-    }))
-}
+    return (src ?? []).map((providerStep, index) => {
+        const providerStepId = safeStr(providerStep.providerStepId).trim() || undefined
+        const preserved =
+            (providerStepId ? takeUnused(byProviderId.get(providerStepId), used) : undefined) ??
+            takeUnused(bySignature.get(stepSignature(providerStep)), used) ??
+            (previous[index] && !used.has(previous[index].id) ? previous[index] : undefined)
 
-function normalizeStepsForProvider(src: Array<Step | ExportStep>): ProviderStep[] {
-    return (src ?? []).map(s => {
-        const isDomain = 'id' in (s as any)
-        if (isDomain) {
-            const ds = s as Step
-            return { action: safeStr(ds.action ?? ds.text), data: safeStr(ds.data), expected: safeStr(ds.expected), text: safeStr(ds.text) }
-        } else {
-            const es = s as ExportStep
-            return { action: safeStr(es.action), data: safeStr(es.data), expected: safeStr(es.expected), text: '' }
+        if (preserved) used.add(preserved.id)
+
+        const action = safeStr(providerStep.action)
+        const data = safeStr(providerStep.data)
+        const expected = safeStr(providerStep.expected)
+        const text = safeStr(providerStep.text ?? providerStep.action)
+
+        return {
+            id: preserved?.id ?? uuid(),
+            action,
+            data,
+            expected,
+            text,
+            raw: {
+                action,
+                data,
+                expected,
+                ...(providerStepId || preserved?.raw?.providerStepId
+                    ? { providerStepId: providerStepId ?? preserved?.raw?.providerStepId }
+                    : {}),
+            },
+            subSteps: preserved?.subSteps ?? [],
+            internal: preserved?.internal ?? { parts: { action: [], data: [], expected: [] } },
+            usesShared: preserved?.usesShared,
+            attachments: preserved?.attachments ?? [],
         }
     })
 }
 
-function copyAttachment(a: Attachment): Attachment { return { id: a.id, name: a.name, pathOrDataUrl: a.pathOrDataUrl } }
-function safeStr(x: unknown): string { return x == null ? '' : String(x) }
+function normalizeStepsForProvider(src: Array<Step | ExportStep>): ProviderStep[] {
+    return (src ?? []).map((step) => {
+        const isDomainStep = 'id' in (step as any)
+        if (isDomainStep) {
+            const domainStep = step as Step
+            return {
+                action: safeStr(domainStep.action ?? domainStep.text),
+                data: safeStr(domainStep.data),
+                expected: safeStr(domainStep.expected),
+                text: safeStr(domainStep.text),
+                providerStepId: safeStr(domainStep.raw?.providerStepId) || undefined,
+            }
+        }
+
+        const exportStep = step as ExportStep
+        return {
+            action: safeStr(exportStep.action),
+            data: safeStr(exportStep.data),
+            expected: safeStr(exportStep.expected),
+            text: '',
+        }
+    })
+}
+
+function pushToQueue(map: Map<string, Step[]>, key: string, step: Step) {
+    const queue = map.get(key)
+    if (queue) {
+        queue.push(step)
+        return
+    }
+    map.set(key, [step])
+}
+
+function takeUnused(queue: Step[] | undefined, used: Set<string>): Step | undefined {
+    if (!queue?.length) return undefined
+    while (queue.length) {
+        const next = queue.shift()
+        if (next && !used.has(next.id)) return next
+    }
+    return undefined
+}
+
+function stepSignature(step: Pick<ProviderStep, 'action' | 'data' | 'expected' | 'text'>): string {
+    return [
+        safeStr(step.action).trim().toLowerCase(),
+        safeStr(step.data).trim().toLowerCase(),
+        safeStr(step.expected).trim().toLowerCase(),
+        safeStr(step.text ?? step.action).trim().toLowerCase(),
+    ].join('\u0001')
+}
+
+function copyAttachment(attachment: Attachment): Attachment {
+    return { id: attachment.id, name: attachment.name, pathOrDataUrl: attachment.pathOrDataUrl }
+}
+
+function safeStr(value: unknown): string {
+    return value == null ? '' : String(value)
+}

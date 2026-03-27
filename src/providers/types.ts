@@ -1,7 +1,9 @@
 // providers/types.ts
 import type { Attachment, Step } from '@core/domain'
 
-export type ProviderStep = Pick<Step, 'action' | 'data' | 'expected' | 'text'>
+export type ProviderStep = Pick<Step, 'action' | 'data' | 'expected' | 'text'> & {
+    providerStepId?: string
+}
 
 export interface ProviderTest {
     id: string

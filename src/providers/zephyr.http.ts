@@ -55,11 +55,12 @@ export class ZephyrHttpProvider implements ITestProvider {
         const steps: ProviderStep[] = (json.testScript?.steps ?? [])
             .filter((s) => s && (s.description || s.testData || s.expectedResult))
             .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-            .map((s) => ({
+            .map((s, index) => ({
                 action:   String(s.description ?? ''),
                 data:     String(s.testData ?? ''),
                 expected: String(s.expectedResult ?? ''),
                 text:     String(s.description ?? ''),
+                providerStepId: String(s.id ?? `index:${s.index ?? index + 1}`),
             }))
 
         // ✨ Собираем extras — всё, что нужно разложить в meta.params

@@ -2,14 +2,23 @@ import { app } from 'electron'
 import { promises as fsp } from 'fs'
 import path from 'node:path'
 import { randomUUID } from 'crypto'
-import type { RootState, Folder, TestCase } from '../src/core/domain'
-
-function getBaseDir() {
-    // dev: cwd, prod: рядом с exe
-    return app.isPackaged ? path.dirname(app.getPath('exe')) : process.cwd()
-}
+import {
+    normalizeRootState,
+    normalizeSharedStep,
+    normalizeTestCase,
+    type Folder,
+    type RootState,
+    type TestCase,
+} from '../src/core/domain'
 
 const REPO_DIR = 'tests_repo'
+const ROOT_DIR = 'root'
+const FOLDER_META_FILE = 'folder.json'
+const SHARED_STEPS_FILE = 'shared_steps.json'
+
+function getBaseDir() {
+    return app.isPackaged ? path.dirname(app.getPath('exe')) : process.cwd()
+}
 
 function slugify(name: string) {
     return name.toLowerCase()
@@ -18,92 +27,121 @@ function slugify(name: string) {
         .slice(0, 60) || 'node'
 }
 
-function isTestFolder(dirPath: string, entries: string[]) {
+function isTestFolder(entries: string[]) {
     return entries.includes('test.json')
 }
 
-async function ensureDir(p: string) {
-    await fsp.mkdir(p, { recursive: true })
+async function ensureDir(targetPath: string) {
+    await fsp.mkdir(targetPath, { recursive: true })
+}
+
+async function readJsonFile<T>(filePath: string): Promise<T | null> {
+    try {
+        const raw = await fsp.readFile(filePath, 'utf-8')
+        return JSON.parse(raw) as T
+    } catch {
+        return null
+    }
+}
+
+async function readFolderMeta(dir: string): Promise<{ id?: string; name?: string } | null> {
+    return readJsonFile<{ id?: string; name?: string }>(path.join(dir, FOLDER_META_FILE))
+}
+
+async function loadSharedSteps(baseDir: string) {
+    const raw = await readJsonFile<any[]>(path.join(baseDir, SHARED_STEPS_FILE))
+    return Array.isArray(raw) ? raw.map(normalizeSharedStep) : []
 }
 
 export async function loadFromFs(): Promise<RootState> {
-    const base = path.join(getBaseDir(), REPO_DIR)
-    await ensureDir(base)
-
-    // Если пусто — создаём корень
-    const rootDir = path.join(base, 'root')
+    const baseDir = path.join(getBaseDir(), REPO_DIR)
+    const rootDir = path.join(baseDir, ROOT_DIR)
     await ensureDir(rootDir)
 
-    async function readNode(dir: string): Promise<Folder | TestCase> {
+    async function readNode(dir: string, fallbackName: string): Promise<Folder | TestCase> {
         const entries = await fsp.readdir(dir)
-        if (isTestFolder(dir, entries)) {
+        if (isTestFolder(entries)) {
             const raw = await fsp.readFile(path.join(dir, 'test.json'), 'utf-8')
-            return JSON.parse(raw) as TestCase
+            return normalizeTestCase(JSON.parse(raw))
         }
-        // Иначе — папка
-        const folder: Folder = { id: randomUUID(), name: path.basename(dir), children: [] }
-        for (const name of entries) {
-            const childPath = path.join(dir, name)
+
+        const meta = await readFolderMeta(dir)
+        const folder: Folder = {
+            id: typeof meta?.id === 'string' && meta.id.trim() ? meta.id : randomUUID(),
+            name: typeof meta?.name === 'string' && meta.name.trim() ? meta.name : fallbackName,
+            children: [],
+        }
+
+        for (const entry of entries) {
+            const childPath = path.join(dir, entry)
             const stat = await fsp.lstat(childPath)
-            if (stat.isDirectory()) {
-                folder.children.push(await readNode(childPath))
-            }
+            if (!stat.isDirectory()) continue
+            folder.children.push(await readNode(childPath, entry))
         }
+
         return folder
     }
 
-    const root = await readNode(rootDir)
-    return { root: (root as Folder), sharedSteps: [] }
+    const root = await readNode(rootDir, 'Root')
+    const sharedSteps = await loadSharedSteps(baseDir)
+    return normalizeRootState({ root: root as Folder, sharedSteps })
 }
 
 export async function saveToFs(state: RootState) {
-    const base = path.join(getBaseDir(), REPO_DIR)
-    await ensureDir(base)
-    const rootDir = path.join(base, 'root')
+    const normalized = normalizeRootState(state)
+    const baseDir = path.join(getBaseDir(), REPO_DIR)
+    const rootDir = path.join(baseDir, ROOT_DIR)
     await ensureDir(rootDir)
 
-    // Проецируем дерево на ФС:
     async function writeFolder(fsDir: string, folder: Folder) {
-        // Переименовать папку если имя поменялось
-        // (упрощённо: создаём целевую, перенос не делаем — для dev ок)
         await ensureDir(fsDir)
+        await fsp.writeFile(
+            path.join(fsDir, FOLDER_META_FILE),
+            JSON.stringify({ id: folder.id, name: folder.name }, null, 2),
+            'utf-8'
+        )
 
-        // Собираем набор желаемых детей
-        const desired = new Map<string, { node: Folder | TestCase, targetPath: string }>()
+        const desired = new Map<string, { node: Folder | TestCase }>()
         for (const child of folder.children) {
             if ('children' in child) {
-                const target = path.join(fsDir, child.name)
-                desired.set(target, { node: child, targetPath: target })
-            } else {
-                const slug = slugify(child.name)
-                const idSuffix = child.id?.slice(0, 6) ?? randomUUID().slice(0, 6)
-                const target = path.join(fsDir, `${slug}__${idSuffix}`)
-                desired.set(target, { node: child, targetPath: target })
+                desired.set(path.join(fsDir, child.name), { node: child })
+                continue
             }
+
+            const slug = slugify(child.name)
+            const idSuffix = child.id?.slice(0, 6) ?? randomUUID().slice(0, 6)
+            desired.set(path.join(fsDir, `${slug}__${idSuffix}`), { node: child })
         }
 
-        // Создаём/обновляем
-        for (const { node, targetPath } of desired.values()) {
-            if ('children' in node) {
-                await writeFolder(targetPath, node)
+        for (const [targetPath, entry] of desired.entries()) {
+            if ('children' in entry.node) {
+                await writeFolder(targetPath, entry.node)
             } else {
                 await ensureDir(targetPath)
                 await ensureDir(path.join(targetPath, 'attachments'))
-                await fsp.writeFile(path.join(targetPath, 'test.json'), JSON.stringify(node, null, 2), 'utf-8')
+                await fsp.writeFile(
+                    path.join(targetPath, 'test.json'),
+                    JSON.stringify(normalizeTestCase(entry.node), null, 2),
+                    'utf-8'
+                )
             }
         }
 
-        // Удаляем лишние каталоги (которых нет в дереве)
         const current = await fsp.readdir(fsDir)
-        for (const name of current) {
-            const p = path.join(fsDir, name)
-            if (!(await fsp.lstat(p)).isDirectory()) continue
-            if (!desired.has(p)) {
-                // рекурсивное удаление
-                await fsp.rm(p, { recursive: true, force: true })
+        for (const entry of current) {
+            const currentPath = path.join(fsDir, entry)
+            const stat = await fsp.lstat(currentPath)
+            if (!stat.isDirectory()) continue
+            if (!desired.has(currentPath)) {
+                await fsp.rm(currentPath, { recursive: true, force: true })
             }
         }
     }
 
-    await writeFolder(rootDir, state.root)
+    await writeFolder(rootDir, normalized.root)
+    await fsp.writeFile(
+        path.join(baseDir, SHARED_STEPS_FILE),
+        JSON.stringify(normalized.sharedSteps, null, 2),
+        'utf-8'
+    )
 }

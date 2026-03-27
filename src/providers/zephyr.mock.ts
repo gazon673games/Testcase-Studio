@@ -58,6 +58,7 @@ export class ZephyrMockProvider implements ITestProvider {
                     data:     String(s.testData || ''),
                     expected: String(s.expectedResult || ''),
                     text:     String(s.description || ''),
+                    providerStepId: String(s.id ?? ''),
                 }))
 
             const result: ProviderTest = {
