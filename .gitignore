@@ -19,6 +19,15 @@ bower_components/
 # Build output
 dist/
 build/
+dist-electron/
+src/dist-electron/
+coverage/
+*.tsbuildinfo
+
+# Local workspace state
+tests_repo/.settings.json
+tests_repo/root/
+tests_repo/shared_steps.json
 tests_repo/.snapshots/
 tests_repo/.publish-logs/
 
