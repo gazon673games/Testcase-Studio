@@ -28,6 +28,7 @@ export const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({
 }) => {
     const detailRefs = React.useRef<Record<number, HTMLDivElement | null>>({})
     const itemRefs = React.useRef<Record<number, HTMLDivElement | null>>({})
+    const rootRef = React.useRef<HTMLDivElement | null>(null)
 
     React.useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
@@ -54,8 +55,20 @@ export const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({
         itemRefs.current[index]?.scrollIntoView({ block: 'nearest' })
     }, [index])
 
+    React.useLayoutEffect(() => {
+        if (!rootRef.current) return
+        rootRef.current.style.top = `${top}px`
+        rootRef.current.style.left = `${left}px`
+    }, [left, top])
+
     return (
-        <div className="autocomplete" style={{ top, left }} role="listbox" aria-label={stageLabel} data-stage={stage}>
+        <div
+            ref={rootRef}
+            className="autocomplete"
+            role="listbox"
+            aria-label={stageLabel}
+            data-stage={stage}
+        >
             <div className="autocomplete-stage">{stageLabel}</div>
             {items.length === 0 ? (
                 <div className="autocomplete-empty">{emptyLabel}</div>
