@@ -22,7 +22,7 @@ export function getImportDestination(state: RootState | null, selectedId: ID | n
 
     return {
         folderId: folder.id,
-        label: describeFolderPath(state.root, folder.id),
+        label: describeFolderPath(state.root, folder.id, rootLabel),
     }
 }
 
@@ -30,11 +30,11 @@ export function getPublishSelection(state: RootState | null, selectedId: ID | nu
     if (!state) return { label: rootLabel, tests: [] as TestCase[] }
 
     const selected = getSelectedNode(state, selectedId)
-    if (!selected) return { label: describeFolderPath(state.root, state.root.id), tests: mapTests(state.root) }
+    if (!selected) return { label: describeFolderPath(state.root, state.root.id, rootLabel), tests: mapTests(state.root) }
     if (!isFolder(selected)) return { label: selected.name, tests: [selected] }
 
     return {
-        label: describeFolderPath(state.root, selected.id),
+        label: describeFolderPath(state.root, selected.id, rootLabel),
         tests: mapTests(selected),
     }
 }

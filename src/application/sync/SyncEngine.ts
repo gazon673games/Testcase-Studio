@@ -2,6 +2,7 @@ import type { ProviderTest, ITestProvider, PushOptions } from '@providers/types'
 import { fromProviderPayload, toProviderPayload } from '@providers/mappers'
 import type { ProviderKind, RootState, TestCase, TestCaseLink } from '@core/domain'
 import { buildExport } from '@core/export'
+import type { SyncText } from './text'
 import {
     applyZephyrImportPreview,
     buildZephyrImportPreview,
@@ -19,7 +20,10 @@ import {
 import { findNode, isFolder } from '@core/tree'
 
 export class SyncEngine {
-    constructor(private providers: Record<ProviderKind, ITestProvider>) {}
+    constructor(
+        private providers: Record<ProviderKind, ITestProvider>,
+        private text: SyncText
+    ) {}
 
     private providerBy(kind: ProviderKind) {
         return this.providers[kind]
@@ -58,11 +62,11 @@ export class SyncEngine {
             refs.map((ref) => zephyr.getTestDetails(ref, { includeAttachments: true }))
         )
 
-        return buildZephyrImportPreview(state, request, remotes, query)
+        return buildZephyrImportPreview(state, request, remotes, this.text, query)
     }
 
     applyZephyrImport(state: RootState, preview: ZephyrImportPreview): ZephyrImportApplyResult {
-        return applyZephyrImportPreview(state, preview)
+        return applyZephyrImportPreview(state, preview, this.text)
     }
 
     async previewZephyrPublish(
@@ -89,7 +93,7 @@ export class SyncEngine {
             })
         )
 
-        return buildZephyrPublishPreview(state, tests, remoteMap, selectionLabel)
+        return buildZephyrPublishPreview(state, tests, remoteMap, selectionLabel, this.text)
     }
 
     async publishZephyrPreview(state: RootState, preview: ZephyrPublishPreview): Promise<ZephyrPublishResult> {

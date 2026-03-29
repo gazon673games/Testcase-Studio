@@ -8,6 +8,7 @@ import { UiKit, useToast } from '../UiKit'
 import { UiPreferencesProvider, useUiPreferences } from '../preferences'
 import { useStoredToggle } from '../useStoredToggle'
 import { useAppState } from '../useAppState'
+import { createAppServices } from '../appServices'
 import { ZephyrImportModal } from '../ZephyrImportModal'
 import { ZephyrPublishModal } from '../ZephyrPublishModal'
 import { ScopeOverviewPanel } from './ScopeOverviewPanel'
@@ -22,7 +23,8 @@ const TestEditor = React.lazy(() =>
 import type { TestEditorHandle } from '../testEditor/TestEditor'
 
 export function AppShell() {
-    const app = useAppState()
+    const services = React.useMemo(() => createAppServices(t), [t])
+    const app = useAppState(services)
     const editorRef = React.useRef<TestEditorHandle | null>(null)
     const { push } = useToast()
     const { t } = useUiPreferences()
@@ -207,7 +209,7 @@ export function AppShell() {
     const allTests = app.mapAllTests()
     const importDestination = app.getImportDestination()
     const publishSelection = app.getPublishSelection()
-    const selectionSummary = buildSelectionSummary(app.state.root, selected, t)
+    const selectionSummary = buildSelectionSummary(app.state.root, selected, t, services.defaults.rootLabel)
 
     const canDelete = !!selected && selected.id !== app.state.root.id
     const canExport = !!selectedTest

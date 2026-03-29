@@ -1,6 +1,6 @@
 import type { Attachment } from '@core/domain'
 import type { ProviderTest } from '@providers/types'
-import { translate } from '@shared/i18n'
+import type { SyncTranslate } from '../text'
 import { copyAttachment } from './common'
 
 export function collectProviderAttachments(payload: ProviderTest): Attachment[] {
@@ -43,8 +43,7 @@ export function buildAttachmentPlan(local: Attachment[], remote: Attachment[]) {
     return { uploads, deleteIds }
 }
 
-export function collectAttachmentWarnings(local: Attachment[], remote: Attachment[]): string[] {
-    const t = translate
+export function collectAttachmentWarnings(local: Attachment[], remote: Attachment[], t: SyncTranslate): string[] {
     const warnings: string[] = []
     const plan = buildAttachmentPlan(local, remote)
     if (plan.uploads.length) warnings.push(t('publish.warning.attachmentsUpload'))
@@ -52,8 +51,7 @@ export function collectAttachmentWarnings(local: Attachment[], remote: Attachmen
     return warnings
 }
 
-export function summarizeAttachments(payload: ProviderTest): string {
-    const t = translate
+export function summarizeAttachments(payload: ProviderTest, t: SyncTranslate): string {
     const attachments = collectProviderAttachments(payload)
     if (!attachments.length) return t('publish.summary.noAttachments')
     const head = attachments.slice(0, 3).map((attachment) => attachment.name).filter(Boolean)

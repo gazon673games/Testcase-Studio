@@ -1,17 +1,17 @@
 import { mkFolder, type Folder } from '@core/domain'
 import { findNode, isFolder } from '@core/tree'
 import type { ProviderTest } from '@providers/types'
-import { translate } from '@shared/i18n'
+import type { SyncText } from '../text'
 import type { ZephyrImportRequest } from './types'
 import { remoteFolderValue } from './shared'
 
-export function getConflictFolderName() {
-    return translate('import.conflictFolder')
+export function getConflictFolderName(text: SyncText) {
+    return text.t('import.conflictFolder')
 }
 
-export function describeFolderPath(root: Folder, folderId: string): string {
+export function describeFolderPath(root: Folder, folderId: string, rootLabel: string): string {
     const labels = findFolderLabels(root, folderId)
-    return labels.length ? labels.join(' / ') : translate('defaults.root')
+    return labels.length ? labels.join(' / ') : rootLabel
 }
 
 export function buildTargetFolderSegments(remote: ProviderTest, request: ZephyrImportRequest): string[] {

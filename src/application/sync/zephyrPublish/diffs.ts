@@ -1,12 +1,11 @@
 import { buildPreviewStepDiffRows, summarizePreviewSteps, summarizePreviewText, type PreviewStepDiffRow } from '@core/previewDiff'
-import { translate } from '@shared/i18n'
 import type { ProviderTest } from '@providers/types'
+import type { SyncTranslate } from '../text'
 import { summarizeAttachments } from './attachments'
 import { normalizeLabels, safeString, summarizeStructuredValue } from './common'
 import type { ZephyrPublishDiff, ZephyrPublishDiffField } from './types'
 
-export function diffPayloadAgainstRemote(local: ProviderTest, remote: ProviderTest): ZephyrPublishDiff[] {
-    const t = translate
+export function diffPayloadAgainstRemote(local: ProviderTest, remote: ProviderTest, t: SyncTranslate): ZephyrPublishDiff[] {
     const diffs: ZephyrPublishDiff[] = []
     pushDiff(diffs, 'name', t('publish.diff.name'), local.name, remote.name)
     pushDiff(
@@ -38,7 +37,7 @@ export function diffPayloadAgainstRemote(local: ProviderTest, remote: ProviderTe
         summarizePreviewText(safeString(local.extras?.preconditions)),
         summarizePreviewText(safeString(remote.extras?.preconditions))
     )
-    pushDiff(diffs, 'attachments', t('publish.diff.attachments'), summarizeAttachments(local), summarizeAttachments(remote))
+    pushDiff(diffs, 'attachments', t('publish.diff.attachments'), summarizeAttachments(local, t), summarizeAttachments(remote, t))
     pushDiff(
         diffs,
         'folder',
@@ -46,7 +45,7 @@ export function diffPayloadAgainstRemote(local: ProviderTest, remote: ProviderTe
         safeString(local.extras?.folder) ?? t('publish.diff.noFolder'),
         safeString(remote.extras?.folder) ?? t('publish.diff.noFolder')
     )
-    pushDiff(diffs, 'labels', t('publish.diff.labels'), summarizeLabels(local.extras?.labels), summarizeLabels(remote.extras?.labels))
+    pushDiff(diffs, 'labels', t('publish.diff.labels'), summarizeLabels(local.extras?.labels, t), summarizeLabels(remote.extras?.labels, t))
     pushDiff(
         diffs,
         'customFields',
@@ -64,8 +63,7 @@ export function diffPayloadAgainstRemote(local: ProviderTest, remote: ProviderTe
     return diffs
 }
 
-export function buildCreateDiffs(local: ProviderTest): ZephyrPublishDiff[] {
-    const t = translate
+export function buildCreateDiffs(local: ProviderTest, t: SyncTranslate): ZephyrPublishDiff[] {
     return [
         { field: 'name', label: t('publish.diff.name'), local: local.name, remote: t('publish.diff.noRemote') },
         {
@@ -84,7 +82,7 @@ export function buildCreateDiffs(local: ProviderTest): ZephyrPublishDiff[] {
         {
             field: 'attachments',
             label: t('publish.diff.attachments'),
-            local: summarizeAttachments(local),
+            local: summarizeAttachments(local, t),
             remote: t('publish.diff.noRemote'),
         },
         {
@@ -102,8 +100,7 @@ export function buildCreateDiffs(local: ProviderTest): ZephyrPublishDiff[] {
     ]
 }
 
-function summarizeLabels(value: unknown): string {
-    const t = translate
+function summarizeLabels(value: unknown, t: SyncTranslate): string {
     const labels = normalizeLabels(value)
     return labels.length ? labels.join(', ') : t('publish.summary.noLabels')
 }

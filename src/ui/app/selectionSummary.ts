@@ -15,14 +15,15 @@ export type SelectionSummary = {
 export function buildSelectionSummary(
     root: Folder,
     selected: Folder | TestCase | null,
-    t: (key: any, params?: Record<string, string | number>) => string
+    t: (key: any, params?: Record<string, string | number>) => string,
+    rootLabel: string
 ): SelectionSummary {
     if (!selected) {
         return {
             kind: 'none',
             title: t('toolbar.editor'),
             subtitle: t('toolbar.syncCenterTitle'),
-            pathLabel: describeFolderPath(root, root.id),
+            pathLabel: describeFolderPath(root, root.id, rootLabel),
             folderCount: countNestedFolders(root),
             testCount: countTests(root),
             directChildrenCount: root.children.length,
@@ -35,7 +36,7 @@ export function buildSelectionSummary(
             kind: isRoot ? 'root' : 'folder',
             title: isRoot ? t('overview.zephyrWorkspace') : selected.name,
             subtitle: isRoot ? t('overview.importFromZephyrDescription') : t('sync.publishScopeHint'),
-            pathLabel: describeFolderPath(root, selected.id),
+            pathLabel: describeFolderPath(root, selected.id, rootLabel),
             folderCount: countNestedFolders(selected),
             testCount: countTests(selected),
             directChildrenCount: selected.children.length,
@@ -47,7 +48,7 @@ export function buildSelectionSummary(
         kind: 'test',
         title: selected.name,
         subtitle: t('editor.testCase'),
-        pathLabel: `${describeFolderPath(root, parentId)} / ${selected.name}`,
+        pathLabel: `${describeFolderPath(root, parentId, rootLabel)} / ${selected.name}`,
         folderCount: 0,
         testCount: 1,
         directChildrenCount: selected.steps.length,

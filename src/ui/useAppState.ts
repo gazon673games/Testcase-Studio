@@ -25,27 +25,21 @@ import {
     updateSharedStep as updateSharedStepCommand,
     updateTestCase,
 } from '@app/workspace'
-import { SyncEngine, type ZephyrImportPreview, type ZephyrImportRequest, type ZephyrPublishPreview, type ZephyrPublishResult } from '@app/sync'
+import { type ZephyrImportPreview, type ZephyrImportRequest, type ZephyrPublishPreview, type ZephyrPublishResult } from '@app/sync'
 import { type Folder, type ID, type RootState, type SharedStep, type Step, type TestCase } from '@core/domain'
 import { isFolder, mapTests } from '@core/tree'
-import { ZephyrHttpProvider } from '@providers/zephyr.http'
-import { AllureStubProvider } from '@providers/allure.stub'
-import { translate } from '@shared/i18n'
+import type { AppServices } from './appServices'
 
 type Node = Folder | TestCase
 type SyncAllResult = { status: 'ok'; count: number }
 
-export function useAppState() {
+export function useAppState(services: AppServices) {
     const [state, setState] = React.useState<RootState | null>(null)
     const [selectedId, setSelectedId] = React.useState<ID | null>(null)
     const [focusStepId, setFocusStepId] = React.useState<string | null>(null)
     const [dirtyTestIds, setDirtyTestIds] = React.useState<Set<string>>(() => new Set())
 
-    const providers = React.useMemo(
-        () => ({ zephyr: new ZephyrHttpProvider(), allure: new AllureStubProvider() }),
-        []
-    )
-    const sync = React.useMemo(() => new SyncEngine(providers), [providers])
+    const sync = services.sync
 
     React.useEffect(() => {
         loadWorkspaceState().then((nextState) => {
@@ -93,23 +87,23 @@ export function useAppState() {
     }
 
     function getImportDestination() {
-        return getImportDestinationQuery(state, selectedId, translate('defaults.root'))
+        return getImportDestinationQuery(state, selectedId, services.defaults.rootLabel)
     }
 
     function getPublishSelection() {
-        return getPublishSelectionQuery(state, selectedId, translate('defaults.root'))
+        return getPublishSelectionQuery(state, selectedId, services.defaults.rootLabel)
     }
 
     async function addFolderAt(parentId: ID) {
         if (!state) return
-        const result = addFolderAtCommand(state, parentId, translate('defaults.newFolder'))
+        const result = addFolderAtCommand(state, parentId, services.defaults.newFolder)
         await persist(result.nextState)
         if (result.selectedId) setSelectedId(result.selectedId)
     }
 
     async function addTestAt(parentId: ID) {
         if (!state) return
-        const result = addTestAtCommand(state, parentId, translate('defaults.newCase'), translate('defaults.firstStep'))
+        const result = addTestAtCommand(state, parentId, services.defaults.newCase, services.defaults.firstStep)
         await persist(result.nextState)
         markDirty(result.dirtyIds)
         if (result.selectedId) setSelectedId(result.selectedId)
@@ -118,14 +112,14 @@ export function useAppState() {
 
     async function addFolder() {
         if (!state) return
-        const result = addFolderFromSelection(state, selectedId, translate('defaults.newFolder'))
+        const result = addFolderFromSelection(state, selectedId, services.defaults.newFolder)
         await persist(result.nextState)
         if (result.selectedId) setSelectedId(result.selectedId)
     }
 
     async function addTest() {
         if (!state) return
-        const result = addTestFromSelection(state, selectedId, translate('defaults.newCase'), translate('defaults.firstStep'))
+        const result = addTestFromSelection(state, selectedId, services.defaults.newCase, services.defaults.firstStep)
         await persist(result.nextState)
         markDirty(result.dirtyIds)
         if (result.selectedId) setSelectedId(result.selectedId)
@@ -184,7 +178,7 @@ export function useAppState() {
         markDirty(result.dirtyIds)
     }
 
-    async function addSharedStep(name = translate('defaults.sharedStep'), steps: Step[] = []) {
+    async function addSharedStep(name = services.defaults.sharedStep, steps: Step[] = []) {
         if (!state) return null
         const result = addSharedStepCommand(state, name, steps)
         await persist(result.nextState)
@@ -193,7 +187,7 @@ export function useAppState() {
 
     async function addSharedStepFromStep(step: Step, name?: string) {
         if (!state) return null
-        const result = addSharedStepFromStepCommand(state, step, translate('defaults.sharedStep'), name)
+        const result = addSharedStepFromStepCommand(state, step, services.defaults.sharedStep, name)
         await persist(result.nextState)
         return result.sharedId
     }
@@ -252,7 +246,7 @@ export function useAppState() {
     async function previewZephyrImport(
         request: Omit<ZephyrImportRequest, 'destinationFolderId'> & { destinationFolderId?: string }
     ): Promise<ZephyrImportPreview> {
-        return previewZephyrImportUseCase(state, selectedId, sync, translate('defaults.root'), request)
+        return previewZephyrImportUseCase(state, selectedId, sync, services.defaults.rootLabel, request)
     }
 
     async function applyZephyrImportPreview(preview: ZephyrImportPreview) {
@@ -263,7 +257,7 @@ export function useAppState() {
     }
 
     async function previewZephyrPublish(): Promise<ZephyrPublishPreview> {
-        return previewZephyrPublishUseCase(state, selectedId, sync, translate('defaults.root'))
+        return previewZephyrPublishUseCase(state, selectedId, sync, services.defaults.rootLabel)
     }
 
     async function publishZephyr(preview: ZephyrPublishPreview): Promise<ZephyrPublishResult & { snapshotPath: string; logPath: string }> {

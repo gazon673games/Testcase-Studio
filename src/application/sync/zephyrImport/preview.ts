@@ -2,7 +2,7 @@ import { nowISO, type Folder, type RootState, type TestCase, type TestMeta } fro
 import { buildPreviewStepDiffRows, summarizePreviewSteps, summarizePreviewText, type PreviewStepDiffRow } from '@core/previewDiff'
 import { findParentFolder, mapTests } from '@core/tree'
 import type { ProviderTest } from '@providers/types'
-import { translate } from '@shared/i18n'
+import type { SyncText } from '../text'
 import {
     buildTargetFolderSegments,
     describeFolderPath,
@@ -28,6 +28,7 @@ export function buildZephyrImportPreview(
     state: RootState,
     request: ZephyrImportRequest,
     remotes: ProviderTest[],
+    text: SyncText,
     query = buildZephyrImportQuery(request)
 ): ZephyrImportPreview {
     const destinationFolder = resolveDestinationFolder(state.root, request.destinationFolderId)
@@ -35,13 +36,13 @@ export function buildZephyrImportPreview(
     const items = remotes
         .slice()
         .sort((left, right) => compareImportTargets(left, right))
-        .map((remote) => buildPreviewItem(state.root, allTests, destinationFolder, request, remote))
+        .map((remote) => buildPreviewItem(state.root, allTests, destinationFolder, request, remote, text))
 
     return {
         request,
         query,
         destinationFolderId: destinationFolder.id,
-        destinationFolderLabel: describeFolderPath(state.root, destinationFolder.id),
+        destinationFolderLabel: describeFolderPath(state.root, destinationFolder.id, text.rootLabel),
         generatedAt: nowISO(),
         items,
         summary: {
@@ -59,18 +60,19 @@ function buildPreviewItem(
     allTests: TestCase[],
     destinationFolder: Folder,
     request: ZephyrImportRequest,
-    remote: ProviderTest
+    remote: ProviderTest,
+    text: SyncText
 ): ZephyrImportPreviewItem {
     const localMatches = findLocalMatches(remote, allTests)
     const existing = localMatches.length === 1 ? localMatches[0] : undefined
     const imported = materializeImportedTest(remote, existing)
     const targetFolderSegments = buildTargetFolderSegments(remote, request)
-    const targetFolderLabel = joinFolderLabel(describeFolderPath(root, destinationFolder.id), targetFolderSegments)
-    const localFolder = existing ? describeFolderPath(root, findParentFolder(root, existing.id)?.id ?? root.id) : undefined
+    const targetFolderLabel = joinFolderLabel(describeFolderPath(root, destinationFolder.id, text.rootLabel), targetFolderSegments)
+    const localFolder = existing ? describeFolderPath(root, findParentFolder(root, existing.id)?.id ?? root.id, text.rootLabel) : undefined
     const diffs = existing
-        ? diffImportedFields(root, existing, imported, targetFolderLabel)
-        : diffNewImportedFields(imported, targetFolderLabel)
-    const evaluation = evaluateImportState(existing, imported, localMatches.length)
+        ? diffImportedFields(root, existing, imported, targetFolderLabel, text)
+        : diffNewImportedFields(imported, targetFolderLabel, text)
+    const evaluation = evaluateImportState(existing, imported, localMatches.length, text)
 
     return {
         id: remote.id,
@@ -95,9 +97,10 @@ function buildPreviewItem(
 function evaluateImportState(
     existing: TestCase | undefined,
     imported: TestCase,
-    localMatchCount: number
+    localMatchCount: number,
+    text: SyncText
 ): { status: ZephyrImportStatus; reason: string; strategy: ZephyrImportStrategy; replaceDisabled?: boolean } {
-    const t = translate
+    const t = text.t
     if (localMatchCount > 1) {
         return {
             status: 'conflict',
@@ -137,8 +140,8 @@ function evaluateImportState(
     }
 }
 
-function diffImportedFields(root: Folder, local: TestCase, remote: TestCase, targetFolderLabel: string): ZephyrImportDiff[] {
-    const t = translate
+function diffImportedFields(root: Folder, local: TestCase, remote: TestCase, targetFolderLabel: string, text: SyncText): ZephyrImportDiff[] {
+    const t = text.t
     const diffs: ZephyrImportDiff[] = []
     pushDiff(diffs, 'name', t('import.diff.name'), local.name, remote.name)
     pushDiff(
@@ -156,16 +159,16 @@ function diffImportedFields(root: Folder, local: TestCase, remote: TestCase, tar
         summarizePreviewSteps(remote.steps),
         buildPreviewStepDiffRows(local.steps, remote.steps)
     )
-    pushDiff(diffs, 'meta', t('import.diff.meta'), summarizeMeta(local.meta), summarizeMeta(remote.meta))
-    pushDiff(diffs, 'attachments', t('import.diff.attachments'), summarizeAttachments(local), summarizeAttachments(remote))
+    pushDiff(diffs, 'meta', t('import.diff.meta'), summarizeMeta(local.meta, text), summarizeMeta(remote.meta, text))
+    pushDiff(diffs, 'attachments', t('import.diff.attachments'), summarizeAttachments(local, text), summarizeAttachments(remote, text))
 
-    const localFolder = describeFolderPath(root, findParentFolder(root, local.id)?.id ?? root.id)
+    const localFolder = describeFolderPath(root, findParentFolder(root, local.id)?.id ?? root.id, text.rootLabel)
     pushDiff(diffs, 'folder', t('import.diff.folder'), localFolder, targetFolderLabel)
     return diffs
 }
 
-function diffNewImportedFields(remote: TestCase, targetFolderLabel: string): ZephyrImportDiff[] {
-    const t = translate
+function diffNewImportedFields(remote: TestCase, targetFolderLabel: string, text: SyncText): ZephyrImportDiff[] {
+    const t = text.t
     return [
         { field: 'name', label: t('import.diff.name'), local: t('import.diff.newLocal'), remote: remote.name },
         {
@@ -175,7 +178,7 @@ function diffNewImportedFields(remote: TestCase, targetFolderLabel: string): Zep
             remote: summarizePreviewSteps(remote.steps),
             stepRows: buildPreviewStepDiffRows([], remote.steps),
         },
-        { field: 'meta', label: t('import.diff.meta'), local: t('import.diff.noLocal'), remote: summarizeMeta(remote.meta) },
+        { field: 'meta', label: t('import.diff.meta'), local: t('import.diff.noLocal'), remote: summarizeMeta(remote.meta, text) },
         { field: 'folder', label: t('import.diff.folder'), local: t('import.diff.willCreate'), remote: targetFolderLabel },
     ]
 }
@@ -193,8 +196,8 @@ function pushDiff(
     diffs.push({ field, label, local, remote, ...(stepRows?.length ? { stepRows } : {}) })
 }
 
-function summarizeMeta(meta: TestMeta | undefined): string {
-    const t = translate
+function summarizeMeta(meta: TestMeta | undefined, text: SyncText): string {
+    const t = text.t
     const paramsCount = Object.keys(meta?.params ?? {}).filter((key) => !isImportMarkerKey(key)).length
     const bits = [
         meta?.objective ? t('import.summary.objective') : '',
@@ -204,8 +207,8 @@ function summarizeMeta(meta: TestMeta | undefined): string {
     return bits.length ? bits.join(', ') : t('import.summary.noMeta')
 }
 
-function summarizeAttachments(test: Pick<TestCase, 'attachments' | 'steps'>): string {
-    const t = translate
+function summarizeAttachments(test: Pick<TestCase, 'attachments' | 'steps'>, text: SyncText): string {
+    const t = text.t
     const total = (test.attachments?.length ?? 0) + (test.steps ?? []).reduce((sum, step) => sum + (step.attachments?.length ?? 0), 0)
     return total ? t('import.summary.attachments', { count: total }) : t('import.summary.noAttachments')
 }

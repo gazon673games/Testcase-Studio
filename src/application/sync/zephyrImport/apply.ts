@@ -1,11 +1,12 @@
 import type { Folder, RootState } from '@core/domain'
 import { findNode, findParentFolder, insertChild, isFolder, mapTests, moveNode as moveTreeNode } from '@core/tree'
+import type { SyncText } from '../text'
 import { buildTargetFolderSegments, ensureTargetFolder, getConflictFolderName, resolveDestinationFolder } from './folders'
 import { IMPORT_CONFLICT_LOCAL_ID, IMPORT_CONFLICT_REMOTE_KEY } from './markers'
 import { findLocalMatches, materializeImportedTest } from './materialize'
 import type { ZephyrImportApplyResult, ZephyrImportPreview, ZephyrImportPreviewItem, ZephyrImportRequest } from './types'
 
-export function applyZephyrImportPreview(state: RootState, preview: ZephyrImportPreview): ZephyrImportApplyResult {
+export function applyZephyrImportPreview(state: RootState, preview: ZephyrImportPreview, text: SyncText): ZephyrImportApplyResult {
     const destinationFolder = resolveDestinationFolder(state.root, preview.destinationFolderId)
     const result: ZephyrImportApplyResult = { created: 0, updated: 0, skipped: 0, drafts: 0, unchanged: 0 }
 
@@ -26,7 +27,7 @@ export function applyZephyrImportPreview(state: RootState, preview: ZephyrImport
         }
 
         if (item.strategy === 'merge-locally-later') {
-            upsertConflictDraft(state, destinationFolder, item, preview.request)
+            upsertConflictDraft(state, destinationFolder, item, preview.request, text)
             result.drafts += 1
             continue
         }
@@ -63,7 +64,8 @@ function upsertConflictDraft(
     state: RootState,
     destinationFolder: Folder,
     item: ZephyrImportPreviewItem,
-    request: ZephyrImportRequest
+    request: ZephyrImportRequest,
+    text: SyncText
 ) {
     const local = item.localTestId ? findNode(state.root, item.localTestId) : null
     const localTest = local && !isFolder(local) ? local : undefined
@@ -75,7 +77,7 @@ function upsertConflictDraft(
     imported.meta.params[IMPORT_CONFLICT_REMOTE_KEY] = item.remoteId
     if (localTest) imported.meta.params[IMPORT_CONFLICT_LOCAL_ID] = localTest.id
 
-    const baseFolder = ensureTargetFolder(state.root, destinationFolder.id, [getConflictFolderName(), ...buildTargetFolderSegments(item.remote, request)])
+    const baseFolder = ensureTargetFolder(state.root, destinationFolder.id, [getConflictFolderName(text), ...buildTargetFolderSegments(item.remote, request)])
     const existingDraft = mapTests(state.root).find((test) => {
         const params = test.meta?.params ?? {}
         if (params[IMPORT_CONFLICT_REMOTE_KEY] !== item.remoteId) return false

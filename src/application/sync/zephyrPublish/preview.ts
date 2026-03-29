@@ -1,7 +1,7 @@
 import { nowISO, type RootState, type TestCase } from '@core/domain'
 import { ExportIntegrityError } from '@core/export'
 import type { ProviderTest } from '@providers/types'
-import { translate } from '@shared/i18n'
+import type { SyncText } from '../text'
 import { buildAttachmentPlan, collectAttachmentWarnings, collectProviderAttachments } from './attachments'
 import { safeString } from './common'
 import { buildCreateDiffs, diffPayloadAgainstRemote } from './diffs'
@@ -12,9 +12,10 @@ export function buildZephyrPublishPreview(
     state: RootState,
     tests: TestCase[],
     remoteMap: Map<string, ProviderTest | Error>,
-    selectionLabel: string
+    selectionLabel: string,
+    text: SyncText
 ): ZephyrPublishPreview {
-    const items = tests.map((test) => buildPreviewItem(state, test, remoteMap))
+    const items = tests.map((test) => buildPreviewItem(state, test, remoteMap, text))
 
     return {
         selectionLabel,
@@ -33,9 +34,10 @@ export function buildZephyrPublishPreview(
 function buildPreviewItem(
     state: RootState,
     test: TestCase,
-    remoteMap: Map<string, ProviderTest | Error>
+    remoteMap: Map<string, ProviderTest | Error>,
+    text: SyncText
 ): ZephyrPublishPreviewItem {
-    const t = translate
+    const t = text.t
     let payload: ProviderTest
     try {
         payload = buildZephyrPublishPayload(test, state)
@@ -85,7 +87,7 @@ function buildPreviewItem(
             payload,
             attachmentsToUpload: localAttachments,
             attachmentIdsToDelete: [],
-            attachmentWarnings: collectAttachmentWarnings(localAttachments, []),
+            attachmentWarnings: collectAttachmentWarnings(localAttachments, [], t),
         }
     }
 
@@ -99,11 +101,11 @@ function buildPreviewItem(
             status: 'create',
             reason: t('publish.reason.create'),
             publish: true,
-            diffs: buildCreateDiffs(payload),
+            diffs: buildCreateDiffs(payload, t),
             payload,
             attachmentsToUpload: localAttachments,
             attachmentIdsToDelete: [],
-            attachmentWarnings: collectAttachmentWarnings(localAttachments, []),
+            attachmentWarnings: collectAttachmentWarnings(localAttachments, [], t),
         }
     }
 
@@ -123,7 +125,7 @@ function buildPreviewItem(
             payload,
             attachmentsToUpload: localAttachments,
             attachmentIdsToDelete: [],
-            attachmentWarnings: collectAttachmentWarnings(localAttachments, []),
+            attachmentWarnings: collectAttachmentWarnings(localAttachments, [], t),
         }
     }
 
@@ -142,13 +144,13 @@ function buildPreviewItem(
             payload,
             attachmentsToUpload: localAttachments,
             attachmentIdsToDelete: [],
-            attachmentWarnings: collectAttachmentWarnings(localAttachments, []),
+            attachmentWarnings: collectAttachmentWarnings(localAttachments, [], t),
         }
     }
 
     const remoteAttachments = collectProviderAttachments(remote)
     const attachmentPlan = buildAttachmentPlan(localAttachments, remoteAttachments)
-    let diffs = diffPayloadAgainstRemote(payload, remote)
+    let diffs = diffPayloadAgainstRemote(payload, remote, t)
     const parameterMode = safeString(payload.extras?.__parametersMode)
     const hasStepDiff = diffs.some((diff) => diff.field === 'steps')
     if (!hasStepDiff && parameterMode === 'inferred') {
@@ -175,7 +177,7 @@ function buildPreviewItem(
             payload,
             attachmentsToUpload: attachmentPlan.uploads,
             attachmentIdsToDelete: attachmentPlan.deleteIds,
-            attachmentWarnings: collectAttachmentWarnings(localAttachments, remoteAttachments),
+            attachmentWarnings: collectAttachmentWarnings(localAttachments, remoteAttachments, t),
         }
     }
 
@@ -193,6 +195,6 @@ function buildPreviewItem(
         payload,
         attachmentsToUpload: attachmentPlan.uploads,
         attachmentIdsToDelete: attachmentPlan.deleteIds,
-        attachmentWarnings: collectAttachmentWarnings(localAttachments, remoteAttachments),
+        attachmentWarnings: collectAttachmentWarnings(localAttachments, remoteAttachments, t),
     }
 }

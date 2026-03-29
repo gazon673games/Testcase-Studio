@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildZephyrPublishPayload, buildZephyrPublishPreview } from '@app/sync'
+import { buildZephyrPublishPayload, buildZephyrPublishPreview, createSyncText } from '@app/sync'
 import { mkFolder, mkStep, mkTest, type RootState } from './domain'
 import type { ProviderTest } from '@providers/types'
+
+const syncText = createSyncText((key) => key)
 
 describe('buildZephyrPublishPreview', () => {
     it('plans upload and delete operations for case and step attachments', () => {
@@ -29,7 +31,7 @@ describe('buildZephyrPublishPreview', () => {
             extras: {},
         }
 
-        const preview = buildZephyrPublishPreview(state, [test], new Map([['PROJ-T1', remote]]), 'Current case')
+        const preview = buildZephyrPublishPreview(state, [test], new Map([['PROJ-T1', remote]]), 'Current case', syncText)
         const [item] = preview.items
 
         expect(item.attachmentsToUpload.map((attachment) => attachment.name)).toEqual(['case-proof.png', 'step-proof.png'])
@@ -109,7 +111,7 @@ describe('buildZephyrPublishPreview', () => {
             },
         }
 
-        const preview = buildZephyrPublishPreview(state, [test], new Map([['PROJ-T6170', remote]]), 'Current case')
+        const preview = buildZephyrPublishPreview(state, [test], new Map([['PROJ-T6170', remote]]), 'Current case', syncText)
         const [item] = preview.items
 
         expect(item.diffs.some((diff) => diff.field === 'customFields')).toBe(true)
@@ -179,7 +181,7 @@ describe('buildZephyrPublishPreview', () => {
             },
         }
 
-        const preview = buildZephyrPublishPreview(state, [test], new Map([['PROJ-T6170', remote]]), 'Current case')
+        const preview = buildZephyrPublishPreview(state, [test], new Map([['PROJ-T6170', remote]]), 'Current case', syncText)
         const [item] = preview.items
 
         expect(item.diffs.some((diff) => diff.field === 'parameters')).toBe(false)
