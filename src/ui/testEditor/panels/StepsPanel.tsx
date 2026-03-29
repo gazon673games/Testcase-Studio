@@ -542,7 +542,7 @@ const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(
                 <div>{renderCell('expected', t('steps.expected'))}</div>
             </div>
 
-            <div className="step-footer" style={{ padding: isNarrow ? 10 : '10px 10px 12px' }}>
+            <div className={`step-footer ${isNarrow ? 'step-footer--compact' : 'step-footer--regular'}`}>
                 <StepAttachmentsPanel
                     stepId={step.id}
                     attachments={attachments}

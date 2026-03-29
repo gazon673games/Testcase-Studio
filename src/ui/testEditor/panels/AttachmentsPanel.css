@@ -1,4 +1,7 @@
 .attachments-panel {}
+.attachments-panel--step {
+    margin-top: 8px;
+}
 
 /* Заголовок и кнопки */
 .attachments-head {
@@ -7,9 +10,15 @@
     justify-content: space-between;
     margin-bottom: 6px;
 }
+.attachments-head--compact {
+    margin-bottom: 4px;
+}
 .attachments-actions {
     display: flex;
     gap: 6px;
+}
+.attachments-input-hidden {
+    display: none;
 }
 
 /* Список */

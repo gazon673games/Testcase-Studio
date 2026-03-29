@@ -275,7 +275,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                     {showLinks && (
                         <div className="meta-card editor-links-card">
                             <div className="editor-links-grid">
-                                <div className="field" style={{ margin: 0 }}>
+                                <div className="field field--flush">
                                     <label className="label-sm">{t('editor.zephyrKey')}</label>
                                     <input
                                         className="input"
@@ -284,7 +284,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                                         placeholder={t('editor.zephyrKeyPlaceholder')}
                                     />
                                 </div>
-                                <div className="field" style={{ margin: 0 }}>
+                                <div className="field field--flush">
                                     <label className="label-sm">{t('editor.allureId')}</label>
                                     <input
                                         className="input"
@@ -359,7 +359,7 @@ const SectionHeader = ({
 }) => (
     <div className="section-header" data-spoiler data-nopress>
         <button type="button" onClick={onToggle}>
-            <span style={{ width: 14, textAlign: 'center' }}>{open ? '-' : '+'}</span>
+            <span className="section-header__toggle-icon">{open ? '-' : '+'}</span>
             <span>
                 {title}
                 {typeof count === 'number' ? ` (${count})` : ''}

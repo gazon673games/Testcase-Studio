@@ -123,6 +123,8 @@
 
 /* поля/лейблы */
 .field { margin-bottom: 8px; }
+.field--flush { margin: 0; }
+.field--grow { flex: 1; }
 .label-sm { display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px; }
 .input {
     width:100%;
@@ -186,6 +188,10 @@
 .section-header > button {
     border:none; background:transparent; cursor:pointer; font-weight:600;
     display:flex; align-items:center; gap:8px;
+}
+.section-header__toggle-icon {
+    width: 14px;
+    text-align: center;
 }
 
 /* список шагов */
@@ -398,6 +404,12 @@
 .step-footer {
     border-top: 1px solid var(--border-soft);
     background: linear-gradient(180deg, transparent 0%, var(--bg-soft) 100%);
+}
+.step-footer--compact {
+    padding: 10px;
+}
+.step-footer--regular {
+    padding: 10px 10px 12px;
 }
 .shared-ref-card {
     overflow: visible;

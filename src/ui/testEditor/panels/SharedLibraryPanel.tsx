@@ -175,7 +175,7 @@ export default function SharedLibraryPanel({
                 </div>
 
                 <div className="shared-library-controls">
-                    <div className="field" style={{ margin: 0 }}>
+                    <div className="field field--flush">
                         <label className="label-sm">{t('shared.search')}</label>
                         <input
                             className="input"
@@ -198,7 +198,7 @@ export default function SharedLibraryPanel({
                         ))}
                     </div>
 
-                    <div className="field" style={{ margin: 0 }}>
+                    <div className="field field--flush">
                         <label className="label-sm">{t('shared.sort')}</label>
                         <select
                             className="input"
@@ -251,7 +251,7 @@ export default function SharedLibraryPanel({
                 ) : (
                     <>
                         <div className="shared-library-toolbar">
-                            <div className="field" style={{ margin: 0, flex: 1 }}>
+                            <div className="field field--flush field--grow">
                                 <label className="label-sm">{t('shared.name')}</label>
                                 <input
                                     className="input"

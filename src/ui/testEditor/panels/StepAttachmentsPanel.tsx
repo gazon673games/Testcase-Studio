@@ -59,8 +59,8 @@ export default function StepAttachmentsPanel({
     }
 
     return (
-        <div className={`attachments-panel ${compact ? '' : 'meta-card'}`} style={{ marginTop: 8 }}>
-            <div className="attachments-head" style={{ marginBottom: 4 }}>
+        <div className={`attachments-panel attachments-panel--step ${compact ? '' : 'meta-card'}`}>
+            <div className="attachments-head attachments-head--compact">
                 <label className="label-sm">{t('attachments.stepTitle')}</label>
                 <div className="attachments-actions">
                     <button type="button" className="btn-small" onClick={() => inputRef.current?.click()} disabled={loading}>
@@ -71,7 +71,7 @@ export default function StepAttachmentsPanel({
                         type="file"
                         multiple
                         accept={accept}
-                        style={{ display: 'none' }}
+                        className="attachments-input-hidden"
                         onChange={onFilePicked}
                     />
                 </div>

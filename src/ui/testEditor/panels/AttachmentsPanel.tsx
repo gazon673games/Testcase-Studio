@@ -61,7 +61,7 @@ export function AttachmentsPanel({ attachments, onChange, onUploadFiles, accept 
                         type="file"
                         multiple
                         accept={accept}
-                        style={{ display: 'none' }}
+                        className="attachments-input-hidden"
                         onChange={onFilePicked}
                     />
                 </div>
