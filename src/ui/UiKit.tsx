@@ -91,24 +91,10 @@ export function UiKit({ children }: { children: React.ReactNode }) {
         const next: Toast = { id, dismissOnAction: true, ttl: 2500, ...toast }
         setItems((current) => [...current, next])
 
-        const timer = window.setTimeout(() => {
-            setItems((current) => current.filter((item) => item.id !== id))
-        }, next.ttl)
-
-        if (next.dismissOnAction !== false) {
-            const drop = () => {
-                clearTimeout(timer)
+        if ((next.ttl ?? 0) > 0) {
+            window.setTimeout(() => {
                 setItems((current) => current.filter((item) => item.id !== id))
-            }
-            const once = () => {
-                drop()
-                window.removeEventListener('pointerdown', once, true)
-                window.removeEventListener('keydown', once, true)
-                window.removeEventListener('wheel', once, { capture: true } as EventListenerOptions)
-            }
-            window.addEventListener('pointerdown', once, true)
-            window.addEventListener('keydown', once, true)
-            window.addEventListener('wheel', once, { capture: true } as EventListenerOptions)
+            }, next.ttl)
         }
     }, [])
 

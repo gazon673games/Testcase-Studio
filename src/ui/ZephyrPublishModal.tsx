@@ -58,6 +58,11 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
         setSelectedOnly(false)
     }, [open, selectionLabel])
 
+    React.useEffect(() => {
+        if (!open || preview || loading || applying) return
+        void handlePreview()
+    }, [open, preview, loading, applying])
+
     async function handlePreview() {
         setLoading(true)
         setError(null)
@@ -138,13 +143,27 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
         (item) => item.status === 'skip' && (statusFilter !== 'skip' || !showSkipped)
     ).length
     const firstBlockedId = blockedItems[0]?.id
-    const canApply = !!preview && !loading && !applying && confirmText === 'PUBLISH' && selectedCount > 0
+    const confirmReady = confirmText.trim().toUpperCase() === 'PUBLISH'
+    const requiresConfirmation = selectedCount > 1
+    const canApply = !!preview && !loading && !applying && selectedCount > 0 && (!requiresConfirmation || confirmReady)
+    const disabledReason = !preview
+        ? t('publish.previewLoadingHint')
+        : selectedCount === 0
+            ? t('publish.noSelected')
+            : requiresConfirmation && !confirmReady
+                ? t('publish.confirmationMissing')
+                : null
 
     return (
         <PreviewDialog
             open={open}
             title={t('publish.title')}
-            subtitle={t('publish.subtitle', { label: selectionLabel })}
+            subtitle={(
+                <span className="preview-dialog__scope-chip">
+                    <span className="preview-dialog__scope-chip-label">{t('publish.scopeLabel')}</span>
+                    <span className="preview-dialog__scope-chip-value">{selectionLabel}</span>
+                </span>
+            )}
             onClose={onClose}
             initialFocusRef={loadButtonRef}
             canDismiss={!loading && !applying}
@@ -157,13 +176,29 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                         </PreviewCard>
 
                         <PreviewCard title={t('publish.confirmation')}>
-                            <PreviewHint>{t('publish.confirmationHint')}</PreviewHint>
+                            <PreviewHint>
+                                {requiresConfirmation ? t('publish.confirmationHint') : t('publish.confirmationReady')}
+                            </PreviewHint>
                             <input
                                 className="preview-dialog__input"
                                 value={confirmText}
                                 onChange={(event) => setConfirmText(event.target.value)}
                                 placeholder="PUBLISH"
+                                disabled={!requiresConfirmation}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter' && canApply) {
+                                        event.preventDefault()
+                                        void handleApply()
+                                    }
+                                }}
                             />
+                            {preview ? (
+                                <PreviewHint>
+                                    {requiresConfirmation
+                                        ? (confirmReady ? t('publish.confirmationReady') : disabledReason ?? t('publish.confirmationMissing'))
+                                        : t('publish.confirmationReady')}
+                                </PreviewHint>
+                            ) : null}
                         </PreviewCard>
 
                         {error ? <PreviewAlert tone="error">{error}</PreviewAlert> : null}
@@ -171,16 +206,20 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                         <div className="preview-dialog__button-row">
                             <PreviewButton
                                 ref={loadButtonRef}
-                                tone="primary"
+                                tone="soft"
                                 onClick={handlePreview}
                                 disabled={loading || applying}
                             >
-                                {loading ? t('publish.loadingPreview') : t('publish.loadDryRun')}
+                                {loading ? t('publish.loadingPreview') : preview ? t('publish.refreshPreview') : t('publish.preparePreview')}
+                            </PreviewButton>
+                            <PreviewButton tone="danger" disabled={!canApply} onClick={handleApply}>
+                                {applying ? t('publish.running') : t('publish.run')}
                             </PreviewButton>
                             <PreviewButton tone="ghost" onClick={onClose} disabled={loading || applying}>
                                 {t('publish.close')}
                             </PreviewButton>
                         </div>
+                        {disabledReason ? <PreviewHint>{disabledReason}</PreviewHint> : null}
                     </div>
                 )}
                 content={(
@@ -357,6 +396,9 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                                             {applying ? t('publish.running') : t('publish.run')}
                                         </PreviewButton>
                                     </div>
+                                    {disabledReason ? (
+                                        <PreviewHint>{disabledReason}</PreviewHint>
+                                    ) : null}
                                 </PreviewStickyBar>
                             </>
                         )}

@@ -106,7 +106,7 @@ function AppShell() {
             push({
                 kind: 'success',
                 text: t('toast.importApplied', result),
-                ttl: 3200,
+                ttl: 0,
             })
             return result
         },
@@ -120,7 +120,7 @@ function AppShell() {
             push({
                 kind: result.failed ? 'error' : 'success',
                 text: t('toast.publishFinished', result),
-                ttl: 5200,
+                ttl: 0,
             })
             return result
         },
@@ -134,7 +134,7 @@ function AppShell() {
                 push({
                     kind: 'success',
                     text: t('toast.pullSuccess', { externalId: result.externalId || 'Zephyr' }),
-                    ttl: 2600,
+                    ttl: 0,
                 })
                 return
             }
@@ -142,7 +142,7 @@ function AppShell() {
             push({
                 kind: 'error',
                 text: t(result.status === 'no-link' ? 'toast.pullNoLink' : 'toast.pullNoSelection'),
-                ttl: 2800,
+                ttl: 0,
             })
         } catch (error) {
             push({
@@ -150,7 +150,7 @@ function AppShell() {
                 text: t('toast.pullFailed', {
                     message: error instanceof Error ? error.message : String(error),
                 }),
-                ttl: 4200,
+                ttl: 0,
             })
         }
     }, [app, push, t])
@@ -161,7 +161,7 @@ function AppShell() {
             push({
                 kind: 'success',
                 text: t('toast.quickSyncSuccess', { count: result.count }),
-                ttl: 3000,
+                ttl: 0,
             })
         } catch (error) {
             push({
@@ -169,7 +169,7 @@ function AppShell() {
                 text: t('toast.quickSyncFailed', {
                     message: error instanceof Error ? error.message : String(error),
                 }),
-                ttl: 4200,
+                ttl: 0,
             })
         }
     }, [app, push, t])

@@ -29,7 +29,7 @@ import {
     type ZephyrImportPreview,
     type ZephyrImportRequest,
 } from '@core/zephyrImport'
-import type { ZephyrPublishPreview, ZephyrPublishResult } from '@core/zephyrPublish'
+import { resolveZephyrExternalId, type ZephyrPublishPreview, type ZephyrPublishResult } from '@core/zephyrPublish'
 import { ZephyrHttpProvider } from '@providers/zephyr.http'
 import { AllureStubProvider } from '@providers/allure.stub'
 import { fromProviderPayload } from '@providers/mappers'
@@ -320,10 +320,16 @@ export function useAppState() {
         const node = getSelected()
         if (!node) return { status: 'no-selection' }
         if (isFolder(node)) return { status: 'not-a-test' }
-        if (node.links.length === 0) return { status: 'no-link' }
 
-        const remote = await sync.pullPreferZephyr(node)
-        if (!remote) return { status: 'no-link' }
+        const zephyrExternalId = resolveZephyrExternalId(node)
+        const fallbackLink =
+            zephyrExternalId
+                ? { provider: 'zephyr' as const, externalId: zephyrExternalId }
+                : node.links.find((link) => link.provider === 'allure') ?? node.links[0]
+
+        if (!fallbackLink) return { status: 'no-link' }
+
+        const remote = await sync.pullByLink(fallbackLink)
 
         const next = structuredClone(state)
         const target = findNode(next.root, node.id) as TestCase
@@ -341,8 +347,9 @@ export function useAppState() {
         return {
             status: 'ok',
             testId: target.id,
-            externalId: node.links.find((link) => link.provider === 'zephyr')?.externalId
-                ?? node.links[0]?.externalId
+            externalId: zephyrExternalId
+                ?? node.links.find((link) => link.provider === 'zephyr')?.externalId
+                ?? fallbackLink.externalId
                 ?? remote.id
                 ?? '',
         }

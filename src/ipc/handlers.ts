@@ -17,6 +17,16 @@ function b64(s: string) {
     return Buffer.from(s, 'utf8').toString('base64')
 }
 
+async function fetchWithContext(url: string, init: RequestInit, scope: string) {
+    try {
+        return await fetch(url, init)
+    } catch (error) {
+        const host = safeHost(url)
+        const detail = describeFetchFailure(error)
+        throw new Error(`${scope} network error for ${host}${detail ? `: ${detail}` : ''}`)
+    }
+}
+
 function attachmentToBuffer(pathOrDataUrl: string): Buffer {
     const raw = String(pathOrDataUrl ?? '')
     const dataUrlMatch = raw.match(/^data:([^;,]+)?(?:;charset=[^;,]+)?(;base64)?,(.*)$/i)
@@ -25,6 +35,44 @@ function attachmentToBuffer(pathOrDataUrl: string): Buffer {
     }
     const payload = dataUrlMatch[3] ?? ''
     return dataUrlMatch[2] ? Buffer.from(payload, 'base64') : Buffer.from(decodeURIComponent(payload), 'utf8')
+}
+
+function safeHost(url: string): string {
+    try {
+        return new URL(url).host
+    } catch {
+        return url
+    }
+}
+
+function describeFetchFailure(error: unknown): string {
+    if (!(error instanceof Error)) return String(error)
+    const cause = (error as Error & { cause?: unknown }).cause
+    const causeMessage =
+        cause instanceof Error
+            ? cause.message
+            : cause != null
+                ? String(cause)
+                : ''
+    const joined = [error.message, causeMessage].filter(Boolean).join(' | ')
+    const normalized = joined.toLowerCase()
+
+    if (normalized.includes('enotfound') || normalized.includes('getaddrinfo') || normalized.includes('dns')) {
+        return 'host was not resolved; check VPN/corporate DNS or base URL'
+    }
+    if (normalized.includes('self signed') || normalized.includes('certificate') || normalized.includes('cert')) {
+        return 'TLS certificate validation failed'
+    }
+    if (normalized.includes('econnrefused')) {
+        return 'connection was refused by the remote host'
+    }
+    if (normalized.includes('etimedout') || normalized.includes('timeout')) {
+        return 'request timed out'
+    }
+    if (normalized.includes('fetch failed')) {
+        return causeMessage || error.message
+    }
+    return joined
 }
 
 export function registerHandlers(ipcMain: IpcMain) {
@@ -79,10 +127,10 @@ export function registerHandlers(ipcMain: IpcMain) {
             const url = `${baseUrl}/rest/atm/1.0/testcase/${encodeURIComponent(payload.ref)}`
             const auth = `Basic ${b64(`${login}:${password}`)}`
 
-            const res = await fetch(url, {
+            const res = await fetchWithContext(url, {
                 method: 'GET',
                 headers: { Authorization: auth, Accept: 'application/json' },
-            })
+            }, `Zephyr(${payload.by})`)
             if (!res.ok) {
                 const text = await res.text().catch(() => '')
                 throw new Error(
@@ -115,10 +163,10 @@ export function registerHandlers(ipcMain: IpcMain) {
             url.searchParams.set('maxResults', String(Math.max(1, Number(payload.maxResults ?? 100) || 100)))
 
             const auth = `Basic ${b64(`${login}:${password}`)}`
-            const res = await fetch(url, {
+            const res = await fetchWithContext(url.toString(), {
                 method: 'GET',
                 headers: { Authorization: auth, Accept: 'application/json' },
-            })
+            }, 'Zephyr(search)')
             if (!res.ok) {
                 const text = await res.text().catch(() => '')
                 throw new Error(
@@ -149,7 +197,7 @@ export function registerHandlers(ipcMain: IpcMain) {
                 : `${baseUrl}/rest/atm/1.0/testcase`
 
             const auth = `Basic ${b64(`${login}:${password}`)}`
-            const res = await fetch(url, {
+            const res = await fetchWithContext(url, {
                 method: ref ? 'PUT' : 'POST',
                 headers: {
                     Authorization: auth,
@@ -157,7 +205,7 @@ export function registerHandlers(ipcMain: IpcMain) {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(payload.body ?? {}),
-            })
+            }, 'Zephyr(upsert)')
 
             if (!res.ok) {
                 const text = await res.text().catch(() => '')
@@ -202,11 +250,11 @@ export function registerHandlers(ipcMain: IpcMain) {
             form.append('file', new Blob([bytes]), attachmentName)
 
             const url = `${baseUrl}/rest/atm/1.0/testcase/${encodeURIComponent(testCaseKey)}/attachments`
-            const res = await fetch(url, {
+            const res = await fetchWithContext(url, {
                 method: 'POST',
                 body: form,
                 headers: { Authorization: auth },
-            })
+            }, 'Zephyr(upload attachment)')
 
             if (!res.ok) {
                 const text = await res.text().catch(() => '')
@@ -237,10 +285,10 @@ export function registerHandlers(ipcMain: IpcMain) {
 
             const auth = `Basic ${b64(`${login}:${password}`)}`
             const url = `${baseUrl}/rest/atm/1.0/attachment/${encodeURIComponent(attachmentId)}`
-            const res = await fetch(url, {
+            const res = await fetchWithContext(url, {
                 method: 'DELETE',
                 headers: { Authorization: auth, Accept: 'application/json' },
-            })
+            }, 'Zephyr(delete attachment)')
 
             if (!res.ok) {
                 const text = await res.text().catch(() => '')

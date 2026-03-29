@@ -17,6 +17,8 @@ export type ZephyrPublishDiffField =
     | 'attachments'
     | 'folder'
     | 'labels'
+    | 'customFields'
+    | 'parameters'
 
 export interface ZephyrPublishDiff {
     field: ZephyrPublishDiffField
@@ -111,18 +113,22 @@ export function buildZephyrPublishPayload(test: TestCase, state: RootState): Pro
     const objective = render(test.meta?.objective)
     const preconditions = render(test.meta?.preconditions)
     const labels = (test.meta?.tags ?? []).map((item) => String(item).trim()).filter(Boolean)
+    const customFields = buildPublishCustomFields(test.meta)
+    const steps = exportPayload.steps.map((step) => ({
+        action: render(step.action),
+        data: render(step.data),
+        expected: render(step.expected),
+        text: render(step.action),
+        attachments: (step.attachments ?? []).map(copyAttachment),
+    }))
+    const parametersInfo = buildPublishParameters(test.meta, steps)
+    const parameters = parametersInfo.value
 
     return {
         id: externalId,
         name: test.name,
         description: render(exportPayload.description),
-        steps: exportPayload.steps.map((step) => ({
-            action: render(step.action),
-            data: render(step.data),
-            expected: render(step.expected),
-            text: render(step.action),
-            attachments: (step.attachments ?? []).map(copyAttachment),
-        })),
+        steps,
         attachments: (exportPayload.attachments ?? []).map(copyAttachment),
         updatedAt: nowISO(),
         extras: {
@@ -131,6 +137,9 @@ export function buildZephyrPublishPayload(test: TestCase, state: RootState): Pro
             objective,
             preconditions,
             labels,
+            ...(customFields ? { customFields } : {}),
+            ...(parameters ? { parameters } : {}),
+            __parametersMode: parametersInfo.mode,
         },
     }
 }
@@ -244,7 +253,18 @@ function buildPreviewItem(
 
     const remoteAttachments = collectProviderAttachments(remote)
     const attachmentPlan = buildAttachmentPlan(localAttachments, remoteAttachments)
-    const diffs = diffPayloadAgainstRemote(payload, remote)
+    let diffs = diffPayloadAgainstRemote(payload, remote)
+    const parameterMode = safeString(payload.extras?.__parametersMode)
+    const hasStepDiff = diffs.some((diff) => diff.field === 'steps')
+    if (!hasStepDiff && parameterMode === 'inferred') {
+        diffs = diffs.filter((diff) => diff.field !== 'parameters')
+        if (payload.extras && typeof payload.extras === 'object') {
+            delete (payload.extras as Record<string, unknown>).parameters
+        }
+    }
+    if (payload.extras && typeof payload.extras === 'object') {
+        ;(payload.extras as Record<string, unknown>).__changedFields = diffs.map((diff) => diff.field)
+    }
     if (diffs.length === 0) {
         return {
             id: test.id,
@@ -324,6 +344,20 @@ function diffPayloadAgainstRemote(local: ProviderTest, remote: ProviderTest): Ze
         safeString(remote.extras?.folder) ?? t('publish.diff.noFolder')
     )
     pushDiff(diffs, 'labels', t('publish.diff.labels'), summarizeLabels(local.extras?.labels), summarizeLabels(remote.extras?.labels))
+    pushDiff(
+        diffs,
+        'customFields',
+        t('publish.diff.customFields'),
+        summarizeStructuredValue(local.extras?.customFields, t('publish.summary.noCustomFields')),
+        summarizeStructuredValue(remote.extras?.customFields, t('publish.summary.noCustomFields'))
+    )
+    pushDiff(
+        diffs,
+        'parameters',
+        t('publish.diff.parameters'),
+        summarizeStructuredValue(local.extras?.parameters, t('publish.summary.noParameters')),
+        summarizeStructuredValue(remote.extras?.parameters, t('publish.summary.noParameters'))
+    )
     return diffs
 }
 
@@ -348,6 +382,18 @@ function buildCreateDiffs(local: ProviderTest): ZephyrPublishDiff[] {
             field: 'attachments',
             label: t('publish.diff.attachments'),
             local: summarizeAttachments(local),
+            remote: t('publish.diff.noRemote'),
+        },
+        {
+            field: 'customFields',
+            label: t('publish.diff.customFields'),
+            local: summarizeStructuredValue(local.extras?.customFields, t('publish.summary.noCustomFields')),
+            remote: t('publish.diff.noRemote'),
+        },
+        {
+            field: 'parameters',
+            label: t('publish.diff.parameters'),
+            local: summarizeStructuredValue(local.extras?.parameters, t('publish.summary.noParameters')),
             remote: t('publish.diff.noRemote'),
         },
     ]
@@ -396,6 +442,8 @@ function buildPublishSignature(payload: ProviderTest): string {
         preconditions: safeString(payload.extras?.preconditions) ?? '',
         folder: safeString(payload.extras?.folder) ?? '',
         labels: normalizeLabels(payload.extras?.labels),
+        customFields: normalizeStructuredValue(payload.extras?.customFields),
+        parameters: normalizeStructuredValue(payload.extras?.parameters),
     })
 }
 
@@ -488,6 +536,14 @@ function summarizeLabels(value: unknown): string {
     return labels.length ? labels.join(', ') : t('publish.summary.noLabels')
 }
 
+function summarizeStructuredValue(value: unknown, emptyLabel: string): string {
+    const normalized = normalizeStructuredValue(value)
+    if (normalized == null) return emptyLabel
+    if (Array.isArray(normalized) && normalized.length === 0) return emptyLabel
+    if (typeof normalized === 'object' && Object.keys(normalized).length === 0) return emptyLabel
+    return JSON.stringify(normalized)
+}
+
 function normalizeLabels(value: unknown): string[] {
     return Array.isArray(value)
         ? value.map((item) => String(item).trim()).filter(Boolean).sort((left, right) => left.localeCompare(right))
@@ -515,6 +571,150 @@ function pushDiff(
     const hasStepChanges = !!stepRows?.some((row) => row.changed)
     if (local === remote && !hasStepChanges) return
     diffs.push({ field, label, local, remote, ...(stepRows?.length ? { stepRows } : {}) })
+}
+
+function buildPublishCustomFields(meta: TestMeta | undefined): Record<string, unknown> | undefined {
+    const params = meta?.params ?? {}
+    const entries = Object.entries(params)
+        .filter(([key]) => key.startsWith('customFields.'))
+        .map(([key, value]) => [key.slice('customFields.'.length), parseStoredParamValue(value)] as const)
+        .filter(([key]) => Boolean(key.trim()))
+
+    if (!entries.length) return undefined
+    return Object.fromEntries(entries)
+}
+
+function buildPublishParameters(
+    meta: TestMeta | undefined,
+    steps: ProviderStep[]
+): {
+    value?: { variables?: unknown[]; entries?: unknown[] }
+    mode: 'none' | 'explicit' | 'inferred' | 'mixed'
+} {
+    const params = meta?.params ?? {}
+    const hasVariables = Object.prototype.hasOwnProperty.call(params, 'parameters.variables')
+    const hasEntries = Object.prototype.hasOwnProperty.call(params, 'parameters.entries')
+    const inferredVariables = inferStepVariables(steps)
+    if (!hasVariables && !hasEntries && inferredVariables.length === 0) return { mode: 'none' }
+
+    const next: { variables?: unknown[]; entries?: unknown[] } = {}
+    const existingVariables = hasVariables ? normalizeParameterVariableList(parseStoredArrayValue(params['parameters.variables'])) : []
+    const mergedVariables = mergeParameterVariables(existingVariables, inferredVariables)
+    if (hasVariables || mergedVariables.length) next.variables = mergedVariables
+    const entries = hasEntries ? parseStoredArrayValue(params['parameters.entries']) : []
+    if (entries.length) next.entries = entries
+    const hasExplicitData = existingVariables.length > 0 || entries.length > 0
+    const hasInferredData = inferredVariables.length > 0
+    const mode =
+        hasExplicitData && hasInferredData
+            ? 'mixed'
+            : hasExplicitData
+                ? 'explicit'
+                : hasInferredData
+                    ? 'inferred'
+                    : 'none'
+    return Object.keys(next).length ? { value: next, mode } : { mode }
+}
+
+function parseStoredParamValue(value: string | undefined): unknown {
+    const raw = String(value ?? '').trim()
+    if (!raw) return ''
+    try {
+        return JSON.parse(raw)
+    } catch {
+        return raw
+    }
+}
+
+function parseStoredArrayValue(value: string | undefined): unknown[] {
+    const parsed = parseStoredParamValue(value)
+    return Array.isArray(parsed) ? parsed : []
+}
+
+function inferStepVariables(steps: ProviderStep[]): Array<{ name: string; defaultValue: string }> {
+    const found = new Set<string>()
+    for (const step of steps) {
+        for (const field of [step.action, step.data, step.expected]) {
+            for (const name of collectVariableNamesFromText(field)) {
+                for (const alias of expandVariableAliases(name)) found.add(alias)
+            }
+        }
+    }
+    return [...found].sort((left, right) => left.localeCompare(right)).map((name) => ({ name, defaultValue: '' }))
+}
+
+function collectVariableNamesFromText(value: string | undefined): string[] {
+    const text = String(value ?? '')
+    if (!text) return []
+
+    const found = new Set<string>()
+
+    for (const match of text.matchAll(/\{\{\s*([$\p{L}_][\p{L}\p{N}_.$-]*)\s*\}\}/gu)) {
+        const name = match[1]?.trim()
+        if (name) found.add(name)
+    }
+
+    for (const match of text.matchAll(/(^|[^{])\{\s*([$\p{L}_][\p{L}\p{N}_.$-]*)\s*\}(?!\})/gu)) {
+        const name = match[2]?.trim()
+        if (name) found.add(name)
+    }
+
+    return [...found]
+}
+
+function expandVariableAliases(name: string): string[] {
+    const trimmed = name.trim()
+    if (!trimmed) return []
+    if (trimmed.startsWith('$') && trimmed.length > 1) return [trimmed, trimmed.slice(1)]
+    return [trimmed]
+}
+
+function normalizeParameterVariableList(values: unknown[]): Array<{ name: string; [key: string]: unknown }> {
+    const normalized: Array<{ name: string; [key: string]: unknown }> = []
+    for (const value of values) {
+        if (typeof value === 'string' && value.trim()) {
+            normalized.push({ name: value.trim(), defaultValue: '' })
+            continue
+        }
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+            const rawName = (value as Record<string, unknown>).name
+            const name = typeof rawName === 'string' ? rawName.trim() : ''
+            if (!name) continue
+            normalized.push({
+                ...(value as Record<string, unknown>),
+                name,
+                defaultValue:
+                    typeof (value as Record<string, unknown>).defaultValue === 'string'
+                        ? String((value as Record<string, unknown>).defaultValue)
+                        : '',
+            })
+        }
+    }
+    return normalized
+}
+
+function mergeParameterVariables(
+    existing: Array<{ name: string; [key: string]: unknown }>,
+    inferred: Array<{ name: string; defaultValue: string }>
+): Array<{ name: string; [key: string]: unknown }> {
+    const byName = new Map<string, { name: string; [key: string]: unknown }>()
+    for (const item of existing) byName.set(item.name, item)
+    for (const item of inferred) {
+        if (!byName.has(item.name)) byName.set(item.name, item)
+    }
+    return [...byName.values()].sort((left, right) => left.name.localeCompare(right.name))
+}
+
+function normalizeStructuredValue(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map((item) => normalizeStructuredValue(item))
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(
+            Object.entries(value as Record<string, unknown>)
+                .sort(([left], [right]) => left.localeCompare(right))
+                .map(([key, entry]) => [key, normalizeStructuredValue(entry)])
+        )
+    }
+    return value
 }
 
 function safeString(value: unknown): string | undefined {
