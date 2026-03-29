@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { ZephyrPublishPreview, ZephyrPublishPreviewItem, ZephyrPublishResult } from '@core/zephyrPublish'
+import type { ZephyrPublishPreview, ZephyrPublishPreviewItem, ZephyrPublishResult } from '@app/sync'
 import {
     PreviewAlert,
     PreviewBadge,

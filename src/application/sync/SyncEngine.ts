@@ -1,7 +1,7 @@
 import type { ProviderTest, ITestProvider, PushOptions } from '@providers/types'
 import { fromProviderPayload, toProviderPayload } from '@providers/mappers'
-import type { ProviderKind, RootState, TestCase, TestCaseLink } from './domain'
-import { buildExport } from './export'
+import type { ProviderKind, RootState, TestCase, TestCaseLink } from '@core/domain'
+import { buildExport } from '@core/export'
 import {
     applyZephyrImportPreview,
     buildZephyrImportPreview,
@@ -16,7 +16,7 @@ import {
     type ZephyrPublishPreview,
     type ZephyrPublishResult,
 } from './zephyrPublish'
-import { findNode, isFolder } from './tree'
+import { findNode, isFolder } from '@core/tree'
 
 export class SyncEngine {
     constructor(private providers: Record<ProviderKind, ITestProvider>) {}

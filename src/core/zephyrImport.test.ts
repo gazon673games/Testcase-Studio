@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mkStep, mkTest, normalizeTestCase } from './domain'
-import { buildImportManagedSignature } from './zephyrImport'
+import { buildImportManagedSignature } from '@app/sync'
 
 describe('buildImportManagedSignature', () => {
     it('includes shared refs, step attachments, and blocks in the import baseline', () => {

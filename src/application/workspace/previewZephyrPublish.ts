@@ -1,6 +1,5 @@
 import type { RootState } from '@core/domain'
-import { SyncEngine } from '@core/syncEngine'
-import type { ZephyrPublishPreview } from '@core/zephyrPublish'
+import { SyncEngine, type ZephyrPublishPreview } from '@app/sync'
 import { getPublishSelection } from './queries'
 
 export async function previewZephyrPublish(

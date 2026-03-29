@@ -6,7 +6,7 @@ import type {
     ZephyrImportPreviewItem,
     ZephyrImportRequest,
     ZephyrImportStrategy,
-} from '@core/zephyrImport'
+} from '@app/sync'
 import {
     PreviewAlert,
     PreviewBadge,

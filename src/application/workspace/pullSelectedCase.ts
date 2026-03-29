@@ -1,7 +1,6 @@
 import { nowISO, type ID, type RootState, type TestCase } from '@core/domain'
 import { findNode, isFolder } from '@core/tree'
-import { SyncEngine } from '@core/syncEngine'
-import { resolveZephyrExternalId } from '@core/zephyrPublish'
+import { SyncEngine, resolveZephyrExternalId } from '@app/sync'
 import { fromProviderPayload } from '@providers/mappers'
 import { getSelectedNode } from './queries'
 

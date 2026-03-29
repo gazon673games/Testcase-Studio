@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildZephyrPublishPayload, buildZephyrPublishPreview } from './zephyrPublish'
+import { buildZephyrPublishPayload, buildZephyrPublishPreview } from '@app/sync'
 import { mkFolder, mkStep, mkTest, type RootState } from './domain'
 import type { ProviderTest } from '@providers/types'
 

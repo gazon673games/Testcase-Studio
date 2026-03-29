@@ -1,6 +1,6 @@
-import { SyncEngine } from '@core/syncEngine'
+import { SyncEngine } from '@app/sync'
 import type { RootState } from '@core/domain'
-import type { ZephyrImportApplyResult, ZephyrImportPreview } from '@core/zephyrImport'
+import type { ZephyrImportApplyResult, ZephyrImportPreview } from '@app/sync'
 
 export async function applyZephyrImport(
     state: RootState | null,

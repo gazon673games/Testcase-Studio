@@ -8,9 +8,9 @@ import {
     type TestCase,
     type TestCaseLink,
     type TestMeta,
-} from './domain'
-import { buildPreviewStepDiffRows, summarizePreviewSteps, summarizePreviewText, type PreviewStepDiffRow } from './previewDiff'
-import { findNode, findParentFolder, insertChild, isFolder, mapTests, moveNode as moveTreeNode } from './tree'
+} from '@core/domain'
+import { buildPreviewStepDiffRows, summarizePreviewSteps, summarizePreviewText, type PreviewStepDiffRow } from '@core/previewDiff'
+import { findNode, findParentFolder, insertChild, isFolder, mapTests, moveNode as moveTreeNode } from '@core/tree'
 import { fromProviderPayload } from '@providers/mappers'
 import type { ProviderTest } from '@providers/types'
 import { translate } from '@shared/i18n'

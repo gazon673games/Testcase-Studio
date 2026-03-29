@@ -11,6 +11,7 @@ import {
     pullSelectedCase,
     saveWorkspace as saveWorkspaceUseCase,
 } from '@app/workspace'
+import { SyncEngine, type ZephyrImportPreview, type ZephyrImportRequest, type ZephyrPublishPreview, type ZephyrPublishResult } from '@app/sync'
 import {
     mkFolder,
     mkShared,
@@ -33,12 +34,6 @@ import {
     mapTests,
     moveNode as moveTreeNode,
 } from '@core/tree'
-import { SyncEngine } from '@core/syncEngine'
-import {
-    type ZephyrImportPreview,
-    type ZephyrImportRequest,
-} from '@core/zephyrImport'
-import { type ZephyrPublishPreview, type ZephyrPublishResult } from '@core/zephyrPublish'
 import { ZephyrHttpProvider } from '@providers/zephyr.http'
 import { AllureStubProvider } from '@providers/allure.stub'
 import { translate } from '@shared/i18n'

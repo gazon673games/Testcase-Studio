@@ -1,6 +1,6 @@
 import type { Folder, ID, RootState, TestCase } from '@core/domain'
 import { findNode, findParentFolder, isFolder, mapTests } from '@core/tree'
-import { describeFolderPath } from '@core/zephyrImport'
+import { describeFolderPath } from '@app/sync'
 
 export type WorkspaceNode = Folder | TestCase
 
