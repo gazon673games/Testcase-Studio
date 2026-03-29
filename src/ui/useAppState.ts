@@ -1,60 +1,39 @@
 import * as React from 'react'
 import {
+    addFolderAt as addFolderAtCommand,
+    addFolderFromSelection,
+    addSharedStep as addSharedStepCommand,
+    addSharedStepFromStep as addSharedStepFromStepCommand,
+    addTestAt as addTestAtCommand,
+    addTestFromSelection,
+    deleteNodeById as deleteNodeByIdCommand,
+    deleteSharedStep as deleteSharedStepCommand,
     applyZephyrImport as applyZephyrImportUseCase,
     getImportDestination as getImportDestinationQuery,
     getPublishSelection as getPublishSelectionQuery,
     getSelectedNode,
+    insertSharedReference as insertSharedReferenceCommand,
     loadWorkspaceState,
+    moveWorkspaceNode,
     previewZephyrImport as previewZephyrImportUseCase,
     previewZephyrPublish as previewZephyrPublishUseCase,
     publishZephyrPreview as publishZephyrPreviewUseCase,
     pullSelectedCase,
+    removeSelectedNode,
+    renameWorkspaceNode,
     saveWorkspace as saveWorkspaceUseCase,
+    updateSharedStep as updateSharedStepCommand,
+    updateTestCase,
 } from '@app/workspace'
 import { SyncEngine, type ZephyrImportPreview, type ZephyrImportRequest, type ZephyrPublishPreview, type ZephyrPublishResult } from '@app/sync'
-import {
-    mkFolder,
-    mkShared,
-    mkStep,
-    mkTest,
-    nowISO,
-    type Folder,
-    type ID,
-    type RootState,
-    type SharedStep,
-    type Step,
-    type TestCase,
-} from '@core/domain'
-import {
-    deleteNode,
-    findNode,
-    findParentFolder,
-    insertChild,
-    isFolder,
-    mapTests,
-    moveNode as moveTreeNode,
-} from '@core/tree'
+import { type Folder, type ID, type RootState, type SharedStep, type Step, type TestCase } from '@core/domain'
+import { isFolder, mapTests } from '@core/tree'
 import { ZephyrHttpProvider } from '@providers/zephyr.http'
 import { AllureStubProvider } from '@providers/allure.stub'
 import { translate } from '@shared/i18n'
 
 type Node = Folder | TestCase
 type SyncAllResult = { status: 'ok'; count: number }
-
-function mkSharedPlaceholder(sharedId: string): Step {
-    return {
-        id: crypto.randomUUID(),
-        action: '',
-        data: '',
-        expected: '',
-        text: '',
-        raw: { action: '', data: '', expected: '' },
-        internal: { parts: { action: [], data: [], expected: [] } },
-        subSteps: [],
-        attachments: [],
-        usesShared: sharedId,
-    }
-}
 
 export function useAppState() {
     const [state, setState] = React.useState<RootState | null>(null)
@@ -123,98 +102,70 @@ export function useAppState() {
 
     async function addFolderAt(parentId: ID) {
         if (!state) return
-        const next = structuredClone(state)
-        const folder = mkFolder(translate('defaults.newFolder'))
-        insertChild(next.root, parentId, folder)
-        await persist(next)
-        setSelectedId(folder.id)
+        const result = addFolderAtCommand(state, parentId, translate('defaults.newFolder'))
+        await persist(result.nextState)
+        if (result.selectedId) setSelectedId(result.selectedId)
     }
 
     async function addTestAt(parentId: ID) {
         if (!state) return
-        const test = mkTest(translate('defaults.newCase'), '')
-        const first = mkStep(translate('defaults.firstStep'), '', '')
-        test.steps.push(first)
-
-        const next = structuredClone(state)
-        insertChild(next.root, parentId, test)
-        await persist(next)
-        markDirty([test.id])
-        setSelectedId(test.id)
-        setFocusStepId(first.id)
+        const result = addTestAtCommand(state, parentId, translate('defaults.newCase'), translate('defaults.firstStep'))
+        await persist(result.nextState)
+        markDirty(result.dirtyIds)
+        if (result.selectedId) setSelectedId(result.selectedId)
+        if (result.focusStepId) setFocusStepId(result.focusStepId)
     }
 
     async function addFolder() {
         if (!state) return
-        const selected = getSelected()
-        const parentFolder =
-            !selected
-                ? state.root
-                : isFolder(selected)
-                    ? selected
-                    : findParentFolder(state.root, selected.id) ?? state.root
-        await addFolderAt(parentFolder.id)
+        const result = addFolderFromSelection(state, selectedId, translate('defaults.newFolder'))
+        await persist(result.nextState)
+        if (result.selectedId) setSelectedId(result.selectedId)
     }
 
     async function addTest() {
         if (!state) return
-        const selected = getSelected()
-        const parentFolder =
-            !selected
-                ? state.root
-                : isFolder(selected)
-                    ? selected
-                    : findParentFolder(state.root, selected.id) ?? state.root
-        await addTestAt(parentFolder.id)
+        const result = addTestFromSelection(state, selectedId, translate('defaults.newCase'), translate('defaults.firstStep'))
+        await persist(result.nextState)
+        markDirty(result.dirtyIds)
+        if (result.selectedId) setSelectedId(result.selectedId)
+        if (result.focusStepId) setFocusStepId(result.focusStepId)
     }
 
     async function removeSelected() {
-        if (!state || !selectedId || selectedId === state.root.id) return
-        const next = structuredClone(state)
-        if (!deleteNode(next.root, selectedId)) return
-
-        await persist(next)
-        setSelectedId(next.root.id)
-        setFocusStepId(null)
+        if (!state) return
+        const result = removeSelectedNode(state, selectedId)
+        if (!result) return
+        await persist(result.nextState)
+        if (result.selectedId !== undefined) setSelectedId(result.selectedId)
+        if (result.focusStepId !== undefined) setFocusStepId(result.focusStepId)
     }
 
     async function renameNode(id: ID, newName: string) {
         if (!state) return
-        const next = structuredClone(state)
-        const node = findNode(next.root, id)
-        if (!node) return
-
-        if (isFolder(node)) node.name = newName
-        else {
-            node.name = newName
-            node.updatedAt = nowISO()
-            markDirty([node.id])
-        }
-
-        await persist(next)
+        const result = renameWorkspaceNode(state, id, newName)
+        if (!result) return
+        await persist(result.nextState)
+        markDirty(result.dirtyIds)
     }
 
     async function deleteNodeById(id: ID) {
-        if (!state || id === state.root.id) return
-        const next = structuredClone(state)
-        if (!deleteNode(next.root, id)) return
-
-        await persist(next)
-        if (selectedId === id) {
-            setSelectedId(next.root.id)
-            setFocusStepId(null)
-        }
+        if (!state) return
+        const result = deleteNodeByIdCommand(state, id, selectedId)
+        if (!result) return
+        await persist(result.nextState)
+        if (result.selectedId !== undefined) setSelectedId(result.selectedId)
+        if (result.focusStepId !== undefined) setFocusStepId(result.focusStepId)
     }
 
     async function moveNode(nodeId: ID, targetFolderId: ID) {
         if (!state) return false
-        const next = structuredClone(state)
-        const moved = moveTreeNode(next.root, nodeId, targetFolderId)
-        if (moved) {
-            await persist(next)
-            setSelectedId(nodeId)
+        const result = moveWorkspaceNode(state, nodeId, targetFolderId)
+        if (result.moved) {
+            await persist(result.nextState)
+            if (result.selectedId) setSelectedId(result.selectedId)
         }
-        return moved
+        return result.moved
     }
 
     async function save() {
@@ -227,70 +178,46 @@ export function useAppState() {
         patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments' | 'links'>>
     ) {
         if (!state) return
-        const next = structuredClone(state)
-        const node = findNode(next.root, testId) as TestCase | null
-        if (!node || isFolder(node as any)) return
-
-        Object.assign(node, patch)
-        node.updatedAt = nowISO()
-        await persist(next)
-        markDirty([testId])
+        const result = updateTestCase(state, testId, patch)
+        if (!result) return
+        await persist(result.nextState)
+        markDirty(result.dirtyIds)
     }
 
     async function addSharedStep(name = translate('defaults.sharedStep'), steps: Step[] = []) {
         if (!state) return null
-        const next = structuredClone(state)
-        const shared = mkShared(name, steps.length ? structuredClone(steps) : [mkStep()])
-        next.sharedSteps.push(shared)
-        await persist(next)
-        return shared.id
+        const result = addSharedStepCommand(state, name, steps)
+        await persist(result.nextState)
+        return result.sharedId
     }
 
     async function addSharedStepFromStep(step: Step, name?: string) {
-        const baseName = (step.action || step.text || translate('defaults.sharedStep')).trim() || translate('defaults.sharedStep')
-        return addSharedStep(name ?? baseName, [structuredClone(step)])
+        if (!state) return null
+        const result = addSharedStepFromStepCommand(state, step, translate('defaults.sharedStep'), name)
+        await persist(result.nextState)
+        return result.sharedId
     }
 
     async function updateSharedStep(sharedId: string, patch: Partial<Pick<SharedStep, 'name' | 'steps'>>) {
         if (!state) return
-        const next = structuredClone(state)
-        const shared = next.sharedSteps.find((item) => item.id === sharedId)
-        if (!shared) return
-
-        if (typeof patch.name === 'string') shared.name = patch.name
-        if (Array.isArray(patch.steps)) shared.steps = structuredClone(patch.steps)
-        shared.updatedAt = nowISO()
-        await persist(next)
+        const result = updateSharedStepCommand(state, sharedId, patch)
+        if (!result) return
+        await persist(result.nextState)
     }
 
     async function deleteSharedStep(sharedId: string) {
         if (!state) return
-        const next = structuredClone(state)
-        next.sharedSteps = next.sharedSteps.filter((item) => item.id !== sharedId)
-
-        for (const test of mapTests(next.root)) {
-            const beforeLength = test.steps.length
-            test.steps = test.steps.filter((step) => step.usesShared !== sharedId)
-            if (test.steps.length !== beforeLength) {
-                test.updatedAt = nowISO()
-                markDirty([test.id])
-            }
-        }
-
-        await persist(next)
+        const result = deleteSharedStepCommand(state, sharedId)
+        await persist(result.nextState)
+        markDirty(result.dirtyIds)
     }
 
     async function insertSharedReference(testId: string, sharedId: string, afterIndex?: number) {
         if (!state) return
-        const next = structuredClone(state)
-        const node = findNode(next.root, testId) as TestCase | null
-        if (!node || isFolder(node as any)) return
-
-        const insertAt = typeof afterIndex === 'number' ? afterIndex + 1 : node.steps.length
-        node.steps.splice(insertAt, 0, mkSharedPlaceholder(sharedId))
-        node.updatedAt = nowISO()
-        await persist(next)
-        markDirty([testId])
+        const result = insertSharedReferenceCommand(state, testId, sharedId, afterIndex)
+        if (!result) return
+        await persist(result.nextState)
+        markDirty(result.dirtyIds)
     }
 
     async function pull() {

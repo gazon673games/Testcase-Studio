@@ -1,4 +1,5 @@
 export * from './applyZephyrImport'
+export * from './commands'
 export * from './previewZephyrImport'
 export * from './previewZephyrPublish'
 export * from './publishZephyrPreview'
