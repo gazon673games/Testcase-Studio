@@ -44,13 +44,17 @@ export interface ResolvedWikiRef {
     preview: string
     label: string
     brokenReason?: string
-    brokenReasonCode?: 'source-ambiguous' | 'source-missing' | 'step-missing' | 'part-missing' | 'field-empty'
+    brokenReasonCode?: 'source-ambiguous' | 'source-missing' | 'step-missing' | 'part-missing' | 'field-empty' | 'cycle-detected'
 }
 
 export type ResolveRefsMode = 'plain' | 'html'
 
 export interface ResolveRefsInTextOptions {
     mode?: ResolveRefsMode
+}
+
+type ResolveContext = {
+    stack: string[]
 }
 
 export interface SharedUsage {
@@ -140,6 +144,7 @@ export function formatResolvedRefBrokenReason(
             | 'refs.broken.stepMissing'
             | 'refs.broken.partMissing'
             | 'refs.broken.fieldEmpty'
+            | 'refs.broken.cycleDetected'
     ) => string
 ): string {
     switch (ref.brokenReasonCode) {
@@ -153,26 +158,43 @@ export function formatResolvedRefBrokenReason(
             return t('refs.broken.partMissing')
         case 'field-empty':
             return t('refs.broken.fieldEmpty')
+        case 'cycle-detected':
+            return t('refs.broken.cycleDetected')
         default:
             return ref.brokenReason ?? t('refs.broken.sourceMissing')
     }
 }
 
 function resolveRefs(src: string, catalog: RefCatalog, options: ResolveRefsInTextOptions = {}): string {
+    return resolveRefsInternal(src, catalog, options, { stack: [] }).text
+}
+
+function resolveRefsInternal(
+    src: string,
+    catalog: RefCatalog,
+    options: ResolveRefsInTextOptions,
+    context: ResolveContext
+): { text: string; broken: ResolvedWikiRef[] } {
     const mode = options.mode ?? 'plain'
-    return src.replace(WIKI_REF_RE, (_full, imageMarker: string | undefined, body: string) => {
+    const broken: ResolvedWikiRef[] = []
+    const text = src.replace(WIKI_REF_RE, (_full, imageMarker: string | undefined, body: string) => {
         const image = Boolean(imageMarker)
         const parsed = parseWikiRefBody(String(body).trim(), image ? `![[${body}]]` : `[[${body}]]`, image)
-        const resolved = resolveWikiRef(parsed, catalog)
-        return resolved.ok ? renderResolvedValue(resolved, mode) : parsed.raw
+        const resolved = resolveWikiRef(parsed, catalog, context)
+        if (!resolved.ok) {
+            broken.push(resolved)
+            return parsed.raw
+        }
+        return renderResolvedValue(resolved, mode)
     })
+    return { text, broken }
 }
 
 export function inspectWikiRefs(src: string, catalog: RefCatalog): ResolvedWikiRef[] {
-    return extractWikiRefs(src).map((parsed) => resolveWikiRef(parsed, catalog))
+    return extractWikiRefs(src).map((parsed) => resolveWikiRef(parsed, catalog, { stack: [] }))
 }
 
-export function resolveWikiRef(parsed: ParsedWikiRef, catalog: RefCatalog): ResolvedWikiRef {
+export function resolveWikiRef(parsed: ParsedWikiRef, catalog: RefCatalog, context: ResolveContext = { stack: [] }): ResolvedWikiRef {
     const base: ResolvedWikiRef = {
         raw: parsed.raw,
         body: parsed.body,
@@ -215,8 +237,21 @@ export function resolveWikiRef(parsed: ParsedWikiRef, catalog: RefCatalog): Reso
         }
     }
 
-    const preview = getStepRefValue(step, parsed.kind, parsed.partId)
-    if (preview == null) {
+    const refKey = buildRefTargetKey(targetOwner.ownerType, targetOwner.owner.id, step.id, parsed.kind, parsed.partId)
+    if (context.stack.includes(refKey) || context.stack.length >= 24) {
+        return {
+            ...base,
+            ownerType: targetOwner.ownerType,
+            ownerId: targetOwner.owner.id,
+            ownerName: targetOwner.owner.name,
+            stepId: step.id,
+            brokenReasonCode: 'cycle-detected',
+            brokenReason: 'Reference cycle detected',
+        }
+    }
+
+    const rawPreview = getStepRefValue(step, parsed.kind, parsed.partId)
+    if (rawPreview == null) {
         return {
             ...base,
             ownerType: targetOwner.ownerType,
@@ -225,6 +260,22 @@ export function resolveWikiRef(parsed: ParsedWikiRef, catalog: RefCatalog): Reso
             stepId: step.id,
             brokenReasonCode: parsed.partId ? 'part-missing' : 'field-empty',
             brokenReason: parsed.partId ? 'Part not found' : 'Field is empty',
+        }
+    }
+
+    const nested = rawPreview.includes('[[')
+        ? resolveRefsInternal(rawPreview, catalog, { mode: 'plain' }, { stack: [...context.stack, refKey] })
+        : { text: rawPreview, broken: [] as ResolvedWikiRef[] }
+    if (nested.broken.length > 0) {
+        const first = nested.broken[0]
+        return {
+            ...base,
+            ownerType: targetOwner.ownerType,
+            ownerId: targetOwner.owner.id,
+            ownerName: targetOwner.owner.name,
+            stepId: step.id,
+            brokenReasonCode: first.brokenReasonCode,
+            brokenReason: first.brokenReason,
         }
     }
 
@@ -237,7 +288,7 @@ export function resolveWikiRef(parsed: ParsedWikiRef, catalog: RefCatalog): Reso
         ownerId: targetOwner.owner.id,
         ownerName: targetOwner.owner.name,
         stepId: step.id,
-        preview,
+        preview: nested.text,
         label: `${labelPrefix}: ${targetOwner.owner.name} -> ${stepTitle}`,
     }
 }
@@ -407,6 +458,16 @@ function normalizeKind(value: string | undefined): RefKind {
     return value === 'data' || value === 'expected' ? value : 'action'
 }
 
+function buildRefTargetKey(
+    ownerType: RefOwnerType,
+    ownerId: string,
+    stepId: string,
+    kind: RefKind,
+    partId?: string
+) {
+    return `${ownerType}:${ownerId}#${stepId}.${kind}${partId ? `@${partId}` : ''}`
+}
+
 function findOwner(parsed: ParsedWikiRef, catalog: RefCatalog): OwnerLookup {
     if (parsed.ownerType === 'test' && parsed.ownerId) {
         const owner = catalog.testsById.get(parsed.ownerId)
@@ -431,7 +492,7 @@ function getStepRefValue(step: Step, kind: RefKind, partId?: string): string | n
         const text = String(part.text ?? '').trim()
         return text.length ? text : null
     }
-    const parts = step.internal?.parts?.[kind] ?? []
+    const parts = (step.internal?.parts?.[kind] ?? []).filter((part) => part.export !== false)
     const topLevel = kind === 'action' ? step.action ?? step.text ?? '' : (step as any)[kind] ?? ''
     const value = parts.length
         ? [String(topLevel ?? '').trim(), ...parts.map((part) => String(part.text ?? '').trim())].filter(Boolean).join('\n')

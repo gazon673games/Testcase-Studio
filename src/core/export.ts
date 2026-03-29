@@ -6,9 +6,10 @@ import type {
     TestCase,
     TestMeta,
 } from './domain'
-import { buildRefCatalog, renderRefsInText, type RefCatalog } from './refs'
+import { buildRefCatalog, formatResolvedRefBrokenReason, inspectWikiRefs, renderRefsInText, type RefCatalog, type ResolvedWikiRef } from './refs'
 import { materializeSharedSteps } from './shared'
 import { mapTests } from './tree'
+import { translate } from '../ui/preferences'
 
 export type ExportStep = {
     action?: string
@@ -26,9 +27,25 @@ export type ExportTest = {
     meta?: TestMeta
 }
 
+export class ExportIntegrityError extends Error {
+    issues: ResolvedWikiRef[]
+
+    constructor(message: string, issues: ResolvedWikiRef[]) {
+        super(message)
+        this.name = 'ExportIntegrityError'
+        this.issues = issues
+    }
+}
+
 function createTextResolver(catalog?: RefCatalog) {
     return (value: string | undefined) => {
         if (!value) return undefined
+        if (catalog) {
+            const issues = inspectWikiRefs(value, catalog).filter((ref) => !ref.ok)
+            if (issues.length > 0) {
+                throw new ExportIntegrityError(buildBrokenRefsMessage(issues), issues)
+            }
+        }
         const resolved = catalog ? renderRefsInText(value, catalog, { mode: 'plain' }) : value
         const trimmed = resolved.trim()
         return trimmed || undefined
@@ -109,4 +126,13 @@ export function buildExport(test: TestCase, state?: RootState): ExportTest {
         attachments: test.attachments,
         meta: resolveMeta(test.meta, resolveText),
     }
+}
+
+function buildBrokenRefsMessage(issues: ResolvedWikiRef[]) {
+    const first = issues[0]
+    const reason = formatResolvedRefBrokenReason(first, translate)
+    return translate('toast.exportBlockedByRefs', {
+        reason,
+        extra: issues.length > 1 ? ` (+${issues.length - 1})` : '',
+    })
 }

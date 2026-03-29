@@ -1,6 +1,6 @@
 import { mdToHtml, looksLikeHtml } from './markdown'
 import { buildPreviewStepDiffRows, summarizePreviewSteps, summarizePreviewText, type PreviewStepDiffRow } from './previewDiff'
-import { buildExport } from './export'
+import { buildExport, ExportIntegrityError } from './export'
 import { buildRefCatalog, renderRefsInText } from './refs'
 import { nowISO, type Attachment, type RootState, type TestCase, type TestMeta } from './domain'
 import { mapTests } from './tree'
@@ -171,12 +171,43 @@ function buildPreviewItem(
     test: TestCase,
     remoteMap: Map<string, ProviderTest | Error>
 ): ZephyrPublishPreviewItem {
-    const payload = buildZephyrPublishPayload(test, state)
+    const t = translate
+    let payload: ProviderTest
+    try {
+        payload = buildZephyrPublishPayload(test, state)
+    } catch (error) {
+        const reason =
+            error instanceof ExportIntegrityError
+                ? error.message
+                : error instanceof Error
+                    ? error.message
+                    : String(error)
+        return {
+            id: test.id,
+            testId: test.id,
+            testName: test.name,
+            status: 'blocked',
+            reason,
+            publish: false,
+            diffs: [],
+            payload: {
+                id: '',
+                name: test.name,
+                description: '',
+                steps: [],
+                attachments: [],
+                updatedAt: nowISO(),
+                extras: {},
+            },
+            attachmentsToUpload: [],
+            attachmentIdsToDelete: [],
+            attachmentWarnings: [],
+        }
+    }
     const externalId = safeString(payload.id)
     const projectKey = safeString(payload.extras?.projectKey)
     const folder = safeString(payload.extras?.folder)
     const localAttachments = collectProviderAttachments(payload)
-    const t = translate
 
     if (!externalId && !projectKey) {
         return {

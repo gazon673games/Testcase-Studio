@@ -225,14 +225,33 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 }
 .md-editor .autocomplete-empty { padding: 8px; color: var(--text-dim); }
 .md-editor .autocomplete-item {
-    padding: 6px 10px;
+    padding: 7px 10px;
     cursor: pointer;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
     user-select: none;
+    display: grid;
+    gap: 2px;
+    min-width: 0;
 }
 .md-editor .autocomplete-item.active { background: var(--accent-bg); }
+.md-editor .autocomplete-item.muted { color: var(--text-dim); }
+.md-editor .autocomplete-item-main {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+.md-editor .autocomplete-item-detail {
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: none;
+    color: var(--text-muted);
+}
+.md-editor .autocomplete-item-detail::-webkit-scrollbar { display: none; }
+.md-editor .autocomplete-item.muted .autocomplete-item-main,
+.md-editor .autocomplete-item.muted .autocomplete-item-detail {
+    color: var(--text-dim);
+}
 
 /* утилита для внешних подписей/лейблов */
 .md-editor .muted { font-size: 12px; color: var(--text-muted); }

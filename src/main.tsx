@@ -85,18 +85,28 @@ function AppShell() {
             return
         }
 
-        const exported = buildExport(node, app.state)
-        const blob = new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
-        const anchor = document.createElement('a')
-        anchor.href = url
-        anchor.download = `test-${node.name || node.id}.json`
-        document.body.appendChild(anchor)
-        anchor.click()
-        document.body.removeChild(anchor)
-        URL.revokeObjectURL(url)
+        try {
+            const exported = buildExport(node, app.state)
+            const blob = new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const anchor = document.createElement('a')
+            anchor.href = url
+            anchor.download = `test-${node.name || node.id}.json`
+            document.body.appendChild(anchor)
+            anchor.click()
+            document.body.removeChild(anchor)
+            URL.revokeObjectURL(url)
 
-        push({ kind: 'success', text: t('toast.caseExported'), ttl: 2500 })
+            push({ kind: 'success', text: t('toast.caseExported'), ttl: 2500 })
+        } catch (error) {
+            push({
+                kind: 'error',
+                text: t('toast.exportFailed', {
+                    message: error instanceof Error ? error.message : String(error),
+                }),
+                ttl: 3500,
+            })
+        }
     }, [app, push, t])
 
     const handleApplyImport = React.useCallback(

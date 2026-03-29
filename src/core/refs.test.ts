@@ -52,6 +52,40 @@ describe('resolveRefsInText', () => {
         expect(resolved.brokenReason).toBe('Source name is ambiguous')
     })
 
+    it('resolves nested references transitively', () => {
+        const final = mkTest('Final case')
+        final.id = 'test-final'
+        const finalStep = mkStep('Resolved tail', '', '')
+        finalStep.id = 'step-final'
+        final.steps = [finalStep]
+
+        const middle = mkTest('Middle case')
+        middle.id = 'test-middle'
+        const middleStep = mkStep(`Before ${makeStepRef('test', final.id, finalStep.id, 'action')}`, '', '')
+        middleStep.action = `Before [[${makeStepRef('test', final.id, finalStep.id, 'action')}]]`
+        middleStep.id = 'step-middle'
+        middle.steps = [middleStep]
+
+        const catalog = buildRefCatalog([middle, final], [])
+        expect(resolveRefsInText(`[[${makeStepRef('test', middle.id, middleStep.id, 'action')}]]`, catalog)).toBe(
+            'Before Resolved tail'
+        )
+    })
+
+    it('marks self-referential refs as broken with cycle detection', () => {
+        const owner = mkTest('Loop case')
+        owner.id = 'test-loop'
+        const step = mkStep('', '', '')
+        step.id = 'step-loop'
+        step.action = `[[${makeStepRef('test', owner.id, step.id, 'action')}]]`
+        owner.steps = [step]
+
+        const [resolved] = inspectWikiRefs(`[[${makeStepRef('test', owner.id, step.id, 'action')}]]`, buildRefCatalog([owner], []))
+
+        expect(resolved.ok).toBe(false)
+        expect(resolved.brokenReasonCode).toBe('cycle-detected')
+    })
+
     it('renders image-style refs as embedded html in html mode', () => {
         const owner = mkTest('Embed case')
         owner.id = 'test-embed'

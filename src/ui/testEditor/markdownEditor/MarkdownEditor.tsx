@@ -294,9 +294,11 @@ function trimText(src: string, limit = 60) {
 type AutoStage = 'owner' | 'step' | 'field' | 'part'
 type AutoItem = {
     label: string
+    detail?: string
     insert: string
     stage: AutoStage
     continues?: boolean
+    muted?: boolean
 }
 
 type OwnerMatch = {
@@ -412,6 +414,7 @@ function makeOwnerSuggestions(
         .slice(0, 10)
         .map((test) => ({
             label: t('markdown.testLabel', { name: test.name }),
+            detail: test.id,
             insert: `id:${test.id}#`,
             stage: 'owner',
             continues: true,
@@ -426,6 +429,7 @@ function makeOwnerSuggestions(
         .slice(0, 10)
         .map((item) => ({
             label: t('markdown.sharedLabel', { name: item.name }),
+            detail: item.id,
             insert: `shared:${item.id}#`,
             stage: 'owner',
             continues: true,
@@ -456,7 +460,8 @@ function makeStepSuggestions(
             const hay = `${idx} ${String(step.id ?? '').toLowerCase()} ${rawBody.toLowerCase()} ${displayBody.toLowerCase()}`
             if (filter && !hay.includes(filter)) return null
             return {
-                label: `#${idx} - ${trimText(displayBody || t('steps.stepNumber', { index: idx }))}`,
+                label: `#${idx}`,
+                detail: displayBody || t('steps.stepNumber', { index: idx }),
                 insert: `${prefix}:${owner.id}#${step.id ?? idx}.`,
                 stage: 'step' as const,
                 continues: true,
@@ -485,13 +490,16 @@ function makeFieldSuggestions(
     return getStepKinds(stepMatch.step, t, resolveDisplayText)
         .map((variant) => {
             const parts = stepMatch.step.internal?.parts?.[variant.kind] ?? []
-            const hay = `${variant.kind} ${variant.label} ${variant.text}`.toLowerCase()
+            const detail = variant.text || t('markdown.emptyValue')
+            const hay = `${variant.kind} ${variant.label} ${detail}`.toLowerCase()
             if (filter && !hay.includes(filter)) return null
             return {
-                label: `${variant.label} - ${trimText(variant.text || getStepBody(stepMatch.step, resolveDisplayText) || variant.label)}`,
+                label: variant.label,
+                detail,
                 insert: `${ownerMatch.prefix}:${ownerMatch.owner.id}#${stepMatch.step.id ?? stepMatch.index + 1}.${variant.kind}${parts.length > 0 ? '@' : ''}`,
                 stage: 'field' as const,
                 continues: parts.length > 0,
+                muted: !variant.text,
             }
         })
         .filter((item): item is AutoItem => Boolean(item))
@@ -522,12 +530,15 @@ function makePartSuggestions(
     const baseInsert = `${ownerMatch.prefix}:${ownerMatch.owner.id}#${stepMatch.step.id ?? stepMatch.index + 1}.${kind}`
     const fieldText = getStepKinds(stepMatch.step, t, resolveDisplayText).find((item) => item.kind === kind)?.text ?? ''
     const items: AutoItem[] = []
+    const wholeFieldDetail = fieldText || t('markdown.emptyValue')
 
-    if (!filter || `${t('markdown.wholeField')} ${kind} ${fieldText}`.toLowerCase().includes(filter)) {
+    if (!filter || `${t('markdown.wholeField')} ${kind} ${wholeFieldDetail}`.toLowerCase().includes(filter)) {
         items.push({
-            label: `${t('markdown.wholeField')} - ${trimText(fieldText)}`,
+            label: t('markdown.wholeField'),
+            detail: wholeFieldDetail,
             insert: baseInsert,
             stage: 'part',
+            muted: !fieldText,
         })
     }
 
@@ -536,9 +547,11 @@ function makePartSuggestions(
         const hay = `${kind} part ${partIndex + 1} ${part.text ?? ''} ${displayText}`.toLowerCase()
         if (filter && !hay.includes(filter)) return
         items.push({
-            label: `#${partIndex + 1} - ${trimText(displayText)}`,
+            label: `#${partIndex + 1}`,
+            detail: displayText || t('markdown.emptyValue'),
             insert: `${baseInsert}@${part.id ?? partIndex + 1}`,
             stage: 'part',
+            muted: !displayText,
         })
     })
 
@@ -743,6 +756,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     const [acItems, setAcItems] = React.useState<AutoItem[]>([])
     const [acIndex, setAcIndex] = React.useState(0)
     const [acStage, setAcStage] = React.useState<AutoStage>('owner')
+    const [acHorizontalScroll, setAcHorizontalScroll] = React.useState(0)
     const [anchor, setAnchor] = React.useState<{ top: number; left: number } | null>(null)
     const [range, setRange] = React.useState<{ from: number; to: number } | null>(null)
     const suggestionCatalog = React.useMemo(
@@ -832,6 +846,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         setAcStage(stage)
         setAcItems(items)
         setAcIndex(0)
+        setAcHorizontalScroll(0)
         setAcOpen(items.length > 0)
     }, [allTests, resolveSuggestionText, sharedSteps, t, value])
 
@@ -863,9 +878,17 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         if (e.key === 'ArrowDown') {
             e.preventDefault()
             setAcIndex((current) => Math.min(current + 1, acItems.length - 1))
+            setAcHorizontalScroll(0)
         } else if (e.key === 'ArrowUp') {
             e.preventDefault()
             setAcIndex((current) => Math.max(current - 1, 0))
+            setAcHorizontalScroll(0)
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault()
+            setAcHorizontalScroll((current) => current + 48)
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault()
+            setAcHorizontalScroll((current) => Math.max(0, current - 48))
         } else if (e.key === 'Enter' || e.key === 'Tab') {
             e.preventDefault()
             const item = acItems[acIndex]
@@ -887,7 +910,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     }
 
     function onKeyUp(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-        if (acOpen && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) return
+        if (acOpen && ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Enter', 'Tab', 'Escape'].includes(e.key)) return
         onCursorActivity()
     }
 
@@ -972,6 +995,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                         emptyLabel={t('markdown.noMatches')}
                         items={acItems}
                         index={acIndex}
+                        horizontalScroll={acHorizontalScroll}
                         onPick={applySuggestion}
                         onClose={() => setAcOpen(false)}
                     />
@@ -1031,11 +1055,15 @@ type AutocompleteBoxProps = {
     emptyLabel: string
     items: AutoItem[]
     index: number
+    horizontalScroll: number
     onPick(item: AutoItem): void
     onClose(): void
 }
 
-const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({ top, left, stage, stageLabel, emptyLabel, items, index, onPick, onClose }) => {
+const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({ top, left, stage, stageLabel, emptyLabel, items, index, horizontalScroll, onPick, onClose }) => {
+    const detailRefs = React.useRef<Record<number, HTMLDivElement | null>>({})
+    const itemRefs = React.useRef<Record<number, HTMLDivElement | null>>({})
+
     React.useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose()
@@ -1050,6 +1078,17 @@ const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({ top, left, stage, sta
         return () => window.removeEventListener('scroll', onScroll, true)
     }, [onClose])
 
+    React.useEffect(() => {
+        const detail = detailRefs.current[index]
+        if (!detail) return
+        const maxScroll = Math.max(0, detail.scrollWidth - detail.clientWidth)
+        detail.scrollLeft = Math.min(horizontalScroll, maxScroll)
+    }, [horizontalScroll, index, items])
+
+    React.useEffect(() => {
+        itemRefs.current[index]?.scrollIntoView({ block: 'nearest' })
+    }, [index])
+
     return (
         <div className="autocomplete" style={{ top, left }} role="listbox" aria-label={stageLabel}>
             <div className="autocomplete-stage">{stageLabel}</div>
@@ -1059,16 +1098,29 @@ const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({ top, left, stage, sta
                 items.map((item, itemIndex) => (
                     <div
                         key={`${item.insert}-${itemIndex}`}
+                        ref={(element) => {
+                            itemRefs.current[itemIndex] = element
+                        }}
                         onMouseDown={(e) => {
                             e.preventDefault()
                             onPick(item)
                         }}
-                        className={`autocomplete-item ${itemIndex === index ? 'active' : ''}`}
+                        className={`autocomplete-item ${itemIndex === index ? 'active' : ''}${item.muted ? ' muted' : ''}`}
                         role="option"
                         aria-selected={itemIndex === index}
                         title={item.insert}
                     >
-                        {item.label}
+                        <div className="autocomplete-item-main">{item.label}</div>
+                        {item.detail ? (
+                            <div
+                                ref={(element) => {
+                                    detailRefs.current[itemIndex] = element
+                                }}
+                                className="autocomplete-item-detail"
+                            >
+                                {item.detail}
+                            </div>
+                        ) : null}
                     </div>
                 ))
             )}

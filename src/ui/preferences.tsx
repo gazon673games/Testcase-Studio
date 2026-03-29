@@ -18,6 +18,8 @@ Object.assign(messages.ru, {
     'toast.selectCaseBeforeExport': 'Перед экспортом выберите кейс',
     'toast.exportOnlyForCase': 'Экспорт доступен только для тест-кейса',
     'toast.caseExported': 'Кейс экспортирован в JSON',
+    'toast.exportFailed': 'Не удалось экспортировать кейс: {message}',
+    'toast.exportBlockedByRefs': 'Экспорт заблокирован из-за битых ссылок: {reason}{extra}',
     'toast.pullSuccess': 'Кейс подтянут из Zephyr: {externalId}',
     'toast.pullNoSelection': 'Сначала выберите тест-кейс',
     'toast.pullNoLink': 'У текущего кейса нет Zephyr ID, pull невозможен',
@@ -176,6 +178,8 @@ Object.assign(messages.en, {
     'toast.selectCaseBeforeExport': 'Select a case before export',
     'toast.exportOnlyForCase': 'Export works only for a test case',
     'toast.caseExported': 'Case exported to JSON',
+    'toast.exportFailed': 'Failed to export the case: {message}',
+    'toast.exportBlockedByRefs': 'Export blocked by broken references: {reason}{extra}',
     'toast.pullSuccess': 'Case pulled from Zephyr: {externalId}',
     'toast.pullNoSelection': 'Select a test case first',
     'toast.pullNoLink': 'The current case has no Zephyr ID, pull is unavailable',
@@ -578,6 +582,7 @@ Object.assign(messages.ru, {
     'refs.broken.stepMissing': 'Шаг не найден',
     'refs.broken.partMissing': 'Блок не найден',
     'refs.broken.fieldEmpty': 'Поле пустое',
+    'refs.broken.cycleDetected': 'Обнаружен цикл ссылок',
 
     'markdown.bold': 'Жирный',
     'markdown.italic': 'Курсив',
@@ -589,6 +594,7 @@ Object.assign(messages.ru, {
     'markdown.image': 'Изображение',
     'markdown.openSource': 'Открыть источник',
     'markdown.noMatches': 'Ничего не найдено',
+    'markdown.emptyValue': 'Пусто',
     'markdown.brokenPrefix': 'Битая',
     'markdown.stage.part': '4. Блок',
 })
@@ -602,6 +608,7 @@ Object.assign(messages.en, {
     'refs.broken.stepMissing': 'Step not found',
     'refs.broken.partMissing': 'Block not found',
     'refs.broken.fieldEmpty': 'Field is empty',
+    'refs.broken.cycleDetected': 'Reference cycle detected',
 
     'markdown.bold': 'Bold',
     'markdown.italic': 'Italic',
@@ -613,6 +620,7 @@ Object.assign(messages.en, {
     'markdown.image': 'Image',
     'markdown.openSource': 'Open source',
     'markdown.noMatches': 'No matches',
+    'markdown.emptyValue': 'Empty',
     'markdown.brokenPrefix': 'Broken',
     'markdown.stage.part': '4. Block',
 })
