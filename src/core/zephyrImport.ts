@@ -13,7 +13,7 @@ import { buildPreviewStepDiffRows, summarizePreviewSteps, summarizePreviewText, 
 import { findNode, findParentFolder, insertChild, isFolder, mapTests, moveNode as moveTreeNode } from './tree'
 import { fromProviderPayload } from '@providers/mappers'
 import type { ProviderTest } from '@providers/types'
-import { translate } from '../ui/preferences'
+import { translate } from '@shared/i18n'
 
 export type ZephyrImportMode = 'project' | 'folder' | 'keys'
 export type ZephyrImportStrategy = 'replace' | 'skip' | 'merge-locally-later'

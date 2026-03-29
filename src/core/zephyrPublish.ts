@@ -5,7 +5,7 @@ import { buildRefCatalog, renderRefsInText } from './refs'
 import { nowISO, type Attachment, type RootState, type TestCase, type TestMeta } from './domain'
 import { mapTests } from './tree'
 import type { ProviderStep, ProviderTest } from '@providers/types'
-import { translate } from '../ui/preferences'
+import { translate } from '@shared/i18n'
 
 export type ZephyrPublishStatus = 'create' | 'update' | 'skip' | 'blocked'
 export type ZephyrPublishDiffField =

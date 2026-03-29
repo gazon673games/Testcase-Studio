@@ -1,6 +1,6 @@
 import { mkFolder, mkTest, mkStep, mkShared, nowISO, type RootState } from '@core/domain'
 import { insertChild, deleteNode, mapTests } from '@core/tree'
-import { loadState, saveState } from '@core/storage'
+import { loadWorkspaceState, saveWorkspaceState } from '@app/workspace'
 import { SyncEngine } from '@core/syncEngine'
 import { ZephyrMockProvider } from '@providers/zephyr.mock'
 import { AllureStubProvider } from '@providers/allure.stub'
@@ -8,7 +8,7 @@ import { v4 as uuid } from 'uuid'
 
 export async function runConsoleScript() {
     console.log('--- Console demo starting ---')
-    let state: RootState = await loadState()
+    let state: RootState = await loadWorkspaceState()
     console.log('Loaded state:', JSON.parse(JSON.stringify(state)))
 
     // 1) create initial structure: Folder → Subfolder → Test
@@ -47,7 +47,7 @@ export async function runConsoleScript() {
     loginTest.links.push({ provider: 'zephyr', externalId: zephyrId })
     loginTest.updatedAt = nowISO()
 
-    await saveState(state)
+    await saveWorkspaceState(state)
     console.log('Saved state.')
 
     // 5) set up providers + sync engine
@@ -75,7 +75,7 @@ export async function runConsoleScript() {
     const deleted = deleteNode(state.root, loginTest.id)
     console.log('Deleted local test?', deleted)
 
-    await saveState(state)
+    await saveWorkspaceState(state)
     console.log('State saved again. Open DevTools console to inspect objects.')
     console.log('--- Console demo complete ---')
 }

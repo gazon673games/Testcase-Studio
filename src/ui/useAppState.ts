@@ -1,5 +1,17 @@
 import * as React from 'react'
 import {
+    applyZephyrImport as applyZephyrImportUseCase,
+    getImportDestination as getImportDestinationQuery,
+    getPublishSelection as getPublishSelectionQuery,
+    getSelectedNode,
+    loadWorkspaceState,
+    previewZephyrImport as previewZephyrImportUseCase,
+    previewZephyrPublish as previewZephyrPublishUseCase,
+    publishZephyrPreview as publishZephyrPreviewUseCase,
+    pullSelectedCase,
+    saveWorkspace as saveWorkspaceUseCase,
+} from '@app/workspace'
+import {
     mkFolder,
     mkShared,
     mkStep,
@@ -12,7 +24,6 @@ import {
     type Step,
     type TestCase,
 } from '@core/domain'
-import { loadState, saveState } from '@core/storage'
 import {
     deleteNode,
     findNode,
@@ -24,22 +35,15 @@ import {
 } from '@core/tree'
 import { SyncEngine } from '@core/syncEngine'
 import {
-    describeFolderPath,
-    type ZephyrImportApplyResult,
     type ZephyrImportPreview,
     type ZephyrImportRequest,
 } from '@core/zephyrImport'
-import { resolveZephyrExternalId, type ZephyrPublishPreview, type ZephyrPublishResult } from '@core/zephyrPublish'
+import { type ZephyrPublishPreview, type ZephyrPublishResult } from '@core/zephyrPublish'
 import { ZephyrHttpProvider } from '@providers/zephyr.http'
 import { AllureStubProvider } from '@providers/allure.stub'
-import { fromProviderPayload } from '@providers/mappers'
-import { apiClient } from '@ipc/client'
-import { translate } from './preferences'
+import { translate } from '@shared/i18n'
 
 type Node = Folder | TestCase
-type PullResult =
-    | { status: 'ok'; testId: string; externalId: string }
-    | { status: 'no-selection' | 'not-a-test' | 'no-link' }
 type SyncAllResult = { status: 'ok'; count: number }
 
 function mkSharedPlaceholder(sharedId: string): Step {
@@ -70,7 +74,7 @@ export function useAppState() {
     const sync = React.useMemo(() => new SyncEngine(providers), [providers])
 
     React.useEffect(() => {
-        loadState().then((nextState) => {
+        loadWorkspaceState().then((nextState) => {
             setState(nextState)
             setSelectedId(nextState.root.id)
         })
@@ -78,7 +82,7 @@ export function useAppState() {
 
     async function persist(next: RootState) {
         setState(structuredClone(next))
-        await saveState(next)
+        await saveWorkspaceUseCase(next)
     }
 
     function markDirty(testIds: string[]) {
@@ -106,8 +110,7 @@ export function useAppState() {
     }
 
     function getSelected(): Node | null {
-        if (!state || !selectedId) return null
-        return findNode(state.root, selectedId) as Node | null
+        return getSelectedNode(state, selectedId)
     }
 
     function select(id: ID) {
@@ -116,29 +119,11 @@ export function useAppState() {
     }
 
     function getImportDestination() {
-        if (!state) return { folderId: '', label: translate('defaults.root') }
-        const selected = getSelected()
-        const folder =
-            !selected
-                ? state.root
-                : isFolder(selected)
-                    ? selected
-                    : findParentFolder(state.root, selected.id) ?? state.root
-        return {
-            folderId: folder.id,
-            label: describeFolderPath(state.root, folder.id),
-        }
+        return getImportDestinationQuery(state, selectedId, translate('defaults.root'))
     }
 
     function getPublishSelection() {
-        if (!state) return { label: translate('defaults.root'), tests: [] as TestCase[] }
-        const selected = getSelected()
-        if (!selected) return { label: describeFolderPath(state.root, state.root.id), tests: mapTests(state.root) }
-        if (!isFolder(selected)) return { label: selected.name, tests: [selected] }
-        return {
-            label: describeFolderPath(state.root, selected.id),
-            tests: mapTests(selected),
-        }
+        return getPublishSelectionQuery(state, selectedId, translate('defaults.root'))
     }
 
     async function addFolderAt(parentId: ID) {
@@ -238,10 +223,8 @@ export function useAppState() {
     }
 
     async function save() {
-        if (state) {
-            await saveState(state)
-            clearDirty()
-        }
+        const saved = await saveWorkspaceUseCase(state)
+        if (saved) clearDirty()
     }
 
     async function updateTest(
@@ -315,43 +298,15 @@ export function useAppState() {
         markDirty([testId])
     }
 
-    async function pull(): Promise<PullResult> {
-        if (!state) return { status: 'no-selection' }
-        const node = getSelected()
-        if (!node) return { status: 'no-selection' }
-        if (isFolder(node)) return { status: 'not-a-test' }
-
-        const zephyrExternalId = resolveZephyrExternalId(node)
-        const fallbackLink =
-            zephyrExternalId
-                ? { provider: 'zephyr' as const, externalId: zephyrExternalId }
-                : node.links.find((link) => link.provider === 'allure') ?? node.links[0]
-
-        if (!fallbackLink) return { status: 'no-link' }
-
-        const remote = await sync.pullByLink(fallbackLink)
-
-        const next = structuredClone(state)
-        const target = findNode(next.root, node.id) as TestCase
-        const patch = fromProviderPayload(remote, target.steps)
-
-        target.name = patch.name
-        target.description = patch.description
-        target.steps = patch.steps
-        target.attachments = patch.attachments
-        target.meta = patch.meta
-        target.updatedAt = patch.updatedAt ?? nowISO()
-
-        await persist(next)
-        clearDirty([target.id])
+    async function pull() {
+        const result = await pullSelectedCase(state, selectedId, sync)
+        if (result.status !== 'ok') return result
+        await persist(result.nextState)
+        clearDirty(result.clearedDirtyIds)
         return {
-            status: 'ok',
-            testId: target.id,
-            externalId: zephyrExternalId
-                ?? node.links.find((link) => link.provider === 'zephyr')?.externalId
-                ?? fallbackLink.externalId
-                ?? remote.id
-                ?? '',
+            status: result.status,
+            testId: result.testId,
+            externalId: result.externalId,
         }
     }
 
@@ -375,67 +330,29 @@ export function useAppState() {
     async function previewZephyrImport(
         request: Omit<ZephyrImportRequest, 'destinationFolderId'> & { destinationFolderId?: string }
     ): Promise<ZephyrImportPreview> {
-        if (!state) throw new Error('State is not loaded yet')
-        const destinationFolderId = request.destinationFolderId || getImportDestination().folderId || state.root.id
-        return sync.previewZephyrImport(state, { ...request, destinationFolderId })
+        return previewZephyrImportUseCase(state, selectedId, sync, translate('defaults.root'), request)
     }
 
-    async function applyZephyrImport(preview: ZephyrImportPreview): Promise<ZephyrImportApplyResult> {
-        if (!state) throw new Error('State is not loaded yet')
-        const next = structuredClone(state)
-        const result = sync.applyZephyrImport(next, preview)
-        await persist(next)
-        clearDirty(preview.items.map((item) => item.localTestId ?? ''))
+    async function applyZephyrImportPreview(preview: ZephyrImportPreview) {
+        const { nextState, result, clearedDirtyIds } = await applyZephyrImportUseCase(state, preview, sync)
+        await persist(nextState)
+        clearDirty(clearedDirtyIds)
         return result
     }
 
     async function previewZephyrPublish(): Promise<ZephyrPublishPreview> {
-        if (!state) throw new Error('State is not loaded yet')
-        const selection = getPublishSelection()
-        return sync.previewZephyrPublish(state, selection.tests, selection.label)
+        return previewZephyrPublishUseCase(state, selectedId, sync, translate('defaults.root'))
     }
 
-    async function publishZephyr(preview: ZephyrPublishPreview): Promise<ZephyrPublishResult & {
-        snapshotPath: string
-        logPath: string
-    }> {
-        if (!state) throw new Error('State is not loaded yet')
-        const snapshotPath = await apiClient.writeStateSnapshot(state, 'publish', {
-            selectionLabel: preview.selectionLabel,
-            generatedAt: preview.generatedAt,
-            summary: preview.summary,
-        })
-
-        const next = structuredClone(state)
-        const result = await sync.publishZephyrPreview(next, preview)
-        await persist(next)
-        clearDirty(preview.items.map((item) => item.testId))
-
-        const logPath = await apiClient.writePublishLog({
-            kind: 'zephyr-publish',
-            createdAt: nowISO(),
-            snapshotPath,
-            preview: {
-                selectionLabel: preview.selectionLabel,
-                generatedAt: preview.generatedAt,
-                summary: preview.summary,
-                items: preview.items.map((item) => ({
-                    testId: item.testId,
-                    testName: item.testName,
-                    externalId: item.externalId,
-                    status: item.status,
-                    publish: item.publish,
-                    reason: item.reason,
-                    projectKey: item.projectKey,
-                    folder: item.folder,
-                    diffs: item.diffs,
-                    attachmentWarnings: item.attachmentWarnings,
-                })),
-            },
-            result,
-        })
-
-        return { ...result, snapshotPath, logPath }
+    async function publishZephyr(preview: ZephyrPublishPreview): Promise<ZephyrPublishResult & { snapshotPath: string; logPath: string }> {
+        const outcome = await publishZephyrPreviewUseCase(state, preview, sync)
+        setState(structuredClone(outcome.nextState))
+        clearDirty(outcome.clearedDirtyIds)
+        return {
+            ...outcome.result,
+            snapshotPath: outcome.snapshotPath,
+            logPath: outcome.logPath,
+        }
     }
 
     function openStep(testId: string, stepId: string) {
@@ -464,7 +381,7 @@ export function useAppState() {
         getImportDestination,
         getPublishSelection,
         previewZephyrImport,
-        applyZephyrImport,
+        applyZephyrImport: applyZephyrImportPreview,
         previewZephyrPublish,
         publishZephyr,
         addFolderAt,

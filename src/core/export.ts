@@ -9,7 +9,6 @@ import type {
 import { buildRefCatalog, formatResolvedRefBrokenReason, inspectWikiRefs, renderRefsInText, type RefCatalog, type ResolvedWikiRef } from './refs'
 import { materializeSharedSteps } from './shared'
 import { mapTests } from './tree'
-import { translate } from '../ui/preferences'
 
 export type ExportStep = {
     action?: string
@@ -130,9 +129,23 @@ export function buildExport(test: TestCase, state?: RootState): ExportTest {
 
 function buildBrokenRefsMessage(issues: ResolvedWikiRef[]) {
     const first = issues[0]
-    const reason = formatResolvedRefBrokenReason(first, translate)
-    return translate('toast.exportBlockedByRefs', {
-        reason,
-        extra: issues.length > 1 ? ` (+${issues.length - 1})` : '',
+    const reason = formatResolvedRefBrokenReason(first, (key) => {
+        switch (key) {
+            case 'refs.broken.sourceAmbiguous':
+                return 'Source name is ambiguous'
+            case 'refs.broken.sourceMissing':
+                return 'Source not found'
+            case 'refs.broken.stepMissing':
+                return 'Step not found'
+            case 'refs.broken.partMissing':
+                return 'Block not found'
+            case 'refs.broken.fieldEmpty':
+                return 'Referenced field is empty'
+            case 'refs.broken.cycleDetected':
+                return 'Reference cycle detected'
+            default:
+                return 'Invalid reference'
+        }
     })
+    return `Export blocked by broken refs: ${reason}${issues.length > 1 ? ` (+${issues.length - 1})` : ''}`
 }
