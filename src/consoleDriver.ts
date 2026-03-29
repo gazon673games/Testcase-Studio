@@ -57,7 +57,7 @@ export async function runConsoleScript() {
     })
 
     // 6) pull details from Zephyr mock
-    const pulled = await sync.pullTestDetails(loginTest.links[0])
+    const pulled = await sync.pullByLink(loginTest.links[0])
     console.log('[Zephyr Mock] pulled details:', pulled)
 
     // 7) push local test to Zephyr (upsert)
