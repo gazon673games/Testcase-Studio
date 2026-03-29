@@ -135,17 +135,14 @@ export function PreviewDialog({
 export function PreviewDialogSplit({
     sidebar,
     content,
-    sidebarWidth = 340,
+    className,
 }: {
     sidebar: React.ReactNode
     content: React.ReactNode
-    sidebarWidth?: number
+    className?: string
 }) {
     return (
-        <div
-            className="preview-dialog__split"
-            style={{ gridTemplateColumns: `${sidebarWidth}px minmax(0, 1fr)` }}
-        >
+        <div className={joinClasses('preview-dialog__split', className)}>
             <div className="preview-dialog__sidebar">{sidebar}</div>
             <div className="preview-dialog__content">{content}</div>
         </div>

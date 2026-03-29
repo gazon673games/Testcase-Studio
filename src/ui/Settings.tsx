@@ -2,6 +2,7 @@ import * as React from 'react'
 import { apiClient } from '@ipc/client'
 import type { AtlassianSettings } from '@core/settings'
 import { useUiPreferences, type UiLocale, type UiThemeMode } from './preferences'
+import './Settings.css'
 
 type Props = { open: boolean; onClose(): void }
 
@@ -89,23 +90,30 @@ export function SettingsModal({ open, onClose }: Props) {
     if (!open) return null
 
     return (
-        <div style={backdropStyle} onMouseDown={onClose}>
+        <div className="settings-modal__backdrop" onMouseDown={onClose}>
             <div
-                style={modalStyle}
+                className="settings-modal"
                 onMouseDown={(event) => event.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="settings-title"
             >
-                <div style={headerStyle}>
-                    <h3 id="settings-title" style={{ margin: 0 }}>{t('settings.title')}</h3>
-                    <button type="button" onClick={onClose} style={closeButtonStyle} title={t('settings.close')}>
+                <div className="settings-modal__header">
+                    <h3 id="settings-title" className="settings-modal__title">
+                        {t('settings.title')}
+                    </h3>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="settings-modal__close"
+                        title={t('settings.close')}
+                    >
                         x
                     </button>
                 </div>
 
-                <div style={bodyStyle}>
-                    <div style={sidebarStyle}>
+                <div className="settings-modal__body">
+                    <div className="settings-modal__sidebar">
                         <TabButton active={tab === 'atlassian'} onClick={() => setTab('atlassian')}>
                             {t('settings.tab.atlassian')}
                         </TabButton>
@@ -114,14 +122,14 @@ export function SettingsModal({ open, onClose }: Props) {
                         </TabButton>
                     </div>
 
-                    <div style={contentAreaStyle}>
-                        <div style={cardStyle}>
+                    <div className="settings-modal__content">
+                        <div className="settings-modal__card">
                             {tab === 'atlassian' ? (
                                 loading ? (
                                     <div>{t('settings.loading')}</div>
                                 ) : (
-                                    <form onSubmit={save} style={formStyle}>
-                                        <h4 style={sectionTitleStyle}>{t('settings.atlassianTitle')}</h4>
+                                    <form onSubmit={save} className="settings-modal__form">
+                                        <h4 className="settings-modal__section-title">{t('settings.atlassianTitle')}</h4>
                                         {saved === 'ok' ? <Alert tone="ok">{t('settings.saved')}</Alert> : null}
                                         {saved === 'err' ? <Alert tone="error">{t('settings.saveError')}</Alert> : null}
 
@@ -129,7 +137,7 @@ export function SettingsModal({ open, onClose }: Props) {
                                             <input
                                                 value={baseUrl}
                                                 onChange={(event) => setBaseUrl(event.target.value)}
-                                                style={inputStyle}
+                                                className="settings-modal__input"
                                                 placeholder="https://jira.mycompany.com"
                                                 autoComplete="url"
                                             />
@@ -140,7 +148,7 @@ export function SettingsModal({ open, onClose }: Props) {
                                                 ref={loginRef}
                                                 value={login}
                                                 onChange={(event) => setLogin(event.target.value)}
-                                                style={inputStyle}
+                                                className="settings-modal__input"
                                                 autoComplete="username"
                                             />
                                         </Field>
@@ -149,16 +157,20 @@ export function SettingsModal({ open, onClose }: Props) {
                                             label={(
                                                 <>
                                                     {t('settings.password')}
-                                                    {hasSecret ? <span style={chipStyle}>{t('settings.passwordStored')}</span> : null}
+                                                    {hasSecret ? (
+                                                        <span className="settings-modal__chip">
+                                                            {t('settings.passwordStored')}
+                                                        </span>
+                                                    ) : null}
                                                 </>
                                             )}
                                         >
-                                            <div style={{ position: 'relative' }}>
+                                            <div className="settings-modal__secret-field">
                                                 <input
                                                     ref={secretRef}
                                                     value={secret}
                                                     onChange={(event) => setSecret(event.target.value)}
-                                                    style={inputStyle}
+                                                    className="settings-modal__input"
                                                     placeholder={hasSecret ? t('settings.passwordPlaceholder') : ''}
                                                     type={showSecret ? 'text' : 'password'}
                                                     autoComplete="current-password"
@@ -166,7 +178,7 @@ export function SettingsModal({ open, onClose }: Props) {
                                                 <button
                                                     type="button"
                                                     onClick={toggleShowSecret}
-                                                    style={eyeButtonStyle}
+                                                    className="settings-modal__secret-toggle"
                                                     aria-label={showSecret ? t('settings.hide') : t('settings.show')}
                                                     title={showSecret ? t('settings.hidePassword') : t('settings.showPassword')}
                                                 >
@@ -177,46 +189,58 @@ export function SettingsModal({ open, onClose }: Props) {
 
                                         <Alert tone="info">{t('settings.securityHint')}</Alert>
 
-                                        <div style={actionRowStyle}>
-                                            <button type="submit" disabled={!canSave} style={{ ...primaryButtonStyle, opacity: canSave ? 1 : 0.6 }}>
+                                        <div className="settings-modal__actions">
+                                            <button
+                                                type="submit"
+                                                disabled={!canSave}
+                                                className="settings-modal__button settings-modal__button--primary"
+                                            >
                                                 {t('settings.save')}
                                             </button>
-                                            <button type="button" onClick={onClose} style={secondaryButtonStyle}>
+                                            <button
+                                                type="button"
+                                                onClick={onClose}
+                                                className="settings-modal__button settings-modal__button--secondary"
+                                            >
                                                 {t('settings.close')}
                                             </button>
                                         </div>
                                     </form>
                                 )
                             ) : (
-                                <div style={formStyle}>
-                                    <h4 style={sectionTitleStyle}>{t('settings.appearanceTitle')}</h4>
+                                <div className="settings-modal__form">
+                                    <h4 className="settings-modal__section-title">{t('settings.appearanceTitle')}</h4>
 
                                     <Field label={t('settings.language')}>
                                         <select
                                             value={locale}
                                             onChange={(event) => setLocale(event.target.value as UiLocale)}
-                                            style={inputStyle}
+                                            className="settings-modal__input"
                                         >
                                             <option value="ru">{t('settings.language.ru')}</option>
                                             <option value="en">{t('settings.language.en')}</option>
                                         </select>
-                                        <div style={hintStyle}>{t('settings.languageHint')}</div>
+                                        <div className="settings-modal__hint">{t('settings.languageHint')}</div>
                                     </Field>
 
                                     <Field label={t('settings.theme')}>
                                         <select
                                             value={themeMode}
                                             onChange={(event) => setThemeMode(event.target.value as UiThemeMode)}
-                                            style={inputStyle}
+                                            className="settings-modal__input"
                                         >
                                             <option value="dark">{t('settings.theme.dark')}</option>
                                             <option value="light">{t('settings.theme.light')}</option>
                                         </select>
-                                        <div style={hintStyle}>{t('settings.themeHint')}</div>
+                                        <div className="settings-modal__hint">{t('settings.themeHint')}</div>
                                     </Field>
 
-                                    <div style={actionRowStyle}>
-                                        <button type="button" onClick={onClose} style={primaryButtonStyle}>
+                                    <div className="settings-modal__actions">
+                                        <button
+                                            type="button"
+                                            onClick={onClose}
+                                            className="settings-modal__button settings-modal__button--primary"
+                                        >
                                             {t('settings.close')}
                                         </button>
                                     </div>
@@ -232,8 +256,8 @@ export function SettingsModal({ open, onClose }: Props) {
 
 function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
     return (
-        <label style={fieldStyle}>
-            <div style={labelStyle}>{label}</div>
+        <label className="settings-modal__field">
+            <div className="settings-modal__label">{label}</div>
             {children}
         </label>
     )
@@ -249,198 +273,16 @@ function TabButton({
     onClick(): void
 }) {
     return (
-        <button type="button" onClick={onClick} style={{ ...tabButtonStyle, ...(active ? tabButtonActiveStyle : null) }}>
+        <button
+            type="button"
+            onClick={onClick}
+            className={`settings-modal__tab${active ? ' settings-modal__tab--active' : ''}`}
+        >
             {children}
         </button>
     )
 }
 
 function Alert({ tone, children }: { tone: 'ok' | 'error' | 'info'; children: React.ReactNode }) {
-    const styles =
-        tone === 'ok'
-            ? { background: 'var(--success-bg)', border: '1px solid var(--success-border)', color: 'var(--success-text)' }
-            : tone === 'error'
-                ? { background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger-text)' }
-                : { background: 'var(--info-bg)', border: '1px solid var(--info-border)', color: 'var(--info-text)' }
-
-    return <div style={{ ...alertStyle, ...styles }}>{children}</div>
-}
-
-const backdropStyle: React.CSSProperties = {
-    position: 'fixed',
-    inset: 0,
-    background: 'var(--bg-overlay-strong)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 9999,
-}
-
-const modalStyle: React.CSSProperties = {
-    width: 'min(960px, 86vw)',
-    height: 'min(760px, 80vh)',
-    background: 'var(--bg-elevated)',
-    border: '1px solid var(--border)',
-    borderRadius: 16,
-    boxShadow: 'var(--shadow-strong)',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-    color: 'var(--text)',
-}
-
-const headerStyle: React.CSSProperties = {
-    padding: '12px 16px',
-    borderBottom: '1px solid var(--border-soft)',
-    display: 'flex',
-    alignItems: 'center',
-}
-
-const closeButtonStyle: React.CSSProperties = {
-    marginLeft: 'auto',
-    border: '1px solid var(--border)',
-    background: 'var(--bg-soft)',
-    color: 'var(--text)',
-    borderRadius: 10,
-    padding: '6px 10px',
-    cursor: 'pointer',
-}
-
-const bodyStyle: React.CSSProperties = {
-    flex: 1,
-    display: 'grid',
-    gridTemplateColumns: '220px 1fr',
-    minHeight: 0,
-}
-
-const sidebarStyle: React.CSSProperties = {
-    borderRight: '1px solid var(--border-soft)',
-    padding: 10,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    background: 'var(--bg-soft)',
-}
-
-const tabButtonStyle: React.CSSProperties = {
-    textAlign: 'left',
-    padding: '10px 12px',
-    borderRadius: 10,
-    border: '1px solid transparent',
-    background: 'transparent',
-    color: 'var(--text)',
-    cursor: 'pointer',
-    fontWeight: 600,
-}
-
-const tabButtonActiveStyle: React.CSSProperties = {
-    background: 'var(--accent-bg)',
-    borderColor: 'var(--accent-border)',
-    color: 'var(--accent-text)',
-}
-
-const contentAreaStyle: React.CSSProperties = {
-    padding: 20,
-    overflow: 'auto',
-    background: 'var(--bg)',
-}
-
-const cardStyle: React.CSSProperties = {
-    maxWidth: 820,
-    background: 'var(--bg-elevated)',
-    border: '1px solid var(--border)',
-    borderRadius: 16,
-    padding: 20,
-    boxShadow: 'var(--shadow-soft)',
-}
-
-const formStyle: React.CSSProperties = {
-    display: 'grid',
-    gap: 14,
-}
-
-const sectionTitleStyle: React.CSSProperties = {
-    margin: 0,
-    fontSize: 18,
-}
-
-const fieldStyle: React.CSSProperties = {
-    display: 'grid',
-    gap: 6,
-}
-
-const labelStyle: React.CSSProperties = {
-    fontSize: 12,
-    fontWeight: 700,
-    color: 'var(--text-muted)',
-}
-
-const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '9px 11px',
-    border: '1px solid var(--border)',
-    borderRadius: 10,
-    background: 'var(--bg-elevated)',
-    color: 'var(--text)',
-    outline: 'none',
-}
-
-const hintStyle: React.CSSProperties = {
-    fontSize: 12,
-    lineHeight: 1.5,
-    color: 'var(--text-muted)',
-}
-
-const chipStyle: React.CSSProperties = {
-    marginLeft: 8,
-    color: 'var(--success-text)',
-    background: 'var(--success-bg)',
-    border: '1px solid var(--success-border)',
-    padding: '0 6px',
-    borderRadius: 999,
-    fontSize: 12,
-}
-
-const eyeButtonStyle: React.CSSProperties = {
-    position: 'absolute',
-    right: 8,
-    top: '50%',
-    transform: 'translateY(-50%)',
-    border: 'none',
-    background: 'transparent',
-    color: 'var(--text-muted)',
-    cursor: 'pointer',
-}
-
-const alertStyle: React.CSSProperties = {
-    padding: '10px 12px',
-    borderRadius: 10,
-    fontSize: 13,
-    lineHeight: 1.5,
-}
-
-const actionRowStyle: React.CSSProperties = {
-    display: 'flex',
-    gap: 8,
-    flexWrap: 'wrap',
-}
-
-const primaryButtonStyle: React.CSSProperties = {
-    border: '1px solid var(--accent-border)',
-    background: 'var(--accent-bg)',
-    color: 'var(--accent-text)',
-    borderRadius: 10,
-    padding: '9px 14px',
-    fontWeight: 700,
-    cursor: 'pointer',
-}
-
-const secondaryButtonStyle: React.CSSProperties = {
-    border: '1px solid var(--border)',
-    background: 'var(--bg-elevated)',
-    color: 'var(--text)',
-    borderRadius: 10,
-    padding: '9px 14px',
-    fontWeight: 600,
-    cursor: 'pointer',
+    return <div className={`settings-modal__alert settings-modal__alert--${tone}`}>{children}</div>
 }

@@ -1,0 +1,329 @@
+.app-shell {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: system-ui;
+}
+
+.app-shell__loading,
+.app-shell__editor-loading {
+    padding: 16px;
+}
+
+.workspace-pane {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(260px, 320px) 1fr;
+    min-height: 0;
+}
+
+.workspace-pane.is-compact {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(210px, 34vh) 1fr;
+}
+
+.workspace-pane__tree {
+    border-right: 1px solid var(--border);
+    overflow: auto;
+    background: var(--bg-soft);
+}
+
+.workspace-pane.is-compact .workspace-pane__tree {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+}
+
+.workspace-pane__content {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+}
+
+.workspace-pane__scroll {
+    height: 100%;
+    overflow: auto;
+}
+
+.scope-overview {
+    padding: 20px;
+    display: grid;
+    gap: 16px;
+    max-width: 920px;
+}
+
+.scope-overview__hero {
+    display: grid;
+    gap: 6px;
+    padding: 18px;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+}
+
+.scope-overview__title {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-strong);
+}
+
+.scope-overview__subtitle {
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.scope-overview__path {
+    color: var(--text-dim);
+    font-size: 13px;
+}
+
+.scope-overview__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.scope-overview__actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+}
+
+.scope-overview__quick-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.overview-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+}
+
+.overview-stat {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-elevated);
+    padding: 14px 16px;
+    display: grid;
+    gap: 4px;
+}
+
+.overview-stat__value {
+    font-size: 30px;
+    line-height: 1;
+    font-weight: 800;
+    color: var(--text-strong);
+}
+
+.overview-stat__hint {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+.overview-card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-elevated);
+    padding: 16px;
+    display: grid;
+    gap: 8px;
+    align-content: start;
+}
+
+.overview-card.tone-info {
+    border-color: var(--accent-border);
+    background: var(--accent-bg);
+}
+
+.overview-card.tone-warn {
+    border-color: var(--warning-border);
+    background: var(--warning-bg);
+}
+
+.overview-card.tone-danger {
+    border-color: var(--danger-border);
+    background: var(--danger-bg);
+}
+
+.overview-card__eyebrow {
+    color: var(--text-muted);
+}
+
+.overview-card.tone-info .overview-card__eyebrow {
+    color: var(--accent-text);
+}
+
+.overview-card.tone-warn .overview-card__eyebrow {
+    color: var(--warning-text);
+}
+
+.overview-card.tone-danger .overview-card__eyebrow {
+    color: var(--danger-text);
+}
+
+.overview-card__title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.overview-card__description {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text-muted);
+}
+
+.overview-button {
+    border: 1px solid var(--accent-border);
+    background: var(--bg-elevated);
+    color: var(--accent-text);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.sync-center-backdrop {
+    position: absolute;
+    inset: 0;
+    border: none;
+    background: var(--bg-overlay);
+    cursor: pointer;
+}
+
+.sync-center {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: min(336px, calc(100vw - 24px));
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+    box-shadow: var(--shadow-strong);
+    z-index: 5;
+    backdrop-filter: blur(10px);
+}
+
+.sync-center__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.sync-center__header-copy {
+    display: grid;
+    gap: 4px;
+}
+
+.sync-center__title {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-strong);
+}
+
+.sync-center__subtitle {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.sync-center__close {
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 7px 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.sync-center__body {
+    display: grid;
+    align-content: start;
+    gap: 12px;
+    overflow: auto;
+    padding-right: 2px;
+}
+
+.sync-center__card {
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    background: var(--bg-elevated);
+    padding: 14px;
+    display: grid;
+    gap: 6px;
+}
+
+.sync-center__card.tone-warn {
+    border-color: var(--warning-border);
+}
+
+.sync-center__card-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.sync-center__card-hint {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+.sync-center__group {
+    display: grid;
+    gap: 8px;
+    padding: 14px;
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    background: var(--bg-elevated);
+}
+
+.sync-center__group-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.sync-center__button {
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-weight: 700;
+}
+
+.sync-center__button--primary {
+    border: 1px solid var(--accent-border);
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    cursor: pointer;
+}
+
+.sync-center__button--danger {
+    border: 1px solid var(--danger-border);
+    background: var(--danger-bg);
+    color: var(--danger-text);
+}
+
+.sync-center__button--secondary {
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+}
+
+.sync-center__button.is-disabled {
+    opacity: 0.45;
+    cursor: default;
+}

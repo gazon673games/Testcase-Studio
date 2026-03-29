@@ -213,14 +213,14 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
         >
             <PreviewDialogSplit
                 sidebar={(
-                    <form style={columnStyle} onSubmit={handlePreview}>
+                    <form className="preview-dialog__column" onSubmit={handlePreview}>
                         <PreviewCard title={t('import.scope')}>
-                            <div style={tabRowStyle}>
+                            <div className="preview-dialog__tab-row">
                                 {(['project', 'folder', 'keys'] as ZephyrImportMode[]).map((value) => (
                                     <button
                                         key={value}
                                         type="button"
-                                        style={value === mode ? { ...tabButtonStyle, ...tabButtonActiveStyle } : tabButtonStyle}
+                                        className={`preview-dialog__tab-button${value === mode ? ' preview-dialog__tab-button--active' : ''}`}
                                         onClick={() => setMode(value)}
                                     >
                                         {t(`import.mode.${value}`)}
@@ -275,8 +275,8 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                                 />
                             </PreviewField>
 
-                            <div style={inlineRowStyle}>
-                                <div style={{ flex: 1, minWidth: 140 }}>
+                            <div className="preview-dialog__inline-row">
+                                <div className="preview-dialog__field-inline-grow">
                                     <PreviewField label={t('import.maxResults')}>
                                         <input
                                             className="preview-dialog__input"
@@ -287,7 +287,7 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                                         />
                                     </PreviewField>
                                 </div>
-                                <label style={checkboxLabelStyle}>
+                                <label className="preview-dialog__checkbox-label">
                                     <input
                                         type="checkbox"
                                         checked={mirrorRemoteFolders}
@@ -315,7 +315,7 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                     </form>
                 )}
                 content={(
-                    <div style={columnStyle}>
+                    <div className="preview-dialog__column">
                         {!preview ? (
                             <PreviewEmptyState title={t('import.previewEmptyTitle')}>
                                 {t('import.previewEmptyText')}
@@ -447,7 +447,7 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                                     </PreviewCard>
                                 ) : null}
 
-                                <div style={listStyle}>
+                                <div className="preview-dialog__list">
                                     {items.length === 0 ? (
                                         <PreviewEmptyState title={t('import.emptyFound')}>
                                             {t('import.emptyFoundText')}
@@ -539,7 +539,7 @@ function PreviewItemCard({
         <div ref={containerRef} tabIndex={-1}>
             <PreviewCard>
                 <div className="preview-dialog__summary-row">
-                    <div style={{ minWidth: 0 }}>
+                    <div className="preview-dialog__summary-copy">
                         <div className="preview-dialog__card-title">{item.remoteName}</div>
                         <div className="preview-dialog__subtitle">
                             <span>{item.remoteId}</span>
@@ -559,7 +559,7 @@ function PreviewItemCard({
                 </PreviewInfoGrid>
 
                 {item.diffs.length > 0 ? (
-                    <div style={listStyle}>
+                    <div className="preview-dialog__list">
                         {item.diffs.map((diff) => (
                             <PreviewDiffCard
                                 key={`${item.id}:${diff.field}`}
@@ -593,52 +593,4 @@ function PreviewItemCard({
             </PreviewCard>
         </div>
     )
-}
-
-const columnStyle: React.CSSProperties = {
-    display: 'grid',
-    alignContent: 'start',
-    gap: 14,
-}
-
-const listStyle: React.CSSProperties = {
-    display: 'grid',
-    gap: 12,
-}
-
-const tabRowStyle: React.CSSProperties = {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 8,
-}
-
-const tabButtonStyle: React.CSSProperties = {
-    border: '1px solid var(--border)',
-    background: 'var(--bg-soft)',
-    borderRadius: 999,
-    padding: '7px 12px',
-    cursor: 'pointer',
-    color: 'var(--text)',
-    fontWeight: 600,
-}
-
-const tabButtonActiveStyle: React.CSSProperties = {
-    background: 'var(--accent-bg)',
-    borderColor: 'var(--accent-border)',
-    color: 'var(--accent-text)',
-}
-
-const inlineRowStyle: React.CSSProperties = {
-    display: 'flex',
-    gap: 12,
-    alignItems: 'end',
-    flexWrap: 'wrap',
-}
-
-const checkboxLabelStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 8,
-    fontSize: 13,
-    color: 'var(--text-muted)',
 }

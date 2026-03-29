@@ -169,8 +169,9 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
             canDismiss={!loading && !applying}
         >
             <PreviewDialogSplit
+                className="preview-dialog__split--compact"
                 sidebar={(
-                    <div style={columnStyle}>
+                    <div className="preview-dialog__column">
                         <PreviewCard title={t('publish.dryRun')}>
                             <PreviewHint>{t('publish.dryRunHint')}</PreviewHint>
                         </PreviewCard>
@@ -223,7 +224,7 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                     </div>
                 )}
                 content={(
-                    <div style={columnStyle}>
+                    <div className="preview-dialog__column">
                         {!preview ? (
                             <PreviewEmptyState title={t('publish.previewEmptyTitle')}>
                                 {t('publish.previewEmptyText')}
@@ -354,7 +355,7 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                                     </PreviewCard>
                                 ) : null}
 
-                                <div style={listStyle}>
+                                <div className="preview-dialog__list">
                                     {visibleItems.length === 0 ? (
                                         <PreviewEmptyState title={t('publish.emptyFilters')}>
                                             {t('publish.emptyFiltersText')}
@@ -404,7 +405,6 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                         )}
                     </div>
                 )}
-                sidebarWidth={320}
             />
         </PreviewDialog>
     )
@@ -435,7 +435,7 @@ function PublishItemCard({
         <div ref={containerRef} tabIndex={-1}>
             <PreviewCard>
                 <div className="preview-dialog__summary-row">
-                    <div style={{ minWidth: 0 }}>
+                    <div className="preview-dialog__summary-copy">
                         <div className="preview-dialog__card-title">{item.testName}</div>
                         <div className="preview-dialog__subtitle">
                             <span>{item.externalId ?? t('publish.newCase')}</span>
@@ -448,7 +448,7 @@ function PublishItemCard({
 
                 <PreviewHint>{item.reason}</PreviewHint>
 
-                <label style={checkboxLabelStyle}>
+                <label className="preview-dialog__checkbox-label">
                     <input
                         type="checkbox"
                         checked={publish}
@@ -467,7 +467,7 @@ function PublishItemCard({
                 ) : null}
 
                 {item.diffs.length > 0 ? (
-                    <div style={listStyle}>
+                    <div className="preview-dialog__list">
                         {item.diffs.map((diff) => (
                             <PreviewDiffCard
                                 key={`${item.id}:${diff.field}`}
@@ -486,23 +486,4 @@ function PublishItemCard({
             </PreviewCard>
         </div>
     )
-}
-
-const columnStyle: React.CSSProperties = {
-    display: 'grid',
-    alignContent: 'start',
-    gap: 14,
-}
-
-const listStyle: React.CSSProperties = {
-    display: 'grid',
-    gap: 12,
-}
-
-const checkboxLabelStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 8,
-    fontSize: 13,
-    color: 'var(--text-muted)',
 }

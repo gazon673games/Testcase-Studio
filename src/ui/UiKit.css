@@ -1,0 +1,86 @@
+html,
+body {
+    color: var(--text);
+    background: var(--bg);
+}
+
+button:not([data-nopress]):not([data-spoiler]) {
+    transition:
+        transform 0.06s ease,
+        filter 0.06s ease,
+        box-shadow 0.12s ease,
+        background-color 0.12s ease,
+        border-color 0.12s ease;
+    will-change: transform;
+}
+
+button:not([data-nopress]):not([data-spoiler]):active {
+    transform: translateY(1px) scale(0.98);
+    filter: saturate(0.92) brightness(0.98);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--accent-border);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.ui-kit__toast-viewport {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.ui-kit__toast {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid;
+    border-radius: 12px;
+    box-shadow: var(--shadow-soft);
+    font-size: 13px;
+    pointer-events: auto;
+}
+
+.ui-kit__toast--info {
+    border-color: var(--info-border);
+    background: var(--info-bg);
+    color: var(--info-text);
+}
+
+.ui-kit__toast--success {
+    border-color: var(--success-border);
+    background: var(--success-bg);
+    color: var(--success-text);
+}
+
+.ui-kit__toast--error {
+    border-color: var(--danger-border);
+    background: var(--danger-bg);
+    color: var(--danger-text);
+}
+
+.ui-kit__toast-icon {
+    flex: 0 0 auto;
+}
+
+.ui-kit__toast-text {
+    line-height: 1.2;
+}
+
+.ui-kit__toast-close {
+    margin-left: 8px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}

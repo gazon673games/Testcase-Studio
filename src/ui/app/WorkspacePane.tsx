@@ -1,17 +1,15 @@
 import React from 'react'
-import type { Folder } from '@core/domain'
+import type { Folder, SharedStep } from '@core/domain'
 import { Tree } from '../Tree'
-
-type SharedStepListItem = { id: string; name: string }
 
 type WorkspacePaneProps = {
     compactWorkspace: boolean
     root: Folder
-    sharedSteps: SharedStepListItem[]
+    sharedSteps: SharedStep[]
     dirtyTestIds: Set<string>
     selectedId: string | null
     onSelect(id: string): void
-    onMove(sourceId: string, targetFolderId: string): void
+    onMove(sourceId: string, targetFolderId: string): Promise<boolean> | boolean
     onCreateFolderAt(parentId: string): void
     onCreateTestAt(parentId: string): void
     onRename(id: string, name: string): void
@@ -38,23 +36,8 @@ export function WorkspacePane({
     syncCenter,
 }: WorkspacePaneProps) {
     return (
-        <div
-            style={{
-                flex: 1,
-                display: 'grid',
-                gridTemplateColumns: compactWorkspace ? '1fr' : 'minmax(260px, 320px) 1fr',
-                gridTemplateRows: compactWorkspace ? 'minmax(210px, 34vh) 1fr' : undefined,
-                minHeight: 0,
-            }}
-        >
-            <div
-                style={{
-                    borderRight: compactWorkspace ? 'none' : '1px solid var(--border)',
-                    borderBottom: compactWorkspace ? '1px solid var(--border)' : 'none',
-                    overflow: 'auto',
-                    background: 'var(--bg-soft)',
-                }}
-            >
+        <div className={`workspace-pane${compactWorkspace ? ' is-compact' : ''}`}>
+            <div className="workspace-pane__tree">
                 <Tree
                     root={root}
                     sharedSteps={sharedSteps}
@@ -69,14 +52,8 @@ export function WorkspacePane({
                     onOpenStep={onOpenStep}
                 />
             </div>
-            <div
-                style={{
-                    position: 'relative',
-                    overflow: 'hidden',
-                    background: 'var(--bg)',
-                }}
-            >
-                <div style={{ height: '100%', overflow: 'auto' }}>{rightPane}</div>
+            <div className="workspace-pane__content">
+                <div className="workspace-pane__scroll">{rightPane}</div>
                 {syncCenter}
             </div>
         </div>

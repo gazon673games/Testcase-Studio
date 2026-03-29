@@ -14,6 +14,7 @@ import { ScopeOverviewPanel } from './ScopeOverviewPanel'
 import { buildSelectionSummary } from './selectionSummary'
 import { SyncCenterHost } from './SyncCenterHost'
 import { WorkspacePane } from './WorkspacePane'
+import './appShell.css'
 
 const TestEditor = React.lazy(() =>
     import('../testEditor/TestEditor').then((module) => ({ default: module.TestEditor }))
@@ -104,7 +105,13 @@ export function AppShell() {
             const result = await app.applyZephyrImport(preview)
             push({
                 kind: 'success',
-                text: t('toast.importApplied', result),
+                text: t('toast.importApplied', {
+                    created: result.created,
+                    updated: result.updated,
+                    skipped: result.skipped,
+                    drafts: result.drafts,
+                    unchanged: result.unchanged,
+                }),
                 ttl: 0,
             })
             return result
@@ -118,7 +125,13 @@ export function AppShell() {
             const result = await app.publishZephyr(preview)
             push({
                 kind: result.failed ? 'error' : 'success',
-                text: t('toast.publishFinished', result),
+                text: t('toast.publishFinished', {
+                    created: result.created,
+                    updated: result.updated,
+                    skipped: result.skipped,
+                    failed: result.failed,
+                    blocked: result.blocked,
+                }),
                 ttl: 0,
             })
             return result
@@ -183,7 +196,7 @@ export function AppShell() {
 
     if (!app.state) {
         return (
-            <div style={{ padding: 16, fontFamily: 'system-ui' }}>
+            <div className="app-shell__loading">
                 <h1>{t('app.loading')}</h1>
             </div>
         )
@@ -203,7 +216,7 @@ export function AppShell() {
     const canSyncAll = allTests.some((test) => (test.links?.length ?? 0) > 0)
 
     const rightPane = selectedTest ? (
-        <React.Suspense fallback={<div style={{ padding: 16 }}>{t('app.loadingEditor')}</div>}>
+        <React.Suspense fallback={<div className="app-shell__editor-loading">{t('app.loadingEditor')}</div>}>
             <TestEditor
                 ref={editorRef}
                 test={selectedTest}
@@ -235,7 +248,7 @@ export function AppShell() {
     )
 
     return (
-        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui' }}>
+        <div className="app-shell">
             <Toolbar
                 selectionLabel={selectionSummary.pathLabel}
                 importDestinationLabel={importDestination.label}

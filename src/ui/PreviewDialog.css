@@ -88,7 +88,12 @@
 
 .preview-dialog__split {
     display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
     min-height: 0;
+}
+
+.preview-dialog__split--compact {
+    grid-template-columns: 320px minmax(0, 1fr);
 }
 
 .preview-dialog__sidebar,
@@ -131,6 +136,11 @@
     gap: 6px;
 }
 
+.preview-dialog__field-inline-grow {
+    flex: 1;
+    min-width: 140px;
+}
+
 .preview-dialog__label {
     display: block;
     font-size: 12px;
@@ -163,6 +173,54 @@
     gap: 10px;
     justify-content: flex-start;
     flex-wrap: wrap;
+}
+
+.preview-dialog__column {
+    display: grid;
+    align-content: start;
+    gap: 14px;
+}
+
+.preview-dialog__list {
+    display: grid;
+    gap: 12px;
+}
+
+.preview-dialog__tab-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.preview-dialog__tab-button {
+    border: 1px solid var(--border);
+    background: var(--bg-soft);
+    border-radius: 999px;
+    padding: 7px 12px;
+    cursor: pointer;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.preview-dialog__tab-button--active {
+    background: var(--accent-bg);
+    border-color: var(--accent-border);
+    color: var(--accent-text);
+}
+
+.preview-dialog__inline-row {
+    display: flex;
+    gap: 12px;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.preview-dialog__checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
 }
 
 .preview-dialog__button {
@@ -464,6 +522,10 @@
     gap: 16px;
     align-items: start;
     flex-wrap: wrap;
+}
+
+.preview-dialog__summary-copy {
+    min-width: 0;
 }
 
 .preview-dialog__quick-list {
