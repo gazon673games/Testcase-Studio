@@ -40,6 +40,39 @@
     font-size: 12px;
 }
 
+.toolbar__save-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    font-weight: 700;
+    background: var(--bg-soft);
+}
+
+.toolbar__save-status--saved {
+    border-color: var(--border-soft);
+    color: var(--text-muted);
+}
+
+.toolbar__save-status--pending {
+    border-color: var(--warning-border);
+    color: var(--warning-text);
+    background: var(--warning-bg);
+}
+
+.toolbar__save-status--saving {
+    border-color: var(--accent-border);
+    color: var(--accent-text);
+    background: var(--accent-bg);
+}
+
+.toolbar__save-status--error {
+    border-color: var(--danger-border);
+    color: var(--danger-text);
+    background: var(--danger-bg);
+}
+
 .toolbar__actions {
     display: flex;
     flex-wrap: wrap;

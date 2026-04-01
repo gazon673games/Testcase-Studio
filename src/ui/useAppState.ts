@@ -32,28 +32,48 @@ import type { AppServices } from './appServices'
 
 type Node = Folder | TestCase
 type SyncAllResult = { status: 'ok'; count: number }
+type SaveState = 'saved' | 'pending' | 'saving' | 'error'
+
+const AUTOSAVE_DELAY_MS = 700
 
 export function useAppState(services: AppServices) {
     const [state, setState] = React.useState<RootState | null>(null)
     const [selectedId, setSelectedId] = React.useState<ID | null>(null)
     const [focusStepId, setFocusStepId] = React.useState<string | null>(null)
     const [dirtyTestIds, setDirtyTestIds] = React.useState<Set<string>>(() => new Set())
+    const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false)
+    const [saveError, setSaveError] = React.useState<string | null>(null)
+    const [isSaving, setIsSaving] = React.useState(false)
+
+    const latestStateRef = React.useRef<RootState | null>(null)
+    const latestRevisionRef = React.useRef(0)
+    const saveTimerRef = React.useRef<number | null>(null)
+    const saveQueueRef = React.useRef<Promise<void>>(Promise.resolve())
+    const activeSavesRef = React.useRef(0)
 
     const sync = services.sync
 
     React.useEffect(() => {
         loadWorkspaceState().then((nextState) => {
+            latestStateRef.current = nextState
+            latestRevisionRef.current = 0
             setState(nextState)
             setSelectedId(nextState.root.id)
+            setHasUnsavedChanges(false)
+            setSaveError(null)
         })
     }, [])
 
-    async function persist(next: RootState) {
-        setState(structuredClone(next))
-        await saveWorkspaceUseCase(next)
-    }
+    const cancelScheduledSave = React.useCallback(() => {
+        if (saveTimerRef.current == null) return
+        window.clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+    }, [])
 
-    function markDirty(testIds: string[]) {
+    React.useEffect(() => () => cancelScheduledSave(), [cancelScheduledSave])
+
+    function markDirty(testIds?: string[]) {
+        if (!testIds?.length) return
         const ids = testIds.map((id) => String(id || '').trim()).filter(Boolean)
         if (!ids.length) return
         setDirtyTestIds((current) => {
@@ -77,8 +97,107 @@ export function useAppState(services: AppServices) {
         })
     }
 
+    function getCurrentState() {
+        return latestStateRef.current ?? state
+    }
+
+    const runQueuedSave = React.useCallback(
+        async (snapshot: RootState, revision: number) => {
+            activeSavesRef.current += 1
+            setIsSaving(true)
+            setSaveError(null)
+            try {
+                const saved = await saveWorkspaceUseCase(snapshot)
+                if (!saved) return false
+                if (latestRevisionRef.current === revision) {
+                    setHasUnsavedChanges(false)
+                    clearDirty()
+                }
+                return true
+            } catch (error) {
+                if (latestRevisionRef.current === revision) {
+                    setHasUnsavedChanges(true)
+                    setSaveError(error instanceof Error ? error.message : String(error))
+                }
+                throw error
+            } finally {
+                activeSavesRef.current -= 1
+                if (activeSavesRef.current === 0) setIsSaving(false)
+            }
+        },
+        []
+    )
+
+    const enqueueSave = React.useCallback(
+        (snapshot: RootState, revision: number) => {
+            const job = saveQueueRef.current
+                .catch(() => undefined)
+                .then(async () => {
+                    await runQueuedSave(snapshot, revision)
+                })
+            saveQueueRef.current = job.catch(() => undefined)
+            return job
+        },
+        [runQueuedSave]
+    )
+
+    const scheduleSave = React.useCallback(() => {
+        cancelScheduledSave()
+        saveTimerRef.current = window.setTimeout(() => {
+            saveTimerRef.current = null
+            const snapshot = latestStateRef.current
+            if (!snapshot) return
+            void enqueueSave(snapshot, latestRevisionRef.current).catch(() => undefined)
+        }, AUTOSAVE_DELAY_MS)
+    }, [cancelScheduledSave, enqueueSave])
+
+    const stageLocalState = React.useCallback(
+        (next: RootState, dirtyIds?: string[]) => {
+            const snapshot = structuredClone(next)
+            latestStateRef.current = snapshot
+            latestRevisionRef.current += 1
+            setState(snapshot)
+            markDirty(dirtyIds)
+            setHasUnsavedChanges(true)
+            setSaveError(null)
+            scheduleSave()
+        },
+        [scheduleSave]
+    )
+
+    const persistStateNow = React.useCallback(
+        async (next: RootState, dirtyIds?: string[]) => {
+            const snapshot = structuredClone(next)
+            latestStateRef.current = snapshot
+            latestRevisionRef.current += 1
+            const revision = latestRevisionRef.current
+            setState(snapshot)
+            markDirty(dirtyIds)
+            setHasUnsavedChanges(true)
+            setSaveError(null)
+            cancelScheduledSave()
+            await enqueueSave(snapshot, revision)
+        },
+        [cancelScheduledSave, enqueueSave]
+    )
+
+    const flushSave = React.useCallback(async () => {
+        const snapshot = latestStateRef.current
+        if (!snapshot) return false
+
+        const hasScheduledSave = saveTimerRef.current != null
+        if (!hasUnsavedChanges && !hasScheduledSave && !saveError) {
+            await saveQueueRef.current
+            return true
+        }
+
+        cancelScheduledSave()
+        await enqueueSave(snapshot, latestRevisionRef.current)
+        return true
+    }, [cancelScheduledSave, enqueueSave, hasUnsavedChanges, saveError])
+
     function getSelected(): Node | null {
-        return getSelectedNode(state, selectedId)
+        return getSelectedNode(getCurrentState(), selectedId)
     }
 
     function select(id: ID) {
@@ -87,138 +206,144 @@ export function useAppState(services: AppServices) {
     }
 
     function getImportDestination() {
-        return getImportDestinationQuery(state, selectedId, services.defaults.rootLabel)
+        return getImportDestinationQuery(getCurrentState(), selectedId, services.defaults.rootLabel)
     }
 
     function getPublishSelection() {
-        return getPublishSelectionQuery(state, selectedId, services.defaults.rootLabel)
+        return getPublishSelectionQuery(getCurrentState(), selectedId, services.defaults.rootLabel)
     }
 
     async function addFolderAt(parentId: ID) {
-        if (!state) return
-        const result = addFolderAtCommand(state, parentId, services.defaults.newFolder)
-        await persist(result.nextState)
+        const currentState = getCurrentState()
+        if (!currentState) return
+        const result = addFolderAtCommand(currentState, parentId, services.defaults.newFolder)
+        stageLocalState(result.nextState)
         if (result.selectedId) setSelectedId(result.selectedId)
     }
 
     async function addTestAt(parentId: ID) {
-        if (!state) return
-        const result = addTestAtCommand(state, parentId, services.defaults.newCase, services.defaults.firstStep)
-        await persist(result.nextState)
-        markDirty(result.dirtyIds)
+        const currentState = getCurrentState()
+        if (!currentState) return
+        const result = addTestAtCommand(currentState, parentId, services.defaults.newCase, services.defaults.firstStep)
+        stageLocalState(result.nextState, result.dirtyIds)
         if (result.selectedId) setSelectedId(result.selectedId)
         if (result.focusStepId) setFocusStepId(result.focusStepId)
     }
 
     async function addFolder() {
-        if (!state) return
-        const result = addFolderFromSelection(state, selectedId, services.defaults.newFolder)
-        await persist(result.nextState)
+        const currentState = getCurrentState()
+        if (!currentState) return
+        const result = addFolderFromSelection(currentState, selectedId, services.defaults.newFolder)
+        stageLocalState(result.nextState)
         if (result.selectedId) setSelectedId(result.selectedId)
     }
 
     async function addTest() {
-        if (!state) return
-        const result = addTestFromSelection(state, selectedId, services.defaults.newCase, services.defaults.firstStep)
-        await persist(result.nextState)
-        markDirty(result.dirtyIds)
+        const currentState = getCurrentState()
+        if (!currentState) return
+        const result = addTestFromSelection(currentState, selectedId, services.defaults.newCase, services.defaults.firstStep)
+        stageLocalState(result.nextState, result.dirtyIds)
         if (result.selectedId) setSelectedId(result.selectedId)
         if (result.focusStepId) setFocusStepId(result.focusStepId)
     }
 
     async function removeSelected() {
-        if (!state) return
-        const result = removeSelectedNode(state, selectedId)
+        const currentState = getCurrentState()
+        if (!currentState) return
+        const result = removeSelectedNode(currentState, selectedId)
         if (!result) return
-        await persist(result.nextState)
+        stageLocalState(result.nextState)
         if (result.selectedId !== undefined) setSelectedId(result.selectedId)
         if (result.focusStepId !== undefined) setFocusStepId(result.focusStepId)
     }
 
     async function renameNode(id: ID, newName: string) {
-        if (!state) return
-        const result = renameWorkspaceNode(state, id, newName)
+        const currentState = getCurrentState()
+        if (!currentState) return
+        const result = renameWorkspaceNode(currentState, id, newName)
         if (!result) return
-        await persist(result.nextState)
-        markDirty(result.dirtyIds)
+        stageLocalState(result.nextState, result.dirtyIds)
     }
 
     async function deleteNodeById(id: ID) {
-        if (!state) return
-        const result = deleteNodeByIdCommand(state, id, selectedId)
+        const currentState = getCurrentState()
+        if (!currentState) return
+        const result = deleteNodeByIdCommand(currentState, id, selectedId)
         if (!result) return
-        await persist(result.nextState)
+        stageLocalState(result.nextState)
         if (result.selectedId !== undefined) setSelectedId(result.selectedId)
         if (result.focusStepId !== undefined) setFocusStepId(result.focusStepId)
     }
 
     async function moveNode(nodeId: ID, targetFolderId: ID) {
-        if (!state) return false
-        const result = moveWorkspaceNode(state, nodeId, targetFolderId)
+        const currentState = getCurrentState()
+        if (!currentState) return false
+        const result = moveWorkspaceNode(currentState, nodeId, targetFolderId)
         if (result.moved) {
-            await persist(result.nextState)
+            stageLocalState(result.nextState)
             if (result.selectedId) setSelectedId(result.selectedId)
         }
         return result.moved
     }
 
     async function save() {
-        const saved = await saveWorkspaceUseCase(state)
-        if (saved) clearDirty()
+        return flushSave()
     }
 
     async function updateTest(
         testId: ID,
         patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments' | 'links'>>
     ) {
-        if (!state) return
-        const result = updateTestCase(state, testId, patch)
+        const currentState = getCurrentState()
+        if (!currentState) return
+        const result = updateTestCase(currentState, testId, patch)
         if (!result) return
-        await persist(result.nextState)
-        markDirty(result.dirtyIds)
+        stageLocalState(result.nextState, result.dirtyIds)
     }
 
     async function addSharedStep(name = services.defaults.sharedStep, steps: Step[] = []) {
-        if (!state) return null
-        const result = addSharedStepCommand(state, name, steps)
-        await persist(result.nextState)
+        const currentState = getCurrentState()
+        if (!currentState) return null
+        const result = addSharedStepCommand(currentState, name, steps)
+        stageLocalState(result.nextState)
         return result.sharedId
     }
 
     async function addSharedStepFromStep(step: Step, name?: string) {
-        if (!state) return null
-        const result = addSharedStepFromStepCommand(state, step, services.defaults.sharedStep, name)
-        await persist(result.nextState)
+        const currentState = getCurrentState()
+        if (!currentState) return null
+        const result = addSharedStepFromStepCommand(currentState, step, services.defaults.sharedStep, name)
+        stageLocalState(result.nextState)
         return result.sharedId
     }
 
     async function updateSharedStep(sharedId: string, patch: Partial<Pick<SharedStep, 'name' | 'steps'>>) {
-        if (!state) return
-        const result = updateSharedStepCommand(state, sharedId, patch)
+        const currentState = getCurrentState()
+        if (!currentState) return
+        const result = updateSharedStepCommand(currentState, sharedId, patch)
         if (!result) return
-        await persist(result.nextState)
+        stageLocalState(result.nextState)
     }
 
     async function deleteSharedStep(sharedId: string) {
-        if (!state) return
-        const result = deleteSharedStepCommand(state, sharedId)
-        await persist(result.nextState)
-        markDirty(result.dirtyIds)
+        const currentState = getCurrentState()
+        if (!currentState) return
+        const result = deleteSharedStepCommand(currentState, sharedId)
+        stageLocalState(result.nextState, result.dirtyIds)
     }
 
     async function insertSharedReference(testId: string, sharedId: string, afterIndex?: number) {
-        if (!state) return
-        const result = insertSharedReferenceCommand(state, testId, sharedId, afterIndex)
+        const currentState = getCurrentState()
+        if (!currentState) return
+        const result = insertSharedReferenceCommand(currentState, testId, sharedId, afterIndex)
         if (!result) return
-        await persist(result.nextState)
-        markDirty(result.dirtyIds)
+        stageLocalState(result.nextState, result.dirtyIds)
     }
 
     async function pull() {
-        const result = await pullSelectedCase(state, selectedId, sync)
+        const result = await pullSelectedCase(getCurrentState(), selectedId, sync)
         if (result.status !== 'ok') return result
-        await persist(result.nextState)
-        clearDirty(result.clearedDirtyIds)
+        await persistStateNow(result.nextState)
         return {
             status: result.status,
             testId: result.testId,
@@ -227,18 +352,20 @@ export function useAppState(services: AppServices) {
     }
 
     async function push() {
-        if (!state) return
+        const currentState = getCurrentState()
+        if (!currentState) return
         const node = getSelected()
         if (!node || isFolder(node) || node.links.length === 0) return
-        await sync.pushTest(node, node.links[0], state)
+        await sync.pushTest(node, node.links[0], currentState)
     }
 
     async function syncAll(): Promise<SyncAllResult> {
-        if (!state) return { status: 'ok', count: 0 }
-        const next = structuredClone(state)
+        const currentState = getCurrentState()
+        if (!currentState) return { status: 'ok', count: 0 }
+        const next = structuredClone(currentState)
         const tests = mapTests(next.root)
         await sync.twoWaySync(next)
-        await persist(next)
+        await persistStateNow(next)
         clearDirty(tests.map((test) => test.id))
         return { status: 'ok', count: tests.length }
     }
@@ -246,24 +373,33 @@ export function useAppState(services: AppServices) {
     async function previewZephyrImport(
         request: Omit<ZephyrImportRequest, 'destinationFolderId'> & { destinationFolderId?: string }
     ): Promise<ZephyrImportPreview> {
-        return previewZephyrImportUseCase(state, selectedId, sync, services.defaults.rootLabel, request)
+        return previewZephyrImportUseCase(getCurrentState(), selectedId, sync, services.defaults.rootLabel, request)
     }
 
     async function applyZephyrImportPreview(preview: ZephyrImportPreview) {
-        const { nextState, result, clearedDirtyIds } = await applyZephyrImportUseCase(state, preview, sync)
-        await persist(nextState)
+        const { nextState, result, clearedDirtyIds } = await applyZephyrImportUseCase(getCurrentState(), preview, sync)
+        await persistStateNow(nextState)
         clearDirty(clearedDirtyIds)
         return result
     }
 
     async function previewZephyrPublish(): Promise<ZephyrPublishPreview> {
-        return previewZephyrPublishUseCase(state, selectedId, sync, services.defaults.rootLabel)
+        return previewZephyrPublishUseCase(getCurrentState(), selectedId, sync, services.defaults.rootLabel)
     }
 
     async function publishZephyr(preview: ZephyrPublishPreview): Promise<ZephyrPublishResult & { snapshotPath: string; logPath: string }> {
-        const outcome = await publishZephyrPreviewUseCase(state, preview, sync)
-        setState(structuredClone(outcome.nextState))
+        cancelScheduledSave()
+        await saveQueueRef.current
+
+        const outcome = await publishZephyrPreviewUseCase(getCurrentState(), preview, sync)
+        const snapshot = structuredClone(outcome.nextState)
+        latestStateRef.current = snapshot
+        latestRevisionRef.current += 1
+        setState(snapshot)
         clearDirty(outcome.clearedDirtyIds)
+        setHasUnsavedChanges(false)
+        setSaveError(null)
+
         return {
             ...outcome.result,
             snapshotPath: outcome.snapshotPath,
@@ -276,10 +412,21 @@ export function useAppState(services: AppServices) {
         setFocusStepId(stepId)
     }
 
+    const saveState: SaveState = saveError
+        ? 'error'
+        : isSaving
+            ? 'saving'
+            : hasUnsavedChanges
+                ? 'pending'
+                : 'saved'
+
     return {
         state,
         selectedId,
         dirtyTestIds,
+        saveState,
+        saveError,
+        hasUnsavedChanges,
         select,
         addFolder,
         addTest,
@@ -307,6 +454,6 @@ export function useAppState(services: AppServices) {
         moveNode,
         openStep,
         focusStepId,
-        mapAllTests: () => (state ? mapTests(state.root) : []),
+        mapAllTests: () => (getCurrentState() ? mapTests(getCurrentState()!.root) : []),
     }
 }

@@ -985,6 +985,30 @@ Object.assign(messages.en, {
     'publish.summary.empty': 'Empty',
 })
 
+Object.assign(messages.ru, {
+    'toast.saveFailed': '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f: {message}',
+    'toolbar.savePendingTitle': '\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043d\u0435\u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0435 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f (Ctrl+S)',
+    'toolbar.savingTitle': '\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f',
+    'toolbar.saveErrorTitle': '\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435 (Ctrl+S)',
+    'toolbar.saved': '\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043e',
+    'toolbar.saving': '\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435...',
+    'toolbar.unsavedChanges': '\u0415\u0441\u0442\u044c \u043d\u0435\u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0435 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f',
+    'toolbar.saveError': '\u041e\u0448\u0438\u0431\u043a\u0430 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u044f',
+    'toolbar.retrySave': '\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435',
+})
+
+Object.assign(messages.en, {
+    'toast.saveFailed': 'Failed to save changes: {message}',
+    'toolbar.savePendingTitle': 'Save pending changes (Ctrl+S)',
+    'toolbar.savingTitle': 'Saving changes',
+    'toolbar.saveErrorTitle': 'Retry saving changes (Ctrl+S)',
+    'toolbar.saved': 'Saved',
+    'toolbar.saving': 'Saving...',
+    'toolbar.unsavedChanges': 'Unsaved changes',
+    'toolbar.saveError': 'Save failed',
+    'toolbar.retrySave': 'Retry save',
+})
+
 export type MessageKey = keyof typeof messages.en
 
 export function getStoredLocale(): UiLocale {

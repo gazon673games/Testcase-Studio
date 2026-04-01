@@ -7,6 +7,7 @@ type Props = {
     importDestinationLabel: string
     publishSelectionLabel: string
     publishCount: number
+    saveState: 'saved' | 'pending' | 'saving' | 'error'
     onAddFolder(): void
     onAddTest(): void
     onDelete(): void
@@ -30,6 +31,34 @@ export function Toolbar(props: Props) {
             : props.publishCount === 1
                 ? t('toolbar.publishScopeLabel', { label: props.publishSelectionLabel })
                 : t('toolbar.publishScopeCount', { count: props.publishCount })
+    const saveStateLabel =
+        props.saveState === 'saving'
+            ? t('toolbar.saving')
+            : props.saveState === 'pending'
+                ? t('toolbar.unsavedChanges')
+                : props.saveState === 'error'
+                    ? t('toolbar.saveError')
+                    : t('toolbar.saved')
+    const saveButtonLabel =
+        props.saveState === 'saving'
+            ? t('toolbar.saving')
+            : props.saveState === 'error'
+                ? t('toolbar.retrySave')
+                : t('toolbar.save')
+    const saveButtonTitle =
+        props.saveState === 'saving'
+            ? t('toolbar.savingTitle')
+            : props.saveState === 'pending'
+                ? t('toolbar.savePendingTitle')
+                : props.saveState === 'error'
+                    ? t('toolbar.saveErrorTitle')
+                    : t('toolbar.saveTitle')
+    const saveButtonTone =
+        props.saveState === 'saved'
+            ? 'quiet'
+            : props.saveState === 'saving'
+                ? 'info'
+                : 'primary'
 
     return (
         <div className="toolbar">
@@ -43,13 +72,19 @@ export function Toolbar(props: Props) {
                         {t('toolbar.importTarget', { label: props.importDestinationLabel })}
                     </span>
                     <span>{publishMeta}</span>
+                    <span className={`toolbar__save-status toolbar__save-status--${props.saveState}`}>{saveStateLabel}</span>
                 </div>
             </div>
 
             <div className="toolbar__actions">
                 <ToolbarCluster label={t('toolbar.local')}>
-                    <ToolbarButton onClick={props.onSave} tone="primary" title={t('toolbar.saveTitle')}>
-                        {t('toolbar.save')}
+                    <ToolbarButton
+                        onClick={props.onSave}
+                        tone={saveButtonTone}
+                        title={saveButtonTitle}
+                        disabled={props.saveState === 'saving'}
+                    >
+                        {saveButtonLabel}
                     </ToolbarButton>
                     {props.canTogglePreview ? (
                         <ToolbarButton

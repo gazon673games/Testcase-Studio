@@ -4,37 +4,52 @@ import { registerHandlers } from '../src/ipc/handlers.js'
 
 let win: BrowserWindow | null = null
 
+function resolveRendererPath() {
+    return path.join(app.getAppPath(), 'dist', 'index.html')
+}
+
+function resolvePreloadPath() {
+    return path.join(app.getAppPath(), 'electron', 'preload.cjs')
+}
+
+async function loadRenderer(window: BrowserWindow) {
+    const devUrl = process.env.ELECTRON_RENDERER_URL
+    if (!devUrl) {
+        await window.loadFile(resolveRendererPath())
+        return
+    }
+
+    try {
+        await window.loadURL(devUrl)
+        window.webContents.openDevTools({ mode: 'detach' })
+    } catch (error) {
+        console.error('Failed to load renderer dev URL:', devUrl, error)
+        await window.loadFile(resolveRendererPath())
+    }
+}
+
 async function createWindow() {
     win = new BrowserWindow({
         width: 1200,
         height: 800,
         webPreferences: {
-            preload: path.join(app.getAppPath(), 'electron', 'preload.cjs'),
+            preload: resolvePreloadPath(),
             contextIsolation: true,
             nodeIntegration: false,
-        }
+            webSecurity: true,
+        },
     })
 
+    win.on('closed', () => {
+        win = null
+    })
 
-    const devUrl = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173';
-
-    if (devUrl) {
-        try {
-            await win.loadURL(devUrl)
-            win.webContents.openDevTools({ mode: 'detach' })
-        } catch (err) {
-            console.error('Failed to load renderer dev URL:', devUrl, err)
-            // запасной вариант: грузим из сборки
-            await win.loadFile(path.join(app.getAppPath(), 'dist', 'index.html'))
-        }
-    } else {
-        await win.loadFile(path.join(app.getAppPath(), 'dist', 'index.html'))
-    }
+    await loadRenderer(win)
 }
 
 app.whenReady().then(() => {
-    registerHandlers(ipcMain) // wire up IPC endpoints
-    createWindow()
+    registerHandlers(ipcMain)
+    void createWindow()
 })
 
 app.on('window-all-closed', () => {
@@ -42,5 +57,5 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) void createWindow()
 })

@@ -247,7 +247,7 @@ export function registerHandlers(ipcMain: IpcMain) {
 
             const auth = `Basic ${b64(`${login}:${password}`)}`
             const form = new FormData()
-            form.append('file', new Blob([bytes]), attachmentName)
+            form.append('file', new Blob([Uint8Array.from(bytes)]), attachmentName)
 
             const url = `${baseUrl}/rest/atm/1.0/testcase/${encodeURIComponent(testCaseKey)}/attachments`
             const res = await fetchWithContext(url, {

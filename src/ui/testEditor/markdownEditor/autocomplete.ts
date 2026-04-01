@@ -170,7 +170,7 @@ export function makeStepSuggestions(
     const filter = stepFilter.toLowerCase()
 
     return owner.steps
-        .map((step, index) => {
+        .map<AutoItem | null>((step, index) => {
             const idx = index + 1
             const displayBody = getStepBody(step, resolveDisplayText)
             const rawBody = step.action || step.text || step.data || step.expected || ''
@@ -184,7 +184,7 @@ export function makeStepSuggestions(
                 continues: true,
             }
         })
-        .filter((item): item is AutoItem => Boolean(item))
+        .filter((item): item is AutoItem => item !== null)
         .slice(0, 20)
 }
 
@@ -205,7 +205,7 @@ export function makeFieldSuggestions(
 
     const filter = fieldFilter.toLowerCase()
     return getStepKinds(stepMatch.step, t, resolveDisplayText)
-        .map((variant) => {
+        .map<AutoItem | null>((variant) => {
             const parts = stepMatch.step.internal?.parts?.[variant.kind] ?? []
             const detail = variant.text || t('markdown.emptyValue')
             const hay = `${variant.kind} ${variant.label} ${detail}`.toLowerCase()
@@ -219,7 +219,7 @@ export function makeFieldSuggestions(
                 muted: !variant.text,
             }
         })
-        .filter((item): item is AutoItem => Boolean(item))
+        .filter((item): item is AutoItem => item !== null)
         .slice(0, 6)
 }
 

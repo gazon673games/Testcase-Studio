@@ -23,11 +23,11 @@ const TestEditor = React.lazy(() =>
 import type { TestEditorHandle } from '../testEditor/TestEditor'
 
 export function AppShell() {
+    const { t } = useUiPreferences()
     const services = React.useMemo(() => createAppServices(t), [t])
     const app = useAppState(services)
     const editorRef = React.useRef<TestEditorHandle | null>(null)
     const { push } = useToast()
-    const { t } = useUiPreferences()
     const [settingsOpen, setSettingsOpen] = React.useState(false)
     const [importOpen, setImportOpen] = React.useState(false)
     const [publishOpen, setPublishOpen] = React.useState(false)
@@ -39,8 +39,21 @@ export function AppShell() {
 
     const handleSave = React.useCallback(async () => {
         editorRef.current?.commit?.()
-        await app.save()
-        push({ kind: 'success', text: t('toast.changesSaved'), ttl: 2200 })
+        const shouldAnnounceSave = app.saveState !== 'saved'
+        try {
+            const saved = await app.save()
+            if (saved && shouldAnnounceSave) {
+                push({ kind: 'success', text: t('toast.changesSaved'), ttl: 2200 })
+            }
+        } catch (error) {
+            push({
+                kind: 'error',
+                text: t('toast.saveFailed', {
+                    message: error instanceof Error ? error.message : String(error),
+                }),
+                ttl: 3500,
+            })
+        }
     }, [app, push, t])
 
     React.useEffect(() => {
@@ -256,6 +269,7 @@ export function AppShell() {
                 importDestinationLabel={importDestination.label}
                 publishSelectionLabel={publishSelection.label}
                 publishCount={publishSelection.tests.length}
+                saveState={app.saveState}
                 onAddFolder={app.addFolder}
                 onAddTest={app.addTest}
                 onDelete={app.removeSelected}

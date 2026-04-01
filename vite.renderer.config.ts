@@ -1,4 +1,3 @@
-// vite.renderer.config.ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron'
@@ -13,16 +12,9 @@ export default defineConfig({
         electronRenderer(),
         electron([
             {
-                // MAIN → ESM
                 entry: '../electron/main.ts',
                 onstart({ startup }) {
-                    // обязательна '.' первым аргументом!
-                    startup([
-                        '.',
-                        '--inspect=9229',
-                        '--remote-debugging-port=9223',
-                        '--no-sandbox'
-                    ])
+                    startup(['.'])
                 },
                 vite: {
                     build: {
@@ -32,21 +24,6 @@ export default defineConfig({
                         rollupOptions: {
                             output: { entryFileNames: 'main.mjs', format: 'es' },
                             external: ['electron', 'node:fs', 'node:path', 'fs', 'path', 'keytar', 'crypto', 'node:crypto'],
-                        },
-                    },
-                },
-            },
-            {
-                // PRELOAD → ESM (чтобы не было конфликта типов)
-                entry: '../electron/preload.ts',
-                vite: {
-                    build: {
-                        outDir: '../dist-electron',
-                        target: 'node18',
-                        sourcemap: true,
-                        rollupOptions: {
-                            output: { entryFileNames: 'preload.mjs', format: 'es' },
-                            external: ['electron'],
                         },
                     },
                 },

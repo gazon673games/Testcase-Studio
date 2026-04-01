@@ -2,6 +2,8 @@
 import type { ITestProvider, ProviderTest, ProviderStep, ProviderTestRef, SearchOptions } from './types'
 import { apiClient } from '@ipc/client'
 
+type ZephyrAttachmentResponse = Record<string, unknown>
+
 type ZephyrTestCaseResponse = {
     key?: string
     name?: string
@@ -34,10 +36,10 @@ type ZephyrTestCaseResponse = {
             testData?: string | null
             expectedResult?: string | null
             testCaseKey?: string | null
-            attachments?: any[]
+            attachments?: ZephyrAttachmentResponse[]
         }>
     }
-    attachments?: any[]
+    attachments?: ZephyrAttachmentResponse[]
 }
 
 // разбор ссылки пользователя: ID vs KEY
@@ -154,25 +156,26 @@ export class ZephyrHttpProvider implements ITestProvider {
     }
 }
 
-function normalizeSearchPage(raw: any): { items: ProviderTestRef[]; hasMore: boolean; nextStartAt: number } {
-    const rawItems = Array.isArray(raw)
+function normalizeSearchPage(raw: unknown): { items: ProviderTestRef[]; hasMore: boolean; nextStartAt: number } {
+    const source = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
+    const rawItems: unknown[] = Array.isArray(raw)
         ? raw
-        : Array.isArray(raw?.items)
-            ? raw.items
-            : Array.isArray(raw?.values)
-                ? raw.values
-                : Array.isArray(raw?.results)
-                    ? raw.results
+        : Array.isArray(source.items)
+            ? source.items
+            : Array.isArray(source.values)
+                ? source.values
+                : Array.isArray(source.results)
+                    ? source.results
                     : []
 
     const items = rawItems
-        .map(normalizeSearchItem)
-        .filter((item): item is ProviderTestRef => Boolean(item))
+        .map((item): ProviderTestRef | null => normalizeSearchItem(item))
+        .filter((item): item is ProviderTestRef => item !== null)
 
-    const currentStartAt = toNumber(raw?.startAt ?? raw?.offset) ?? 0
+    const currentStartAt = toNumber(source.startAt ?? source.offset) ?? 0
     const nextStartAt = currentStartAt + rawItems.length
-    const total = toNumber(raw?.total ?? raw?.totalCount ?? raw?.size)
-    const configuredPageSize = toNumber(raw?.maxResults ?? raw?.pageSize ?? raw?.limit)
+    const total = toNumber(source.total ?? source.totalCount ?? source.size)
+    const configuredPageSize = toNumber(source.maxResults ?? source.pageSize ?? source.limit)
     const hasMore = total != null
         ? nextStartAt < total
         : configuredPageSize != null
@@ -182,19 +185,32 @@ function normalizeSearchPage(raw: any): { items: ProviderTestRef[]; hasMore: boo
     return { items, hasMore, nextStartAt }
 }
 
-function normalizeSearchItem(raw: any): ProviderTestRef | null {
-    const key = safeStr(raw?.key ?? raw?.testCaseKey ?? raw?.testCase?.key).trim()
-    const id = safeStr(raw?.id ?? raw?.testCase?.id).trim()
+function normalizeSearchItem(raw: unknown): ProviderTestRef | null {
+    const source = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {}
+    const sourceTestCase = source.testCase && typeof source.testCase === 'object'
+        ? source.testCase as Record<string, unknown>
+        : undefined
+    const sourceProject = source.project && typeof source.project === 'object'
+        ? source.project as Record<string, unknown>
+        : undefined
+    const key = safeStr(source.key ?? source.testCaseKey ?? sourceTestCase?.key).trim()
+    const id = safeStr(source.id ?? sourceTestCase?.id).trim()
     const ref = key || id
     if (!ref) return null
 
     return {
         ref,
         key: key || undefined,
-        name: safeStr(raw?.name ?? raw?.testCase?.name).trim() || undefined,
-        folder: safeStr(raw?.folder ?? raw?.testCase?.folder).trim() || undefined,
-        projectKey: safeStr(raw?.projectKey ?? raw?.project?.key ?? raw?.testCase?.projectKey).trim() || undefined,
-        updatedAt: safeStr(raw?.updatedOn ?? raw?.updatedAt ?? raw?.testCase?.updatedOn).trim() || undefined,
+        name: safeStr(source.name ?? sourceTestCase?.name).trim() || undefined,
+        folder: safeStr(source.folder ?? sourceTestCase?.folder).trim() || undefined,
+        projectKey:
+            safeStr(
+                source.projectKey ??
+                sourceProject?.key ??
+                sourceTestCase?.projectKey
+            ).trim() || undefined,
+        updatedAt:
+            safeStr(source.updatedOn ?? source.updatedAt ?? sourceTestCase?.updatedOn).trim() || undefined,
     }
 }
 
@@ -277,7 +293,7 @@ function buildUpsertBody(
     return body
 }
 
-function normalizeRemoteAttachments(values: any[] | undefined, scope: string) {
+function normalizeRemoteAttachments(values: ZephyrAttachmentResponse[] | undefined, scope: string) {
     if (!Array.isArray(values)) return []
     return values
         .map((value, index) => {
@@ -289,7 +305,7 @@ function normalizeRemoteAttachments(values: any[] | undefined, scope: string) {
                 safeStr(value?.downloadUrl ?? value?.content ?? value?.url ?? value?.href ?? value?.self).trim()
             return { id, name, pathOrDataUrl }
         })
-        .filter((attachment) => Boolean(attachment.name))
+        .filter((attachment): attachment is { id: string; name: string; pathOrDataUrl: string } => Boolean(attachment.name))
 }
 
 function safeStr(value: unknown): string {

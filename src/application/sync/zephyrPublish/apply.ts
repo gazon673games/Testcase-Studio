@@ -1,6 +1,6 @@
 import { nowISO, type TestCase } from '@core/domain'
 import type { ProviderTest } from '@providers/types'
-import { buildPublishSignature, PUBLISH_AT_KEY, PUBLISH_REMOTE_KEY, safeString } from './common'
+import { buildPublishSignature, PUBLISH_AT_KEY, PUBLISH_REMOTE_KEY, PUBLISH_SIGNATURE_KEY, safeString } from './common'
 
 export function applyPublishSuccess(test: TestCase, externalId: string, payload: ProviderTest) {
     test.links = [
