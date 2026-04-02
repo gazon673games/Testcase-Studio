@@ -9,6 +9,7 @@ import {
     type AutoItem,
     type AutoStage,
 } from './autocomplete'
+import { buildAutocompleteIndex } from './autocompleteIndex'
 import { getCaretAnchor } from './editorGeometry'
 import type { RefShared, RefTest } from './types'
 
@@ -62,6 +63,11 @@ export function useMarkdownAutocomplete({
         [suggestionCatalog]
     )
 
+    const autocompleteIndex = React.useMemo(
+        () => buildAutocompleteIndex(allTests, sharedSteps, resolveDisplayText),
+        [allTests, resolveDisplayText, sharedSteps]
+    )
+
     const closeAutocomplete = React.useCallback(() => {
         setOpen(false)
     }, [])
@@ -106,7 +112,7 @@ export function useMarkdownAutocomplete({
 
         if (hashPos === -1) {
             nextStage = 'owner'
-            nextItems = makeOwnerSuggestions(allTests, sharedSteps, query.trim(), t)
+            nextItems = makeOwnerSuggestions(autocompleteIndex, query.trim(), t)
         } else {
             const ownerQuery = query.slice(0, hashPos).trim()
             const afterHash = query.slice(hashPos + 1)
@@ -115,17 +121,15 @@ export function useMarkdownAutocomplete({
 
             if (dotPos === -1) {
                 nextStage = 'step'
-                nextItems = makeStepSuggestions(ownerQuery, afterHash.trim(), allTests, sharedSteps, t, resolveDisplayText)
+                nextItems = makeStepSuggestions(ownerQuery, afterHash.trim(), autocompleteIndex, t)
             } else if (atPos === -1) {
                 nextStage = 'field'
                 nextItems = makeFieldSuggestions(
                     ownerQuery,
                     afterHash.slice(0, dotPos).trim(),
                     afterHash.slice(dotPos + 1).trim(),
-                    allTests,
-                    sharedSteps,
-                    t,
-                    resolveDisplayText
+                    autocompleteIndex,
+                    t
                 )
             } else {
                 nextStage = 'part'
@@ -134,10 +138,8 @@ export function useMarkdownAutocomplete({
                     afterHash.slice(0, dotPos).trim(),
                     afterHash.slice(dotPos + 1, atPos).trim(),
                     afterHash.slice(atPos + 1).trim(),
-                    allTests,
-                    sharedSteps,
-                    t,
-                    resolveDisplayText
+                    autocompleteIndex,
+                    t
                 )
             }
         }
@@ -147,7 +149,7 @@ export function useMarkdownAutocomplete({
         setIndex(0)
         setHorizontalScroll(0)
         setOpen(nextItems.length > 0)
-    }, [allTests, resolveDisplayText, sharedSteps, t, value])
+    }, [autocompleteIndex, resolveDisplayText, t, value])
 
     const applySuggestion = React.useCallback((item: AutoItem) => {
         const element = taRef.current
