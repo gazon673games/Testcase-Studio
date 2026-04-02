@@ -54,9 +54,9 @@ export async function pushTestInMain(test: TestCase, link: TestCaseLink, state?:
 
 export async function twoWaySyncStateInMain(state: RootState) {
     const { sync } = createMainSyncContext()
-    const nextState = structuredClone(state)
-    await sync.twoWaySync(nextState)
-    return nextState
+    // Electron IPC already delivers an isolated state snapshot to main.
+    await sync.twoWaySync(state)
+    return state
 }
 
 export async function fetchZephyrImportInMain(request: ZephyrImportRequest) {
@@ -90,7 +90,7 @@ export async function fetchZephyrPublishInMain(externalIds: string[]): Promise<S
 
 export async function publishZephyrPreviewInMain(state: RootState, preview: ZephyrPublishPreview) {
     const { sync } = createMainSyncContext()
-    const nextState = structuredClone(state)
-    const result = await sync.publishZephyrPreview(nextState, preview)
-    return { state: nextState, result }
+    // Electron IPC already delivers an isolated state snapshot to main.
+    const result = await sync.publishZephyrPreview(state, preview)
+    return { state, result }
 }

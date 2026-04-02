@@ -5,7 +5,7 @@ import type { SyncText } from '../text'
 import { buildAttachmentPlan, collectAttachmentWarnings, collectProviderAttachments } from './attachments'
 import { safeString } from './common'
 import { buildCreateDiffs, diffPayloadAgainstRemote } from './diffs'
-import { buildZephyrPublishPayload } from './payload'
+import { buildZephyrPublishPayload, createZephyrPublishPayloadContext } from './payload'
 import type { ZephyrPublishPreview, ZephyrPublishPreviewItem } from './types'
 
 export function buildZephyrPublishPreview(
@@ -15,7 +15,8 @@ export function buildZephyrPublishPreview(
     selectionLabel: string,
     text: SyncText
 ): ZephyrPublishPreview {
-    const items = tests.map((test) => buildPreviewItem(state, test, remoteMap, text))
+    const payloadContext = createZephyrPublishPayloadContext(state)
+    const items = tests.map((test) => buildPreviewItem(state, test, remoteMap, text, payloadContext))
 
     return {
         selectionLabel,
@@ -35,12 +36,13 @@ function buildPreviewItem(
     state: RootState,
     test: TestCase,
     remoteMap: Map<string, ProviderTest | Error>,
-    text: SyncText
+    text: SyncText,
+    payloadContext: Parameters<typeof buildZephyrPublishPayload>[2]
 ): ZephyrPublishPreviewItem {
     const t = text.t
     let payload: ProviderTest
     try {
-        payload = buildZephyrPublishPayload(test, state)
+        payload = buildZephyrPublishPayload(test, state, payloadContext)
     } catch (error) {
         const reason =
             error instanceof ExportIntegrityError

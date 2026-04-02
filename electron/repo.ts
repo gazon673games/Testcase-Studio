@@ -1,4 +1,5 @@
 import { normalizeRootState, type RootState } from '../src/core/domain'
+import { migrateWorkspaceAttachments } from './attachmentStore'
 import { readRepoState } from './repo/repoRead'
 import { syncFolderNode, writeSharedStepsFile } from './repo/repoWrite'
 import { ensureDir, getRepoDir, joinInside, ROOT_DIR, type RepoIndex } from './repo/repoShared'
@@ -19,12 +20,18 @@ async function ensureRepoIndex(baseDir: string, rootDir: string) {
 export async function loadFromFs(): Promise<RootState> {
     const repoDir = getRepoDir()
     const { state, index } = await readRepoState(repoDir)
+    const migrated = await migrateWorkspaceAttachments(state)
+    if (migrated) {
+        await syncFolderNode(index, state.root, null, null)
+        await writeSharedStepsFile(index, state.sharedSteps)
+    }
     repoIndexCache = index
     return state
 }
 
 export async function saveToFs(state: RootState) {
     const normalizedState = normalizeRootState(state)
+    await migrateWorkspaceAttachments(normalizedState)
     const repoDir = getRepoDir()
     const rootDir = joinInside(repoDir, ROOT_DIR)
 

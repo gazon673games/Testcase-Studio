@@ -1,5 +1,7 @@
 import * as React from 'react'
 import type { Attachment } from '@core/domain'
+import { apiClient } from '@ipc/client'
+import { isDirectAttachmentHref } from './attachmentLinks'
 import './AttachmentsPanel.css'
 import { useUiPreferences } from '../../preferences'
 
@@ -15,20 +17,14 @@ export function AttachmentsPanel({ attachments, onChange, onUploadFiles, accept 
     const inputRef = React.useRef<HTMLInputElement | null>(null)
     const [loading, setLoading] = React.useState(false)
 
-    async function fallbackReadAsDataUrl(files: File[]): Promise<Attachment[]> {
-        const toDataUrl = (file: File) =>
-            new Promise<Attachment>((resolve, reject) => {
-                const reader = new FileReader()
-                reader.onload = () =>
-                    resolve({
-                        id: crypto.randomUUID(),
-                        name: file.name,
-                        pathOrDataUrl: reader.result as string,
-                    })
-                reader.onerror = reject
-                reader.readAsDataURL(file)
-            })
-        return Promise.all(files.map(toDataUrl))
+    async function storeAsManagedAttachments(files: File[]): Promise<Attachment[]> {
+        const payload = await Promise.all(
+            files.map(async (file) => ({
+                name: file.name,
+                bytes: await file.arrayBuffer(),
+            }))
+        )
+        return apiClient.storeWorkspaceAttachments(payload)
     }
 
     async function onFilePicked(event: React.ChangeEvent<HTMLInputElement>) {
@@ -36,7 +32,7 @@ export function AttachmentsPanel({ attachments, onChange, onUploadFiles, accept 
         if (!files.length) return
         setLoading(true)
         try {
-            const created = onUploadFiles ? await onUploadFiles(files) : await fallbackReadAsDataUrl(files)
+            const created = onUploadFiles ? await onUploadFiles(files) : await storeAsManagedAttachments(files)
             onChange([...(attachments ?? []), ...created])
         } finally {
             setLoading(false)
@@ -73,14 +69,25 @@ export function AttachmentsPanel({ attachments, onChange, onUploadFiles, accept 
                 <ul className="attachments-list">
                     {attachments.map((attachment) => (
                         <li key={attachment.id} className="attachment-item">
-                            <a
-                                className="file-name"
-                                href={attachment.pathOrDataUrl}
-                                title={attachment.name}
-                                download={attachment.name}
-                            >
-                                {attachment.name}
-                            </a>
+                            {isDirectAttachmentHref(attachment.pathOrDataUrl) ? (
+                                <a
+                                    className="file-name"
+                                    href={attachment.pathOrDataUrl}
+                                    title={attachment.name}
+                                    download={attachment.name}
+                                >
+                                    {attachment.name}
+                                </a>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="file-name attachment-link-button"
+                                    title={attachment.name}
+                                    onClick={() => void apiClient.openWorkspaceAttachment(attachment.pathOrDataUrl)}
+                                >
+                                    {attachment.name}
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 className="btn-small remove-btn"

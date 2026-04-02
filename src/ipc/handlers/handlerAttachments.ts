@@ -1,8 +1,14 @@
+import { isManagedAttachmentRef } from '@core/attachments'
+import { readManagedAttachmentBytes } from '../../../electron/attachmentStore.js'
 import { ensureOk, fetchWithContext, readJsonResponse } from './handlerNetwork.js'
 import type { ZephyrContext } from './handlerSettings.js'
 
-function attachmentToBuffer(pathOrDataUrl: string): Buffer {
+async function attachmentToBuffer(pathOrDataUrl: string): Promise<Buffer> {
     const raw = String(pathOrDataUrl ?? '')
+    if (isManagedAttachmentRef(raw)) {
+        return await readManagedAttachmentBytes(raw)
+    }
+
     const dataUrlMatch = raw.match(/^data:([^;,]+)?(?:;charset=[^;,]+)?(;base64)?,(.*)$/i)
     if (!dataUrlMatch) throw new Error('NOT_A_DATA_URL')
 
@@ -26,9 +32,9 @@ export async function uploadZephyrAttachment(
 
     let bytes: Buffer
     try {
-        bytes = attachmentToBuffer(pathOrDataUrl)
+        bytes = await attachmentToBuffer(pathOrDataUrl)
     } catch {
-        throw new Error(`Attachment "${attachmentName}" must be embedded as a data URL before upload`)
+        throw new Error(`Attachment "${attachmentName}" must be embedded as a data URL or stored in the workspace attachment store before upload`)
     }
 
     const form = new FormData()

@@ -28,6 +28,8 @@ export function useStepsPanelController({
     const [isNarrow, setIsNarrow] = React.useState(false)
     const stepRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
     const dragIndex = React.useRef<number | null>(null)
+    const focusFrame = React.useRef<number | null>(null)
+    const focusTimeout = React.useRef<number | null>(null)
     const [draggingIndex, setDraggingIndex] = React.useState<number | null>(null)
     const [hoverIndex, setHoverIndex] = React.useState<number | null>(null)
 
@@ -44,15 +46,31 @@ export function useStepsPanelController({
         if (!focusStepId) return
 
         setOpen(true)
-        requestAnimationFrame(() => {
+        focusFrame.current = requestAnimationFrame(() => {
+            focusFrame.current = null
             const element = stepRefs.current[focusStepId]
             element?.scrollIntoView({ block: 'center', behavior: 'smooth' })
             if (!element) return
             element.style.outline = '2px solid var(--accent-border)'
-            setTimeout(() => {
+            if (focusTimeout.current != null) {
+                clearTimeout(focusTimeout.current)
+            }
+            focusTimeout.current = window.setTimeout(() => {
+                focusTimeout.current = null
                 if (element) element.style.outline = 'none'
             }, 900)
         })
+
+        return () => {
+            if (focusFrame.current != null) {
+                cancelAnimationFrame(focusFrame.current)
+                focusFrame.current = null
+            }
+            if (focusTimeout.current != null) {
+                clearTimeout(focusTimeout.current)
+                focusTimeout.current = null
+            }
+        }
     }, [focusStepId])
 
     const updateStep = React.useCallback((index: number, patch: Partial<Step> | Step) => {

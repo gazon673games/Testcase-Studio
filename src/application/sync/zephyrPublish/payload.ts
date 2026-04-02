@@ -6,10 +6,23 @@ import { mapTests } from '@core/tree'
 import type { ProviderStep, ProviderTest } from '@providers/types'
 import { copyAttachment, resolveZephyrExternalId, safeString } from './common'
 
-export function buildZephyrPublishPayload(test: TestCase, state: RootState): ProviderTest {
+type ZephyrPublishPayloadContext = {
+    refCatalog: ReturnType<typeof buildRefCatalog>
+}
+
+export function createZephyrPublishPayloadContext(state: RootState): ZephyrPublishPayloadContext {
+    return {
+        refCatalog: buildRefCatalog(mapTests(state.root), state.sharedSteps),
+    }
+}
+
+export function buildZephyrPublishPayload(
+    test: TestCase,
+    state: RootState,
+    context: ZephyrPublishPayloadContext = createZephyrPublishPayloadContext(state)
+): ProviderTest {
     const exportPayload = buildExport(test, state)
-    const refCatalog = buildRefCatalog(mapTests(state.root), state.sharedSteps)
-    const render = (value: string | undefined) => renderZephyrText(value, refCatalog)
+    const render = (value: string | undefined) => renderZephyrText(value, context.refCatalog)
     const externalId = resolveZephyrExternalId(test) ?? ''
     const projectKey = resolveProjectKey(test)
     const folder = safeString(test.meta?.params?.folder)

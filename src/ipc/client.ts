@@ -1,4 +1,5 @@
 import type {
+    Attachment,
     RootState,
     TestCase,
     TestCaseLink,
@@ -20,6 +21,12 @@ export const apiClient = {
     loadSettings: (): Promise<AtlassianSettings> => window.api.loadSettings(),
     saveSettings: (login: string, passwordOrToken?: string, baseUrl?: string) =>
         window.api.saveSettings(login, passwordOrToken, baseUrl),
+
+    storeWorkspaceAttachments: (files: Array<{ name: string; bytes: ArrayBuffer }>): Promise<Attachment[]> =>
+        window.api.storeWorkspaceAttachments(files),
+
+    openWorkspaceAttachment: (ref: string): Promise<boolean> =>
+        window.api.openWorkspaceAttachment(ref),
 
     syncPullByLink: (link: TestCaseLink): Promise<ProviderTest> =>
         window.api.syncPullByLink(link),

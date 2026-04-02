@@ -1,6 +1,7 @@
 import type { IpcMain } from 'electron'
 import type { RootState, TestCase, TestCaseLink } from '../../core/domain.js'
 import type { ZephyrImportRequest, ZephyrPublishPreview } from '../../application/sync/index.js'
+import { openWorkspaceAttachment, storeWorkspaceAttachments } from '../../../electron/attachmentStore.js'
 import { loadFromFs, saveToFs, writePublishLog, writeStateSnapshot } from '../../../electron/repo.js'
 import { CHANNELS } from '../channels.js'
 import { loadMainSettings, saveMainSettings } from './handlerSettings.js'
@@ -32,6 +33,18 @@ export function registerPersistenceHandlers(ipcMain: IpcMain) {
 
     ipcMain.handle(CHANNELS.WRITE_PUBLISH_LOG, async (_event, payload: Record<string, unknown>) => {
         return await writePublishLog(payload)
+    })
+
+    ipcMain.handle(
+        CHANNELS.STORE_WORKSPACE_ATTACHMENTS,
+        async (_event, payload: { files: Array<{ name: string; bytes: ArrayBuffer }> }) => {
+            return await storeWorkspaceAttachments(payload.files ?? [])
+        }
+    )
+
+    ipcMain.handle(CHANNELS.OPEN_WORKSPACE_ATTACHMENT, async (_event, payload: { ref: string }) => {
+        await openWorkspaceAttachment(payload.ref)
+        return true
     })
 }
 

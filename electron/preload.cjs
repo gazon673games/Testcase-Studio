@@ -5,6 +5,8 @@ const CHANNELS = {
     SAVE_STATE: 'SAVE_STATE',
     LOAD_SETTINGS: 'LOAD_SETTINGS',
     SAVE_SETTINGS: 'SAVE_SETTINGS',
+    STORE_WORKSPACE_ATTACHMENTS: 'STORE_WORKSPACE_ATTACHMENTS',
+    OPEN_WORKSPACE_ATTACHMENT: 'OPEN_WORKSPACE_ATTACHMENT',
     SYNC_PULL_BY_LINK: 'SYNC_PULL_BY_LINK',
     SYNC_PUSH_TEST: 'SYNC_PUSH_TEST',
     SYNC_TWO_WAY_SYNC: 'SYNC_TWO_WAY_SYNC',
@@ -21,6 +23,10 @@ contextBridge.exposeInMainWorld('api', {
     loadSettings: () => ipcRenderer.invoke(CHANNELS.LOAD_SETTINGS),
     saveSettings: (login, passwordOrToken, baseUrl) =>
         ipcRenderer.invoke(CHANNELS.SAVE_SETTINGS, { login, passwordOrToken, baseUrl }),
+    storeWorkspaceAttachments: (files) =>
+        ipcRenderer.invoke(CHANNELS.STORE_WORKSPACE_ATTACHMENTS, { files }),
+    openWorkspaceAttachment: (ref) =>
+        ipcRenderer.invoke(CHANNELS.OPEN_WORKSPACE_ATTACHMENT, { ref }),
     syncPullByLink: (link) => ipcRenderer.invoke(CHANNELS.SYNC_PULL_BY_LINK, { link }),
     syncPushTest: (test, link, state) => ipcRenderer.invoke(CHANNELS.SYNC_PUSH_TEST, { test, link, state }),
     syncTwoWaySync: (state) => ipcRenderer.invoke(CHANNELS.SYNC_TWO_WAY_SYNC, { state }),

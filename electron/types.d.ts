@@ -11,6 +11,10 @@ declare global {
                 passwordOrToken?: string,
                 baseUrl?: string
             ): Promise<import('../src/core/settings').AtlassianSettings>
+            storeWorkspaceAttachments(
+                files: Array<{ name: string; bytes: ArrayBuffer }>
+            ): Promise<import('../src/core/domain').Attachment[]>
+            openWorkspaceAttachment(ref: string): Promise<boolean>
             syncPullByLink(link: import('../src/core/domain').TestCaseLink): Promise<import('../src/providers/types').ProviderTest>
             syncPushTest(
                 test: import('../src/core/domain').TestCase,
