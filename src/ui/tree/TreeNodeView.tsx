@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { isFolder } from '@core/tree'
 import type { EditingState, TreeKeyboardHandler, TreeTranslate, ViewNode } from './types'
-import { ChevronIcon, makeNodeKey, renderSyncStatusBadge, summarizeStepHeadline } from './utils'
+import { ChevronIcon, makeNodeKey, renderSyncStatusBadge } from './utils'
 import { TreeStepsList } from './TreeStepsList'
 
 export type TreeNodeViewProps = {
@@ -29,8 +29,9 @@ export type TreeNodeViewProps = {
     cancelRename(): void
     onOpenStep(testId: string, stepId: string): void
     t: TreeTranslate
-    resolveDisplayText(value: string | undefined): string
     syncStatusById: Map<string, 'dirty'>
+    testHeadlineById: Map<string, string>
+    stepLabelByKey: Map<string, string>
 }
 
 export function TreeNodeView(props: TreeNodeViewProps) {
@@ -53,8 +54,9 @@ export function TreeNodeView(props: TreeNodeViewProps) {
         cancelRename,
         onOpenStep,
         t,
-        resolveDisplayText,
         syncStatusById,
+        testHeadlineById,
+        stepLabelByKey,
     } = props
 
     const id = node.id
@@ -165,11 +167,11 @@ export function TreeNodeView(props: TreeNodeViewProps) {
 
                 {!isEditing ? (
                     <>
-                        <div className="tree-text-wrap">
+                            <div className="tree-text-wrap">
                             <div className="tree-name">{node.name}</div>
                             {!isDir && (
                                 <div className="tree-secondary">
-                                    {summarizeStepHeadline(node.steps, t, resolveDisplayText)}
+                                    {testHeadlineById.get(id) ?? t('tree.noSteps')}
                                 </div>
                             )}
                         </div>
@@ -233,8 +235,9 @@ export function TreeNodeView(props: TreeNodeViewProps) {
                                     cancelRename={cancelRename}
                                     onOpenStep={onOpenStep}
                                     t={t}
-                                    resolveDisplayText={resolveDisplayText}
                                     syncStatusById={syncStatusById}
+                                    testHeadlineById={testHeadlineById}
+                                    stepLabelByKey={stepLabelByKey}
                                 />
                             ))}
                         </div>
@@ -251,7 +254,7 @@ export function TreeNodeView(props: TreeNodeViewProps) {
                             registerRowRef={registerRowRef}
                             onOpenStep={onOpenStep}
                             t={t}
-                            resolveDisplayText={resolveDisplayText}
+                            stepLabelByKey={stepLabelByKey}
                         />
                     )
             )}

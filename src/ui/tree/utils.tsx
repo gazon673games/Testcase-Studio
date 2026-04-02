@@ -4,6 +4,14 @@ import { isFolder } from '@core/tree'
 import { translate } from '../preferences'
 import type { SyncStatus, TreeTranslate, ViewNode, VisibleItem } from './types'
 
+export type TreeViewState = {
+    visibleItems: VisibleItem[]
+    visibleIndexByKey: Map<string, number>
+    syncStatusById: Map<string, SyncStatus>
+    testHeadlineById: Map<string, string>
+    stepLabelByKey: Map<string, string>
+}
+
 export function summarizeStepHeadline(
     steps: Step[],
     t: TreeTranslate = translate,
@@ -96,6 +104,111 @@ export function flattenVisibleItems(
 
     walk(root, 0)
     return items
+}
+
+export function buildTreeViewState(
+    root: Folder,
+    expanded: Set<string>,
+    dirtyTestIds: Set<string>,
+    t: TreeTranslate = translate,
+    resolveDisplayText: (value: string | undefined) => string = (value) => String(value ?? '')
+): TreeViewState {
+    const visibleItems: VisibleItem[] = []
+    const visibleIndexByKey = new Map<string, number>()
+    const syncStatusById = new Map<string, SyncStatus>()
+    const testHeadlineById = new Map<string, string>()
+    const stepLabelByKey = new Map<string, string>()
+
+    const pushVisibleItem = (item: VisibleItem) => {
+        visibleIndexByKey.set(item.key, visibleItems.length)
+        visibleItems.push(item)
+    }
+
+    const walkSyncOnly = (node: ViewNode): SyncStatus | null => {
+        if (!isFolder(node)) {
+            const status = dirtyTestIds.has(node.id) ? 'dirty' : null
+            if (status) syncStatusById.set(node.id, status)
+            return status
+        }
+
+        let status: SyncStatus | null = null
+        for (const child of node.children) {
+            if (walkSyncOnly(child) === 'dirty') status = 'dirty'
+        }
+
+        if (status) syncStatusById.set(node.id, status)
+        return status
+    }
+
+    const walkVisible = (node: ViewNode, depth: number, parentKey?: string): SyncStatus | null => {
+        const id = node.id
+        const key = makeNodeKey(id)
+        const dir = isFolder(node)
+        const hasChildren = dir ? node.children.length > 0 : node.steps.length > 0
+        const isOpen = expanded.has(id)
+
+        pushVisibleItem({
+            key,
+            kind: dir ? 'folder' : 'test',
+            id,
+            parentKey,
+            depth,
+            hasChildren,
+            expanded: isOpen,
+            name: node.name,
+        })
+
+        if (!dir) {
+            testHeadlineById.set(id, summarizeStepHeadline(node.steps, t, resolveDisplayText))
+
+            const status = dirtyTestIds.has(id) ? 'dirty' : null
+            if (status) syncStatusById.set(id, status)
+
+            if (isOpen && hasChildren) {
+                node.steps.forEach((step) => {
+                    const stepKey = makeStepKey(id, step.id)
+                    pushVisibleItem({
+                        key: stepKey,
+                        kind: 'step',
+                        id: step.id,
+                        testId: id,
+                        parentKey: key,
+                        depth: depth + 1,
+                        hasChildren: false,
+                        expanded: false,
+                    })
+                    stepLabelByKey.set(stepKey, summarizeStepLabel(step, t, resolveDisplayText))
+                })
+            }
+
+            return status
+        }
+
+        let status: SyncStatus | null = null
+
+        if (isOpen && hasChildren) {
+            for (const child of node.children) {
+                if (walkVisible(child, depth + 1, key) === 'dirty') status = 'dirty'
+            }
+        } else {
+            for (const child of node.children) {
+                if (walkSyncOnly(child) === 'dirty') status = 'dirty'
+            }
+        }
+
+        if (status) syncStatusById.set(id, status)
+        return status
+    }
+
+    walkVisible(root, 0)
+
+    return {
+        visibleItems,
+        visibleIndexByKey,
+        syncStatusById,
+        testHeadlineById,
+        stepLabelByKey,
+    }
 }
 
 export function buildNodeSyncStatusIndex(root: Folder, dirtyTestIds: Set<string>) {

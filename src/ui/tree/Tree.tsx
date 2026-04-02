@@ -7,7 +7,7 @@ import './Tree.css'
 import { TreeMenu } from './TreeMenu'
 import { TreeNodeView } from './TreeNodeView'
 import type { ContextMenuState, EditingState, VisibleItem } from './types'
-import { buildNodeSyncStatusIndex, flattenVisibleItems, makeNodeKey, toPreviewishPlainText } from './utils'
+import { buildTreeViewState, makeNodeKey, toPreviewishPlainText } from './utils'
 
 type Props = {
     root: Folder
@@ -47,13 +47,11 @@ export function Tree(props: Props) {
         })
     }, [props.root.id])
 
-    const visibleItems = React.useMemo(() => flattenVisibleItems(props.root, expanded), [props.root, expanded])
-    const visibleIndexByKey = React.useMemo(() => {
-        const next = new Map<string, number>()
-        visibleItems.forEach((item, index) => next.set(item.key, index))
-        return next
-    }, [visibleItems])
-    const syncStatusById = React.useMemo(() => buildNodeSyncStatusIndex(props.root, props.dirtyTestIds), [props.root, props.dirtyTestIds])
+    const treeViewState = React.useMemo(
+        () => buildTreeViewState(props.root, expanded, props.dirtyTestIds, t, resolveDisplayText),
+        [expanded, props.dirtyTestIds, props.root, resolveDisplayText, t]
+    )
+    const { visibleItems, visibleIndexByKey, syncStatusById, testHeadlineById, stepLabelByKey } = treeViewState
 
     React.useEffect(() => {
         setFocusedKey(selectedKey)
@@ -248,8 +246,9 @@ export function Tree(props: Props) {
                     cancelRename={cancelRename}
                     onOpenStep={props.onOpenStep}
                     t={t}
-                    resolveDisplayText={resolveDisplayText}
                     syncStatusById={syncStatusById}
+                    testHeadlineById={testHeadlineById}
+                    stepLabelByKey={stepLabelByKey}
                 />
             </div>
 

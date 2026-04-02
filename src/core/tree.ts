@@ -125,18 +125,43 @@ export function moveNode(root: Folder, nodeId: ID, targetFolderId: ID): boolean 
     if (nodeId === root.id) return false
     if (nodeId === targetFolderId) return false
 
-    const node = findNode(root, nodeId)
-    if (!node) return false
-    if (isAncestor(root, nodeId, targetFolderId)) return false
+    let node: Node | null = null
+    let sourceFolder: Folder | null = null
+    let sourceIndex = -1
+    let targetFolder: Folder | null = root.id === targetFolderId ? root : null
+    let targetInsideNodeSubtree = false
 
-    const sourceFolder = findParentFolder(root, nodeId)
-    if (!sourceFolder) return false
+    const walk = (folder: Folder, insideNodeSubtree: boolean): void => {
+        if (folder.id === targetFolderId) {
+            targetFolder = folder
+            targetInsideNodeSubtree = insideNodeSubtree
+        }
 
-    const sourceIndex = findChildIndexById(sourceFolder, nodeId)
-    if (sourceIndex < 0) return false
+        for (let childIndex = 0; childIndex < folder.children.length; childIndex += 1) {
+            const child = folder.children[childIndex]
+            const childIsNode = child.id === nodeId
 
-    sourceFolder.children.splice(sourceIndex, 1)
-    return mutateFolder(root, targetFolderId, (targetFolder) => {
-        targetFolder.children.push(node)
-    })
+            if (childIsNode) {
+                node = child
+                sourceFolder = folder
+                sourceIndex = childIndex
+            }
+
+            if (isFolder(child)) {
+                walk(child, insideNodeSubtree || childIsNode)
+            }
+        }
+    }
+
+    walk(root, false)
+
+    if (node === null || sourceFolder === null || sourceIndex < 0 || targetFolder === null) return false
+    if (targetInsideNodeSubtree) return false
+
+    const movingNode = node as Node
+    const finalSourceFolder = sourceFolder as Folder
+    const finalTargetFolder = targetFolder as Folder
+    finalSourceFolder.children.splice(sourceIndex, 1)
+    finalTargetFolder.children.push(movingNode)
+    return true
 }

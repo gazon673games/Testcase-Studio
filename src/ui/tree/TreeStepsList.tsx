@@ -1,7 +1,7 @@
 import * as React from 'react'
 import type { Step } from '@core/domain'
 import type { TreeKeyboardHandler, TreeTranslate } from './types'
-import { makeStepKey, summarizeStepLabel } from './utils'
+import { makeStepKey } from './utils'
 
 type TreeStepsListProps = {
     testId: string
@@ -14,7 +14,7 @@ type TreeStepsListProps = {
     registerRowRef(key: string, element: HTMLElement | null): void
     onOpenStep: (testId: string, stepId: string) => void
     t: TreeTranslate
-    resolveDisplayText(value: string | undefined): string
+    stepLabelByKey: Map<string, string>
 }
 
 export function TreeStepsList({
@@ -28,7 +28,7 @@ export function TreeStepsList({
     registerRowRef,
     onOpenStep,
     t,
-    resolveDisplayText,
+    stepLabelByKey,
 }: TreeStepsListProps) {
     const offset = 24 + depth * 14
 
@@ -41,6 +41,7 @@ export function TreeStepsList({
                     step.attachments?.length ? t('tree.fileCount', { count: step.attachments.length }) : '',
                 ].filter(Boolean)
                 const key = makeStepKey(testId, step.id)
+                const label = stepLabelByKey.get(key) ?? t('tree.untitledStep')
                 const item = {
                     key,
                     kind: 'step' as const,
@@ -50,7 +51,7 @@ export function TreeStepsList({
                     depth,
                     hasChildren: false as const,
                     expanded: false as const,
-                    name: summarizeStepLabel(step, t, resolveDisplayText),
+                    name: label,
                 }
                 const focused = key === focusedKey
 
@@ -73,7 +74,7 @@ export function TreeStepsList({
                     >
                         <span className="tree-step-index">{index + 1}</span>
                         <div className="tree-step-content">
-                            <div className="tree-step-label">{summarizeStepLabel(step, t, resolveDisplayText)}</div>
+                            <div className="tree-step-label">{label}</div>
                             {details.length ? <div className="tree-step-meta">{details.join(' / ')}</div> : null}
                         </div>
                     </div>
