@@ -30,8 +30,9 @@ export function getPublishSelection(state: RootState | null, selectedId: ID | nu
     if (!state) return { label: rootLabel, tests: [] as TestCase[] }
 
     const selected = getSelectedNode(state, selectedId)
-    if (!selected) return { label: describeFolderPath(state.root, state.root.id, rootLabel), tests: mapTests(state.root) }
+    if (!selected) return { label: rootLabel, tests: mapTests(state.root) }
     if (!isFolder(selected)) return { label: selected.name, tests: [selected] }
+    if (selected.id === state.root.id) return { label: rootLabel, tests: mapTests(state.root) }
 
     return {
         label: describeFolderPath(state.root, selected.id, rootLabel),

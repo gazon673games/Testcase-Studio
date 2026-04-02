@@ -14,9 +14,15 @@ export async function applyZephyrImport(
     if (!state) throw new Error('State is not loaded yet')
     const nextState = structuredClone(state)
     const result = sync.applyZephyrImport(nextState, preview)
+
     return {
         nextState,
         result,
-        clearedDirtyIds: preview.items.map((item) => item.localTestId ?? '').filter(Boolean),
+        clearedDirtyIds: [...new Set(
+            preview.items
+                .filter((item) => item.strategy === 'replace' && !item.replaceDisabled)
+                .map((item) => item.localTestId ?? '')
+                .filter(Boolean)
+        )],
     }
 }

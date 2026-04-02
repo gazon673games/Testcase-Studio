@@ -53,6 +53,11 @@ export async function publishZephyrPreview(
         result,
         snapshotPath,
         logPath,
-        clearedDirtyIds: preview.items.map((item) => item.testId),
+        clearedDirtyIds: [...new Set(
+            result.logItems
+                .filter((item) => item.status === 'created' || item.status === 'updated')
+                .map((item) => item.testId)
+                .filter(Boolean)
+        )],
     }
 }
