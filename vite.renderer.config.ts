@@ -2,32 +2,41 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron'
 import electronRenderer from 'vite-plugin-electron-renderer'
+import fs from 'node:fs'
 import path from 'node:path'
 
+const projectRoot = fs.realpathSync.native(__dirname)
+const rendererRoot = path.join(projectRoot, 'src')
+const electronRoot = path.join(projectRoot, 'electron')
+const distRoot = path.join(projectRoot, 'dist')
+const distElectronRoot = path.join(projectRoot, 'dist-electron')
+
+const aliases = {
+    '@app': path.join(projectRoot, 'src/application'),
+    '@core': path.join(projectRoot, 'src/core'),
+    '@shared': path.join(projectRoot, 'src/shared'),
+    '@providers': path.join(projectRoot, 'src/providers'),
+    '@ipc': path.join(projectRoot, 'src/ipc'),
+}
+
 export default defineConfig({
-    root: 'src',
+    root: rendererRoot,
     server: { port: 5173, strictPort: true },
     plugins: [
         react(),
         electronRenderer(),
         electron([
             {
-                entry: '../electron/main.ts',
+                entry: path.join(electronRoot, 'main.ts'),
                 onstart({ startup }) {
                     startup(['.'])
                 },
                 vite: {
                     resolve: {
-                        alias: {
-                            '@app': path.resolve(__dirname, 'src/application'),
-                            '@core': path.resolve(__dirname, 'src/core'),
-                            '@shared': path.resolve(__dirname, 'src/shared'),
-                            '@providers': path.resolve(__dirname, 'src/providers'),
-                            '@ipc': path.resolve(__dirname, 'src/ipc'),
-                        },
+                        alias: aliases,
                     },
                     build: {
-                        outDir: '../dist-electron',
+                        outDir: distElectronRoot,
                         target: 'node18',
                         sourcemap: true,
                         rollupOptions: {
@@ -40,13 +49,7 @@ export default defineConfig({
         ]),
     ],
     resolve: {
-        alias: {
-            '@app': path.resolve(__dirname, 'src/application'),
-            '@core': path.resolve(__dirname, 'src/core'),
-            '@shared': path.resolve(__dirname, 'src/shared'),
-            '@providers': path.resolve(__dirname, 'src/providers'),
-            '@ipc': path.resolve(__dirname, 'src/ipc'),
-        },
+        alias: aliases,
     },
-    build: { outDir: '../dist', emptyOutDir: true },
+    build: { outDir: distRoot, emptyOutDir: true },
 })
