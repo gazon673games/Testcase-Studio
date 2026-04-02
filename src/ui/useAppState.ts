@@ -124,6 +124,15 @@ export function useAppState(services: AppServices) {
         return latestStateRef.current ?? state
     }
 
+    const adoptStateSnapshot = React.useCallback((next: RootState) => {
+        // Workspace commands/use-cases already return an isolated next snapshot.
+        // We keep ownership of that object here instead of cloning the full tree again.
+        latestStateRef.current = next
+        latestRevisionRef.current += 1
+        setState(next)
+        return latestRevisionRef.current
+    }, [])
+
     const runQueuedSave = React.useCallback(
         async (snapshot: RootState, revision: number) => {
             activeSavesRef.current += 1
@@ -176,32 +185,25 @@ export function useAppState(services: AppServices) {
 
     const stageLocalState = React.useCallback(
         (next: RootState, dirtyIds?: string[]) => {
-            const snapshot = structuredClone(next)
-            latestStateRef.current = snapshot
-            latestRevisionRef.current += 1
-            setState(snapshot)
+            adoptStateSnapshot(next)
             markDirty(dirtyIds)
             setHasUnsavedChanges(true)
             setSaveError(null)
             scheduleSave()
         },
-        [scheduleSave]
+        [adoptStateSnapshot, scheduleSave]
     )
 
     const persistStateNow = React.useCallback(
         async (next: RootState, dirtyIds?: string[]) => {
-            const snapshot = structuredClone(next)
-            latestStateRef.current = snapshot
-            latestRevisionRef.current += 1
-            const revision = latestRevisionRef.current
-            setState(snapshot)
+            const revision = adoptStateSnapshot(next)
             markDirty(dirtyIds)
             setHasUnsavedChanges(true)
             setSaveError(null)
             cancelScheduledSave()
-            await enqueueSave(snapshot, revision)
+            await enqueueSave(next, revision)
         },
-        [cancelScheduledSave, enqueueSave]
+        [adoptStateSnapshot, cancelScheduledSave, enqueueSave]
     )
 
     const flushSave = React.useCallback(async () => {
@@ -415,10 +417,7 @@ export function useAppState(services: AppServices) {
         await saveQueueRef.current
 
         const outcome = await publishZephyrPreviewUseCase(getCurrentState(), preview, sync)
-        const snapshot = structuredClone(outcome.nextState)
-        latestStateRef.current = snapshot
-        latestRevisionRef.current += 1
-        setState(snapshot)
+        adoptStateSnapshot(outcome.nextState)
         clearDirty(outcome.clearedDirtyIds)
         setHasUnsavedChanges(false)
         setSaveError(null)
