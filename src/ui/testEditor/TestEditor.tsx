@@ -8,10 +8,10 @@ import './panels/MetaParamsPanel.css'
 import { AttachmentsPanel } from './panels/AttachmentsPanel'
 import './panels/AttachmentsPanel.css'
 import DetailsPanel from './panels/DetailsPanel'
-import SharedLibraryPanel from './panels/SharedLibraryPanel'
-import StepsPanel from './panels/StepsPanel'
+import SharedLibraryPanel from './panels/sharedLibrary/SharedLibraryPanel'
+import StepsPanel from './panels/steps/StepsPanel'
 import { useUiPreferences } from '../preferences'
-import { useStoredToggle } from '../useStoredToggle'
+import { useStoredToggle } from '../hooks/useStoredToggle'
 
 type Props = {
     test: TestCase

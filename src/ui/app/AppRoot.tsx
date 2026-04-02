@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { UiKit } from '../UiKit'
+import { UiKit } from '../uiKit'
 import { UiPreferencesProvider, useUiPreferences } from '../preferences'
-import { AppErrorBoundary } from './AppErrorBoundary'
+import { AppErrorBoundary } from './components/AppErrorBoundary'
 import { AppShell } from './AppShell'
 
 export function App() {

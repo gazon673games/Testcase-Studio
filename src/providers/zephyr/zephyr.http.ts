@@ -1,11 +1,11 @@
 // src/providers/zephyr.http.ts
 import type { ITestProvider, ProviderTest, ProviderTestRef, SearchOptions } from '../types'
-import { buildUpsertBodies, shouldRetryVariablePayload } from './zephyrUpsertPayload'
-import { mapZephyrTestDetails } from './zephyrDetails'
-import { parseZephyrRef } from './zephyrRef'
-import type { ZephyrTestCaseResponse } from './zephyrResponses'
-import { searchZephyrTests } from './zephyrSearchLoop'
-import { safeStr } from './zephyrValueMapping'
+import { buildUpsertBodies, shouldRetryVariablePayload } from './internal/zephyrUpsertPayload'
+import { mapZephyrTestDetails } from './internal/zephyrDetails'
+import { parseZephyrRef } from './internal/zephyrRef'
+import type { ZephyrTestCaseResponse } from './internal/zephyrResponses'
+import { searchZephyrTests } from './internal/zephyrSearchLoop'
+import { safeStr } from './internal/zephyrValueMapping'
 
 export interface ZephyrApiClient {
     zephyrGetTestCase<T = unknown>(ref: string, by: 'id' | 'key'): Promise<T>
