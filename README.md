@@ -62,6 +62,25 @@ In dev mode this folder is created in the project root.
 
 The app autosaves workspace changes, so you normally do not need to manually export files after every edit.
 
+## Zephyr setup
+
+If you want import and publish features to work, you need to fill in Atlassian settings inside the app.
+
+Open the app, then open **Settings** from the toolbar and fill in:
+
+- `Base URL` - your Jira or Atlassian base URL, for example `https://your-domain.atlassian.net`
+- `Login` - the username or email used for your Atlassian account
+- `Password` - your password or token, depending on how your Jira or Zephyr environment is configured
+
+Useful notes:
+
+- the app needs all three values before Zephyr requests can work
+- the base URL should be the main Atlassian or Jira address, not a specific REST endpoint
+- the non-secret part of settings is stored in `tests_repo/.settings.json`
+- the secret itself is stored through the OS credential store integration
+
+If settings are missing, Zephyr import and publish requests will fail until they are filled in.
+
 ## Development flow
 
 ### 1. Install dependencies
@@ -124,6 +143,24 @@ This is useful when you want to check the app without the Vite dev server.
 - `npm test` - run Vitest
 - `npm run build` - typecheck and build renderer + Electron main
 - `npm run start` - build and launch Electron locally
+
+## GitHub Actions
+
+The repository includes a simple CI workflow in `.github/workflows/main.yml`.
+
+It runs on:
+
+- pushes to `main`
+- every pull request
+
+The workflow checks the project on Windows and runs:
+
+- `npm ci`
+- `npm run typecheck`
+- `npm test`
+- `npm run build`
+
+This is enough to catch broken builds, failed tests, and basic integration issues before changes pile up.
 
 ## Current state of the project
 
