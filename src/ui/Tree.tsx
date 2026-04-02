@@ -7,7 +7,7 @@ import './Tree.css'
 import { TreeMenu } from './tree/TreeMenu'
 import { TreeNodeView } from './tree/TreeNodeView'
 import type { ContextMenuState, EditingState, VisibleItem } from './tree/types'
-import { flattenVisibleItems, makeNodeKey, toPreviewishPlainText } from './tree/utils'
+import { buildNodeSyncStatusIndex, flattenVisibleItems, makeNodeKey, toPreviewishPlainText } from './tree/utils'
 
 type Props = {
     root: Folder
@@ -31,7 +31,8 @@ export function Tree(props: Props) {
     const rowRefs = React.useRef<Record<string, HTMLElement | null>>({})
     const selectedKey = makeNodeKey(props.selectedId ?? props.root.id)
     const [focusedKey, setFocusedKey] = React.useState(selectedKey)
-    const refCatalog = React.useMemo(() => buildRefCatalog(mapTests(props.root), props.sharedSteps), [props.root, props.sharedSteps])
+    const allTests = React.useMemo(() => mapTests(props.root), [props.root])
+    const refCatalog = React.useMemo(() => buildRefCatalog(allTests, props.sharedSteps), [allTests, props.sharedSteps])
     const resolveDisplayText = React.useCallback(
         (value: string | undefined) => toPreviewishPlainText(renderRefsInText(String(value ?? ''), refCatalog, { mode: 'plain' })),
         [refCatalog]
@@ -46,21 +47,23 @@ export function Tree(props: Props) {
         })
     }, [props.root.id])
 
-    const visibleItems = React.useMemo(
-        () => flattenVisibleItems(props.root, expanded, t, resolveDisplayText),
-        [props.root, expanded, resolveDisplayText, t]
-    )
-    const visibleKeys = React.useMemo(() => visibleItems.map((item) => item.key), [visibleItems])
+    const visibleItems = React.useMemo(() => flattenVisibleItems(props.root, expanded), [props.root, expanded])
+    const visibleIndexByKey = React.useMemo(() => {
+        const next = new Map<string, number>()
+        visibleItems.forEach((item, index) => next.set(item.key, index))
+        return next
+    }, [visibleItems])
+    const syncStatusById = React.useMemo(() => buildNodeSyncStatusIndex(props.root, props.dirtyTestIds), [props.root, props.dirtyTestIds])
 
     React.useEffect(() => {
         setFocusedKey(selectedKey)
     }, [selectedKey])
 
     React.useEffect(() => {
-        if (!visibleKeys.length) return
-        if (visibleKeys.includes(focusedKey)) return
-        setFocusedKey(visibleKeys.includes(selectedKey) ? selectedKey : visibleKeys[0])
-    }, [focusedKey, selectedKey, visibleKeys])
+        if (!visibleItems.length) return
+        if (visibleIndexByKey.has(focusedKey)) return
+        setFocusedKey(visibleIndexByKey.has(selectedKey) ? selectedKey : visibleItems[0].key)
+    }, [focusedKey, selectedKey, visibleIndexByKey, visibleItems])
 
     React.useEffect(() => {
         if (editing) return
@@ -132,7 +135,7 @@ export function Tree(props: Props) {
 
     const onTreeKeyDown = React.useCallback(
         (event: React.KeyboardEvent<HTMLElement>, item: VisibleItem) => {
-            const currentIndex = visibleItems.findIndex((entry) => entry.key === item.key)
+            const currentIndex = visibleIndexByKey.get(item.key) ?? -1
             if (currentIndex === -1) return
 
             const moveFocusTo = (index: number) => {
@@ -207,7 +210,7 @@ export function Tree(props: Props) {
                 setEditing({ id: item.id, value: item.name })
             }
         },
-        [openMenuAt, props, toggleExpanded, visibleItems]
+        [openMenuAt, props, toggleExpanded, visibleIndexByKey, visibleItems]
     )
 
     return (
@@ -221,7 +224,6 @@ export function Tree(props: Props) {
             <div role="tree" aria-label={t('tree.navigator')}>
                 <TreeNodeView
                     node={props.root}
-                    dirtyTestIds={props.dirtyTestIds}
                     depth={0}
                     selectedId={props.selectedId}
                     focusedKey={focusedKey}
@@ -247,6 +249,7 @@ export function Tree(props: Props) {
                     onOpenStep={props.onOpenStep}
                     t={t}
                     resolveDisplayText={resolveDisplayText}
+                    syncStatusById={syncStatusById}
                 />
             </div>
 

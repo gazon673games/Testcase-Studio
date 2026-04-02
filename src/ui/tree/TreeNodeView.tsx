@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { isFolder } from '@core/tree'
 import type { EditingState, TreeKeyboardHandler, TreeTranslate, ViewNode } from './types'
-import { ChevronIcon, makeNodeKey, renderSyncStatusBadge, resolveNodeSyncStatus, summarizeStepHeadline } from './utils'
+import { ChevronIcon, makeNodeKey, renderSyncStatusBadge, summarizeStepHeadline } from './utils'
 import { TreeStepsList } from './TreeStepsList'
 
 export type TreeNodeViewProps = {
@@ -30,7 +30,7 @@ export type TreeNodeViewProps = {
     onOpenStep(testId: string, stepId: string): void
     t: TreeTranslate
     resolveDisplayText(value: string | undefined): string
-    dirtyTestIds: Set<string>
+    syncStatusById: Map<string, 'dirty'>
 }
 
 export function TreeNodeView(props: TreeNodeViewProps) {
@@ -54,7 +54,7 @@ export function TreeNodeView(props: TreeNodeViewProps) {
         onOpenStep,
         t,
         resolveDisplayText,
-        dirtyTestIds,
+        syncStatusById,
     } = props
 
     const id = node.id
@@ -72,7 +72,7 @@ export function TreeNodeView(props: TreeNodeViewProps) {
     const itemLabel = isDir
         ? t('tree.itemCount', { count: itemCount })
         : t('tree.stepCount', { count: itemCount })
-    const syncStatus = resolveNodeSyncStatus(node, dirtyTestIds)
+    const syncStatus = syncStatusById.get(id) ?? null
     const item = {
         key,
         kind: isDir ? 'folder' as const : 'test' as const,
@@ -234,7 +234,7 @@ export function TreeNodeView(props: TreeNodeViewProps) {
                                     onOpenStep={onOpenStep}
                                     t={t}
                                     resolveDisplayText={resolveDisplayText}
-                                    dirtyTestIds={dirtyTestIds}
+                                    syncStatusById={syncStatusById}
                                 />
                             ))}
                         </div>

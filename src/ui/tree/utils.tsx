@@ -53,17 +53,17 @@ export function toPreviewishPlainText(value: string): string {
 
 export function flattenVisibleItems(
     root: Folder,
-    expanded: Set<string>,
-    t: TreeTranslate = translate,
-    resolveDisplayText: (value: string | undefined) => string = (value) => String(value ?? '')
+    expanded: Set<string>
 ) {
-    const walk = (node: ViewNode, depth: number, parentKey?: string): VisibleItem[] => {
+    const items: VisibleItem[] = []
+
+    const walk = (node: ViewNode, depth: number, parentKey?: string) => {
         const id = node.id
         const key = makeNodeKey(id)
         const dir = isFolder(node)
         const hasChildren = dir ? node.children.length > 0 : node.steps.length > 0
         const isOpen = expanded.has(id)
-        const items: VisibleItem[] = [{
+        items.push({
             key,
             kind: dir ? 'folder' : 'test',
             id,
@@ -72,12 +72,12 @@ export function flattenVisibleItems(
             hasChildren,
             expanded: isOpen,
             name: node.name,
-        }]
+        })
 
-        if (!isOpen || !hasChildren) return items
+        if (!isOpen || !hasChildren) return
 
         if (dir) {
-            for (const child of node.children) items.push(...walk(child, depth + 1, key))
+            for (const child of node.children) walk(child, depth + 1, key)
         } else {
             for (const step of node.steps) {
                 items.push({
@@ -89,30 +89,36 @@ export function flattenVisibleItems(
                     depth: depth + 1,
                     hasChildren: false,
                     expanded: false,
-                    name: summarizeStepLabel(step, t, resolveDisplayText),
                 })
             }
         }
-
-        return items
     }
 
-    return walk(root, 0)
+    walk(root, 0)
+    return items
 }
 
-export function resolveNodeSyncStatus(node: ViewNode, dirtyTestIds: Set<string>): SyncStatus | null {
-    if (!isFolder(node)) return resolveTestSyncStatus(node, dirtyTestIds)
+export function buildNodeSyncStatusIndex(root: Folder, dirtyTestIds: Set<string>) {
+    const statusById = new Map<string, SyncStatus>()
 
-    for (const child of node.children) {
-        const status = resolveNodeSyncStatus(child, dirtyTestIds)
-        if (status === 'dirty') return 'dirty'
+    const walk = (node: ViewNode): SyncStatus | null => {
+        if (!isFolder(node)) {
+            const status = dirtyTestIds.has(node.id) ? 'dirty' : null
+            if (status) statusById.set(node.id, status)
+            return status
+        }
+
+        let status: SyncStatus | null = null
+        for (const child of node.children) {
+            if (walk(child) === 'dirty') status = 'dirty'
+        }
+
+        if (status) statusById.set(node.id, status)
+        return status
     }
-    return null
-}
 
-export function resolveTestSyncStatus(test: TestCase, dirtyTestIds: Set<string>): SyncStatus | null {
-    if (dirtyTestIds.has(test.id)) return 'dirty'
-    return null
+    walk(root)
+    return statusById
 }
 
 export function renderSyncStatusBadge(status: SyncStatus | null, t: TreeTranslate) {

@@ -10,7 +10,7 @@ import {
     resolveDestinationFolder,
 } from './folders'
 import { buildImportManagedSignature, getImportMetaKeys, getImportSignature, getManagedMetaKeys, isImportMarkerKey } from './markers'
-import { findLocalMatches, materializeImportedTest } from './materialize'
+import { buildLocalMatchIndex, findLocalMatches, type LocalMatchIndex, materializeImportedTest } from './materialize'
 import { compareImportTargets } from './shared'
 import type {
     ZephyrImportApplyResult,
@@ -32,11 +32,11 @@ export function buildZephyrImportPreview(
     query = buildZephyrImportQuery(request)
 ): ZephyrImportPreview {
     const destinationFolder = resolveDestinationFolder(state.root, request.destinationFolderId)
-    const allTests = mapTests(state.root)
+    const localMatchIndex = buildLocalMatchIndex(mapTests(state.root))
     const items = remotes
         .slice()
         .sort((left, right) => compareImportTargets(left, right))
-        .map((remote) => buildPreviewItem(state.root, allTests, destinationFolder, request, remote, text))
+        .map((remote) => buildPreviewItem(state.root, localMatchIndex, destinationFolder, request, remote, text))
 
     return {
         request,
@@ -57,13 +57,13 @@ export function buildZephyrImportPreview(
 
 function buildPreviewItem(
     root: Folder,
-    allTests: TestCase[],
+    localMatchIndex: LocalMatchIndex,
     destinationFolder: Folder,
     request: ZephyrImportRequest,
     remote: ProviderTest,
     text: SyncText
 ): ZephyrImportPreviewItem {
-    const localMatches = findLocalMatches(remote, allTests)
+    const localMatches = findLocalMatches(remote, localMatchIndex)
     const existing = localMatches.length === 1 ? localMatches[0] : undefined
     const imported = materializeImportedTest(remote, existing)
     const targetFolderSegments = buildTargetFolderSegments(remote, request)

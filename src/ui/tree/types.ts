@@ -29,7 +29,6 @@ export type VisibleItem =
           depth: number
           hasChildren: false
           expanded: false
-          name: string
       }
 
 export type SyncStatus = 'dirty'

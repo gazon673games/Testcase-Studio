@@ -9,7 +9,14 @@ import {
     getManagedMetaKeys,
     IMPORT_REMOTE_KEY_KEY,
 } from './markers'
-import { dedupeTests, extractTrailingDigits, normalizeZephyrRef } from './shared'
+import { extractTrailingDigits, normalizeZephyrRef } from './shared'
+
+export type LocalMatchIndex = {
+    testsById: Map<string, TestCase>
+    keysByTestId: Map<string, { refs: string[]; digits: string[] }>
+    byRef: Map<string, Set<string>>
+    byDigits: Map<string, Set<string>>
+}
 
 export function materializeImportedTest(remote: ProviderTest, existing?: TestCase): TestCase {
     const patch = fromProviderPayload(remote, existing?.steps ?? [])
@@ -41,30 +48,42 @@ export function materializeImportedTest(remote: ProviderTest, existing?: TestCas
     return normalizeTestCase(next)
 }
 
-export function findLocalMatches(remote: ProviderTest, tests: TestCase[]): TestCase[] {
-    const remoteKey = normalizeZephyrRef(remote.id)
-    const remoteDigits = extractTrailingDigits(remoteKey)
-    const out: TestCase[] = []
-
-    for (const test of tests) {
-        const zephyrLink = test.links.find((link) => link.provider === 'zephyr')
-        const linkValue = normalizeZephyrRef(zephyrLink?.externalId)
-        const linkDigits = extractTrailingDigits(linkValue)
-        const metaKey = normalizeZephyrRef(test.meta?.params?.key)
-        const metaDigits = extractTrailingDigits(test.meta?.params?.keyNumber ?? metaKey)
-        const importKey = normalizeZephyrRef(test.meta?.params?.[IMPORT_REMOTE_KEY_KEY])
-
-        if (
-            (linkValue && linkValue === remoteKey) ||
-            (metaKey && metaKey === remoteKey) ||
-            (importKey && importKey === remoteKey) ||
-            (remoteDigits && ((linkDigits && linkDigits === remoteDigits) || (metaDigits && metaDigits === remoteDigits)))
-        ) {
-            out.push(test)
-        }
+export function buildLocalMatchIndex(tests: TestCase[]): LocalMatchIndex {
+    const index: LocalMatchIndex = {
+        testsById: new Map(),
+        keysByTestId: new Map(),
+        byRef: new Map(),
+        byDigits: new Map(),
     }
 
-    return dedupeTests(out)
+    for (const test of tests) {
+        upsertLocalMatch(index, test)
+    }
+
+    return index
+}
+
+export function upsertLocalMatch(index: LocalMatchIndex, test: TestCase) {
+    removeLocalMatch(index, test.id)
+    index.testsById.set(test.id, test)
+
+    const { refs, digits } = collectMatchKeys(test)
+    index.keysByTestId.set(test.id, { refs, digits })
+    refs.forEach((value) => rememberMatch(index.byRef, value, test.id))
+    digits.forEach((value) => rememberMatch(index.byDigits, value, test.id))
+}
+
+export function findLocalMatches(remote: ProviderTest, index: LocalMatchIndex): TestCase[] {
+    const ids = new Set<string>()
+    const remoteKey = normalizeZephyrRef(remote.id)
+    const remoteDigits = extractTrailingDigits(remoteKey)
+
+    collectMatches(index.byRef, remoteKey, ids)
+    collectMatches(index.byDigits, remoteDigits, ids)
+
+    return [...ids]
+        .map((id) => index.testsById.get(id))
+        .filter((test): test is TestCase => Boolean(test))
 }
 
 function upsertZephyrLink(existing: TestCaseLink[], remoteId: string): TestCaseLink[] {
@@ -72,4 +91,52 @@ function upsertZephyrLink(existing: TestCaseLink[], remoteId: string): TestCaseL
         ...existing.filter((link) => link.provider !== 'zephyr'),
         { provider: 'zephyr', externalId: remoteId },
     ]
+}
+
+function removeLocalMatch(index: LocalMatchIndex, testId: string) {
+    const keys = index.keysByTestId.get(testId)
+    if (!keys) return
+
+    const { refs, digits } = keys
+    refs.forEach((value) => forgetMatch(index.byRef, value, testId))
+    digits.forEach((value) => forgetMatch(index.byDigits, value, testId))
+    index.testsById.delete(testId)
+    index.keysByTestId.delete(testId)
+}
+
+function collectMatchKeys(test: TestCase) {
+    const zephyrLink = test.links.find((link) => link.provider === 'zephyr')
+    const linkValue = normalizeZephyrRef(zephyrLink?.externalId)
+    const metaKey = normalizeZephyrRef(test.meta?.params?.key)
+    const importKey = normalizeZephyrRef(test.meta?.params?.[IMPORT_REMOTE_KEY_KEY])
+    const linkDigits = extractTrailingDigits(linkValue)
+    const metaDigits = extractTrailingDigits(test.meta?.params?.keyNumber ?? metaKey)
+
+    return {
+        refs: [...new Set([linkValue, metaKey, importKey].filter(Boolean))],
+        digits: [...new Set([linkDigits, metaDigits].filter(Boolean))],
+    }
+}
+
+function rememberMatch(index: Map<string, Set<string>>, key: string, testId: string) {
+    const current = index.get(key)
+    if (current) {
+        current.add(testId)
+        return
+    }
+    index.set(key, new Set([testId]))
+}
+
+function forgetMatch(index: Map<string, Set<string>>, key: string, testId: string) {
+    const current = index.get(key)
+    if (!current) return
+    current.delete(testId)
+    if (!current.size) index.delete(key)
+}
+
+function collectMatches(index: Map<string, Set<string>>, key: string, out: Set<string>) {
+    if (!key) return
+    const matches = index.get(key)
+    if (!matches) return
+    matches.forEach((id) => out.add(id))
 }

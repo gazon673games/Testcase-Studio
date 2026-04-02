@@ -22,6 +22,33 @@ const SNAPSHOTS_DIR = '.snapshots'
 const PUBLISH_LOGS_DIR = '.publish-logs'
 const WINDOWS_RESERVED_RE = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i
 
+type RepoFolderEntry = {
+    id: string
+    path: string
+    parentId: string | null
+    name: string
+    metaJson: string
+}
+
+type RepoTestEntry = {
+    id: string
+    path: string
+    parentId: string
+    contentJson: string
+}
+
+type RepoIndex = {
+    baseDir: string
+    rootDir: string
+    folders: Map<string, RepoFolderEntry>
+    tests: Map<string, RepoTestEntry>
+    folderChildren: Map<string, Set<string>>
+    testChildren: Map<string, Set<string>>
+    sharedStepsJson: string
+}
+
+let repoIndexCache: RepoIndex | null = null
+
 function getBaseDir() {
     return app.isPackaged ? path.dirname(app.getPath('exe')) : process.cwd()
 }
@@ -73,6 +100,15 @@ async function ensureDir(targetPath: string) {
     await fsp.mkdir(targetPath, { recursive: true })
 }
 
+async function pathExists(targetPath: string) {
+    try {
+        await fsp.access(targetPath)
+        return true
+    } catch {
+        return false
+    }
+}
+
 async function readJsonFile<T>(filePath: string): Promise<T | null> {
     try {
         const raw = await fsp.readFile(filePath, 'utf-8')
@@ -109,16 +145,169 @@ async function loadSharedSteps(baseDir: string) {
     }
 }
 
-export async function loadFromFs(): Promise<RootState> {
-    const baseDir = getRepoDir()
+function createRepoIndex(baseDir: string, rootDir: string): RepoIndex {
+    return {
+        baseDir,
+        rootDir,
+        folders: new Map(),
+        tests: new Map(),
+        folderChildren: new Map(),
+        testChildren: new Map(),
+        sharedStepsJson: '[]',
+    }
+}
+
+function rememberChild(children: Map<string, Set<string>>, parentId: string | null, childId: string) {
+    if (!parentId) return
+    const current = children.get(parentId)
+    if (current) {
+        current.add(childId)
+        return
+    }
+    children.set(parentId, new Set([childId]))
+}
+
+function forgetChild(children: Map<string, Set<string>>, parentId: string | null, childId: string) {
+    if (!parentId) return
+    const current = children.get(parentId)
+    if (!current) return
+    current.delete(childId)
+    if (!current.size) children.delete(parentId)
+}
+
+function setFolderEntry(index: RepoIndex, entry: RepoFolderEntry) {
+    const previous = index.folders.get(entry.id)
+    if (!previous || previous.parentId !== entry.parentId) {
+        forgetChild(index.folderChildren, previous?.parentId ?? null, entry.id)
+        rememberChild(index.folderChildren, entry.parentId, entry.id)
+    }
+    index.folders.set(entry.id, entry)
+}
+
+function setTestEntry(index: RepoIndex, entry: RepoTestEntry) {
+    const previous = index.tests.get(entry.id)
+    if (!previous || previous.parentId !== entry.parentId) {
+        forgetChild(index.testChildren, previous?.parentId ?? null, entry.id)
+        rememberChild(index.testChildren, entry.parentId, entry.id)
+    }
+    index.tests.set(entry.id, entry)
+}
+
+function removeTestEntry(index: RepoIndex, testId: string) {
+    const existing = index.tests.get(testId)
+    if (!existing) return
+    forgetChild(index.testChildren, existing.parentId, testId)
+    index.tests.delete(testId)
+}
+
+function removeFolderSubtree(index: RepoIndex, folderId: string) {
+    for (const childTestId of [...(index.testChildren.get(folderId) ?? new Set<string>())]) {
+        removeTestEntry(index, childTestId)
+    }
+    for (const childFolderId of [...(index.folderChildren.get(folderId) ?? new Set<string>())]) {
+        removeFolderSubtree(index, childFolderId)
+    }
+
+    const existing = index.folders.get(folderId)
+    if (existing) forgetChild(index.folderChildren, existing.parentId, folderId)
+    index.folderChildren.delete(folderId)
+    index.testChildren.delete(folderId)
+    index.folders.delete(folderId)
+}
+
+function replacePathPrefix(currentPath: string, fromPath: string, toPath: string) {
+    if (currentPath === fromPath) return toPath
+    const prefix = `${fromPath}${path.sep}`
+    return currentPath.startsWith(prefix) ? `${toPath}${currentPath.slice(fromPath.length)}` : currentPath
+}
+
+function updateFolderSubtreePaths(index: RepoIndex, folderId: string, fromPath: string, toPath: string) {
+    const folderEntry = index.folders.get(folderId)
+    if (folderEntry) {
+        setFolderEntry(index, {
+            ...folderEntry,
+            path: replacePathPrefix(folderEntry.path, fromPath, toPath),
+        })
+    }
+
+    for (const testId of index.testChildren.get(folderId) ?? []) {
+        const testEntry = index.tests.get(testId)
+        if (!testEntry) continue
+        setTestEntry(index, {
+            ...testEntry,
+            path: replacePathPrefix(testEntry.path, fromPath, toPath),
+        })
+    }
+
+    for (const childFolderId of index.folderChildren.get(folderId) ?? []) {
+        updateFolderSubtreePaths(index, childFolderId, fromPath, toPath)
+    }
+}
+
+function serializeFolderMeta(folder: Pick<Folder, 'id' | 'name'>) {
+    return JSON.stringify({ id: folder.id, name: folder.name }, null, 2)
+}
+
+function serializeTestFile(test: TestCase) {
+    return JSON.stringify(normalizeTestCase(test), null, 2)
+}
+
+function serializeSharedSteps(sharedSteps: SharedStep[]) {
+    return JSON.stringify(sharedSteps.map((shared) => normalizeSharedStep(shared)), null, 2)
+}
+
+async function moveDirectory(currentPath: string, targetPath: string) {
+    if (currentPath === targetPath) return
+
+    await ensureDir(path.dirname(targetPath))
+
+    const currentExists = await pathExists(currentPath)
+    if (!currentExists) {
+        await ensureDir(targetPath)
+        return
+    }
+
+    if (await pathExists(targetPath)) {
+        await fsp.rm(targetPath, { recursive: true, force: true })
+    }
+
+    await fsp.rename(currentPath, targetPath)
+}
+
+async function deleteFolderDir(index: RepoIndex, folderId: string) {
+    const entry = index.folders.get(folderId)
+    if (entry) {
+        await fsp.rm(entry.path, { recursive: true, force: true })
+    }
+    removeFolderSubtree(index, folderId)
+}
+
+async function deleteTestDir(index: RepoIndex, testId: string) {
+    const entry = index.tests.get(testId)
+    if (entry) {
+        await fsp.rm(entry.path, { recursive: true, force: true })
+    }
+    removeTestEntry(index, testId)
+}
+
+async function readRepoState(baseDir: string): Promise<{ state: RootState; index: RepoIndex }> {
     const rootDir = joinInside(baseDir, ROOT_DIR)
     await ensureDir(rootDir)
+    const index = createRepoIndex(baseDir, rootDir)
 
-    async function readNode(dir: string, fallbackName: string): Promise<Folder | TestCase> {
+    async function readNode(dir: string, fallbackName: string, parentId: string | null): Promise<Folder | TestCase> {
         const safeDir = assertPathInside(baseDir, dir)
         const entries = await fsp.readdir(safeDir)
+
         if (isTestFolder(entries)) {
-            return normalizeTestCase(await readJsonFileStrict(joinInside(safeDir, TEST_FILE)))
+            const normalized = normalizeTestCase(await readJsonFileStrict(joinInside(safeDir, TEST_FILE)))
+            setTestEntry(index, {
+                id: normalized.id,
+                path: safeDir,
+                parentId: parentId ?? '',
+                contentJson: serializeTestFile(normalized),
+            })
+            return normalized
         }
 
         const meta = await readFolderMeta(safeDir)
@@ -128,19 +317,142 @@ export async function loadFromFs(): Promise<RootState> {
             children: [],
         }
 
+        setFolderEntry(index, {
+            id: folder.id,
+            path: safeDir,
+            parentId,
+            name: folder.name,
+            metaJson: serializeFolderMeta(folder),
+        })
+
         for (const entry of entries) {
             const childPath = joinInside(safeDir, entry)
             const stat = await fsp.lstat(childPath)
             if (!stat.isDirectory()) continue
-            folder.children.push(await readNode(childPath, entry))
+            folder.children.push(await readNode(childPath, entry, folder.id))
         }
 
         return folder
     }
 
-    const root = await readNode(rootDir, 'Root')
+    const root = await readNode(rootDir, 'Root', null)
     const sharedSteps = await loadSharedSteps(baseDir)
-    return normalizeRootState({ root: root as Folder, sharedSteps })
+    index.sharedStepsJson = serializeSharedSteps(sharedSteps)
+
+    return {
+        state: normalizeRootState({ root: root as Folder, sharedSteps }),
+        index,
+    }
+}
+
+async function ensureRepoIndex(baseDir: string, rootDir: string) {
+    if (repoIndexCache && repoIndexCache.baseDir === baseDir && repoIndexCache.rootDir === rootDir) {
+        return repoIndexCache
+    }
+
+    const { index } = await readRepoState(baseDir)
+    repoIndexCache = index
+    return index
+}
+
+async function syncTest(index: RepoIndex, test: TestCase, parentFolderId: string, parentPath: string) {
+    const desiredPath = joinInside(parentPath, safeNodeDirName(test.name, test.id, 'test'))
+    const previous = index.tests.get(test.id)
+
+    if (previous && previous.path !== desiredPath) {
+        await moveDirectory(previous.path, desiredPath)
+    }
+
+    await ensureDir(desiredPath)
+    await ensureDir(joinInside(desiredPath, ATTACHMENTS_DIR))
+
+    const contentJson = serializeTestFile(test)
+    const testFilePath = joinInside(desiredPath, TEST_FILE)
+    if (
+        !previous ||
+        previous.path !== desiredPath ||
+        previous.parentId !== parentFolderId ||
+        previous.contentJson !== contentJson ||
+        !(await pathExists(testFilePath))
+    ) {
+        await fsp.writeFile(testFilePath, contentJson, 'utf-8')
+    }
+
+    setTestEntry(index, {
+        id: test.id,
+        path: desiredPath,
+        parentId: parentFolderId,
+        contentJson,
+    })
+}
+
+async function syncFolder(index: RepoIndex, folder: Folder, parentId: string | null, parentPath: string | null) {
+    const desiredPath = parentPath
+        ? joinInside(parentPath, safeNodeDirName(folder.name, folder.id, 'folder'))
+        : index.rootDir
+
+    let previous = index.folders.get(folder.id)
+    if (previous && previous.path !== desiredPath) {
+        await moveDirectory(previous.path, desiredPath)
+        updateFolderSubtreePaths(index, folder.id, previous.path, desiredPath)
+        previous = index.folders.get(folder.id)
+    }
+
+    await ensureDir(desiredPath)
+
+    const metaJson = serializeFolderMeta(folder)
+    const metaPath = joinInside(desiredPath, FOLDER_META_FILE)
+    if (
+        !previous ||
+        previous.path !== desiredPath ||
+        previous.parentId !== parentId ||
+        previous.name !== folder.name ||
+        previous.metaJson !== metaJson ||
+        !(await pathExists(metaPath))
+    ) {
+        await fsp.writeFile(metaPath, metaJson, 'utf-8')
+    }
+
+    setFolderEntry(index, {
+        id: folder.id,
+        path: desiredPath,
+        parentId,
+        name: folder.name,
+        metaJson,
+    })
+
+    const desiredFolderIds = new Set<string>()
+    const desiredTestIds = new Set<string>()
+
+    for (const child of folder.children) {
+        if ('children' in child) {
+            desiredFolderIds.add(child.id)
+            await syncFolder(index, child, folder.id, desiredPath)
+            continue
+        }
+
+        desiredTestIds.add(child.id)
+        await syncTest(index, child, folder.id, desiredPath)
+    }
+
+    for (const childFolderId of [...(index.folderChildren.get(folder.id) ?? new Set<string>())]) {
+        if (!desiredFolderIds.has(childFolderId)) {
+            await deleteFolderDir(index, childFolderId)
+        }
+    }
+
+    for (const childTestId of [...(index.testChildren.get(folder.id) ?? new Set<string>())]) {
+        if (!desiredTestIds.has(childTestId)) {
+            await deleteTestDir(index, childTestId)
+        }
+    }
+}
+
+export async function loadFromFs(): Promise<RootState> {
+    const baseDir = getRepoDir()
+    const { state, index } = await readRepoState(baseDir)
+    repoIndexCache = index
+    return state
 }
 
 export async function saveToFs(state: RootState) {
@@ -149,54 +461,17 @@ export async function saveToFs(state: RootState) {
     const rootDir = joinInside(baseDir, ROOT_DIR)
     await ensureDir(rootDir)
 
-    async function writeFolder(fsDir: string, folder: Folder) {
-        const safeDir = assertPathInside(baseDir, fsDir)
-        await ensureDir(safeDir)
-        await fsp.writeFile(
-            joinInside(safeDir, FOLDER_META_FILE),
-            JSON.stringify({ id: folder.id, name: folder.name }, null, 2),
-            'utf-8'
-        )
+    const index = await ensureRepoIndex(baseDir, rootDir)
+    await syncFolder(index, normalized.root, null, null)
 
-        const desired = new Map<string, { node: Folder | TestCase }>()
-        for (const child of folder.children) {
-            const targetName = 'children' in child
-                ? safeNodeDirName(child.name, child.id, 'folder')
-                : safeNodeDirName(child.name, child.id, 'test')
-            desired.set(joinInside(safeDir, targetName), { node: child })
-        }
-
-        for (const [targetPath, entry] of desired.entries()) {
-            if ('children' in entry.node) {
-                await writeFolder(targetPath, entry.node)
-            } else {
-                await ensureDir(targetPath)
-                await ensureDir(joinInside(targetPath, ATTACHMENTS_DIR))
-                await fsp.writeFile(
-                    joinInside(targetPath, TEST_FILE),
-                    JSON.stringify(normalizeTestCase(entry.node), null, 2),
-                    'utf-8'
-                )
-            }
-        }
-
-        const current = await fsp.readdir(safeDir)
-        for (const entry of current) {
-            const currentPath = joinInside(safeDir, entry)
-            const stat = await fsp.lstat(currentPath)
-            if (!stat.isDirectory()) continue
-            if (!desired.has(currentPath)) {
-                await fsp.rm(currentPath, { recursive: true, force: true })
-            }
-        }
+    const sharedStepsJson = serializeSharedSteps(normalized.sharedSteps)
+    const sharedStepsPath = joinInside(baseDir, SHARED_STEPS_FILE)
+    if (index.sharedStepsJson !== sharedStepsJson || !(await pathExists(sharedStepsPath))) {
+        await fsp.writeFile(sharedStepsPath, sharedStepsJson, 'utf-8')
     }
+    index.sharedStepsJson = sharedStepsJson
 
-    await writeFolder(rootDir, normalized.root)
-    await fsp.writeFile(
-        joinInside(baseDir, SHARED_STEPS_FILE),
-        JSON.stringify(normalized.sharedSteps, null, 2),
-        'utf-8'
-    )
+    repoIndexCache = index
 }
 
 export async function writeStateSnapshot(

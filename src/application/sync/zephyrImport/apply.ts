@@ -1,13 +1,16 @@
-import type { Folder, RootState } from '@core/domain'
+import type { Folder, RootState, TestCase } from '@core/domain'
 import { findNode, findParentFolder, insertChild, isFolder, mapTests, moveNode as moveTreeNode } from '@core/tree'
 import type { SyncText } from '../text'
 import { buildTargetFolderSegments, ensureTargetFolder, getConflictFolderName, resolveDestinationFolder } from './folders'
 import { IMPORT_CONFLICT_LOCAL_ID, IMPORT_CONFLICT_REMOTE_KEY } from './markers'
-import { findLocalMatches, materializeImportedTest } from './materialize'
+import { buildLocalMatchIndex, findLocalMatches, materializeImportedTest, upsertLocalMatch } from './materialize'
 import type { ZephyrImportApplyResult, ZephyrImportPreview, ZephyrImportPreviewItem, ZephyrImportRequest } from './types'
 
 export function applyZephyrImportPreview(state: RootState, preview: ZephyrImportPreview, text: SyncText): ZephyrImportApplyResult {
     const destinationFolder = resolveDestinationFolder(state.root, preview.destinationFolderId)
+    const currentTests = mapTests(state.root)
+    const localMatchIndex = buildLocalMatchIndex(currentTests)
+    const conflictDraftIndex = buildConflictDraftIndex(currentTests)
     const result: ZephyrImportApplyResult = { created: 0, updated: 0, skipped: 0, drafts: 0, unchanged: 0 }
 
     for (const item of preview.items) {
@@ -27,13 +30,12 @@ export function applyZephyrImportPreview(state: RootState, preview: ZephyrImport
         }
 
         if (item.strategy === 'merge-locally-later') {
-            upsertConflictDraft(state, destinationFolder, item, preview.request, text)
+            upsertConflictDraft(state, destinationFolder, item, preview.request, text, conflictDraftIndex)
             result.drafts += 1
             continue
         }
 
-        const currentAllTests = mapTests(state.root)
-        const localMatches = findLocalMatches(item.remote, currentAllTests)
+        const localMatches = findLocalMatches(item.remote, localMatchIndex)
         const existing = localMatches.length === 1 ? localMatches[0] : undefined
         const imported = materializeImportedTest(item.remote, existing)
         const targetFolder = ensureTargetFolder(state.root, destinationFolder.id, item.targetFolderSegments)
@@ -42,6 +44,7 @@ export function applyZephyrImportPreview(state: RootState, preview: ZephyrImport
             const localNode = findNode(state.root, existing.id)
             if (!localNode || isFolder(localNode)) {
                 insertChild(state.root, targetFolder.id, imported)
+                upsertLocalMatch(localMatchIndex, imported)
                 result.created += 1
                 continue
             }
@@ -49,11 +52,13 @@ export function applyZephyrImportPreview(state: RootState, preview: ZephyrImport
             Object.assign(localNode, imported, { id: existing.id })
             const parent = findParentFolder(state.root, existing.id)
             if (parent && parent.id !== targetFolder.id) moveTreeNode(state.root, existing.id, targetFolder.id)
+            upsertLocalMatch(localMatchIndex, localNode)
             result.updated += 1
             continue
         }
 
         insertChild(state.root, targetFolder.id, imported)
+        upsertLocalMatch(localMatchIndex, imported)
         result.created += 1
     }
 
@@ -65,7 +70,8 @@ function upsertConflictDraft(
     destinationFolder: Folder,
     item: ZephyrImportPreviewItem,
     request: ZephyrImportRequest,
-    text: SyncText
+    text: SyncText,
+    draftIndex: Map<string, TestCase>
 ) {
     const local = item.localTestId ? findNode(state.root, item.localTestId) : null
     const localTest = local && !isFolder(local) ? local : undefined
@@ -78,19 +84,33 @@ function upsertConflictDraft(
     if (localTest) imported.meta.params[IMPORT_CONFLICT_LOCAL_ID] = localTest.id
 
     const baseFolder = ensureTargetFolder(state.root, destinationFolder.id, [getConflictFolderName(text), ...buildTargetFolderSegments(item.remote, request)])
-    const existingDraft = mapTests(state.root).find((test) => {
-        const params = test.meta?.params ?? {}
-        if (params[IMPORT_CONFLICT_REMOTE_KEY] !== item.remoteId) return false
-        if (localTest) return params[IMPORT_CONFLICT_LOCAL_ID] === localTest.id
-        return !params[IMPORT_CONFLICT_LOCAL_ID]
-    })
+    const draftKey = makeConflictDraftKey(item.remoteId, localTest?.id)
+    const existingDraft = draftIndex.get(draftKey)
 
     if (existingDraft) {
         Object.assign(existingDraft, imported, { id: existingDraft.id })
         const parent = findParentFolder(state.root, existingDraft.id)
         if (parent && parent.id !== baseFolder.id) moveTreeNode(state.root, existingDraft.id, baseFolder.id)
+        draftIndex.set(draftKey, existingDraft)
         return
     }
 
     insertChild(state.root, baseFolder.id, imported)
+    draftIndex.set(draftKey, imported)
+}
+
+function buildConflictDraftIndex(tests: TestCase[]) {
+    const index = new Map<string, TestCase>()
+    for (const test of tests) {
+        const params = test.meta?.params ?? {}
+        const remoteId = String(params[IMPORT_CONFLICT_REMOTE_KEY] ?? '').trim()
+        if (!remoteId) continue
+        const localId = String(params[IMPORT_CONFLICT_LOCAL_ID] ?? '').trim() || undefined
+        index.set(makeConflictDraftKey(remoteId, localId), test)
+    }
+    return index
+}
+
+function makeConflictDraftKey(remoteId: string, localId?: string) {
+    return `${String(remoteId ?? '').trim()}\u0000${String(localId ?? '').trim()}`
 }
