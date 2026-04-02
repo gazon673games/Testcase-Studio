@@ -86,8 +86,6 @@ export default function StepAttachmentsPanel({
                             <a
                                 className="file-name"
                                 href={attachment.pathOrDataUrl}
-                                target="_blank"
-                                rel="noreferrer"
                                 download={attachment.name}
                                 title={attachment.name}
                             >

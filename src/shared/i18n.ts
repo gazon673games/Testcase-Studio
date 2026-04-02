@@ -1009,6 +1009,30 @@ Object.assign(messages.en, {
     'toolbar.retrySave': 'Retry save',
 })
 
+Object.assign(messages.ru, {
+    'settings.passwordPlaceholder': '\u2022\u2022\u2022\u2022\u2022\u2022 (\u0432\u0432\u0435\u0434\u0438\u0442\u0435 \u043d\u043e\u0432\u043e\u0435 \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435 \u0434\u043b\u044f \u0437\u0430\u043c\u0435\u043d\u044b)',
+    'settings.securityHint':
+        '\u041b\u043e\u0433\u0438\u043d \u0438 \u0431\u0430\u0437\u043e\u0432\u044b\u0439 URL \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u044e\u0442\u0441\u044f \u0432 .settings.json \u0432\u043d\u0443\u0442\u0440\u0438 \u0440\u0435\u043f\u043e\u0437\u0438\u0442\u043e\u0440\u0438\u044f, \u0430 \u0441\u0435\u043a\u0440\u0435\u0442 \u0445\u0440\u0430\u043d\u0438\u0442\u0441\u044f \u0432 \u0441\u0438\u0441\u0442\u0435\u043c\u043d\u043e\u043c \u0437\u0430\u0449\u0438\u0449\u0451\u043d\u043d\u043e\u043c \u0445\u0440\u0430\u043d\u0438\u043b\u0438\u0449\u0435 \u0438 \u043d\u0438\u043a\u043e\u0433\u0434\u0430 \u043d\u0435 \u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u0442\u0441\u044f \u0432 \u0438\u043d\u0442\u0435\u0440\u0444\u0435\u0439\u0441.',
+})
+
+Object.assign(messages.en, {
+    'settings.passwordPlaceholder': '•••••• (enter a new value to replace the stored secret)',
+    'settings.securityHint':
+        'Login and base URL are stored in .settings.json inside the repository, while the secret stays in OS secure storage and is never returned to the renderer.',
+})
+
+Object.assign(messages.ru, {
+    'app.loadFailed': '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 workspace',
+    'app.unexpectedError': '\u041f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0435 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u043b\u043e\u0441\u044c \u0438\u0437-\u0437\u0430 \u043e\u0448\u0438\u0431\u043a\u0438',
+    'app.reload': '\u041f\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c',
+})
+
+Object.assign(messages.en, {
+    'app.loadFailed': 'Failed to load the local workspace',
+    'app.unexpectedError': 'The app stopped because of an unexpected error',
+    'app.reload': 'Reload',
+})
+
 export type MessageKey = keyof typeof messages.en
 
 export function getStoredLocale(): UiLocale {

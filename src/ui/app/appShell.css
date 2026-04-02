@@ -10,6 +10,18 @@
     padding: 16px;
 }
 
+.app-shell__message {
+    max-width: 860px;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.app-shell__actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .workspace-pane {
     flex: 1;
     display: grid;

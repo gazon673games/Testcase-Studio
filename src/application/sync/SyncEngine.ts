@@ -3,6 +3,7 @@ import { fromProviderPayload, toProviderPayload } from '@providers/mappers'
 import type { ProviderKind, RootState, TestCase, TestCaseLink } from '@core/domain'
 import { buildExport } from '@core/export'
 import type { SyncText } from './text'
+import type { SyncService } from './service'
 import {
     applyZephyrImportPreview,
     buildZephyrImportPreview,
@@ -19,7 +20,7 @@ import {
 } from './zephyrPublish'
 import { findNode, isFolder } from '@core/tree'
 
-export class SyncEngine {
+export class SyncEngine implements SyncService {
     constructor(
         private providers: Record<ProviderKind, ITestProvider>,
         private text: SyncText

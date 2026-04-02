@@ -1,6 +1,13 @@
 // src/providers/zephyr.http.ts
 import type { ITestProvider, ProviderTest, ProviderStep, ProviderTestRef, SearchOptions } from './types'
-import { apiClient } from '@ipc/client'
+
+export interface ZephyrApiClient {
+    zephyrGetTestCase<T = unknown>(ref: string, by: 'id' | 'key'): Promise<T>
+    zephyrSearchTestCases<T = unknown>(query: string, startAt?: number, maxResults?: number): Promise<T>
+    zephyrUpsertTestCase<T = unknown>(body: unknown, ref?: string): Promise<T>
+    zephyrUploadAttachment(testCaseKey: string, attachment: { name: string; pathOrDataUrl: string }): Promise<void>
+    zephyrDeleteAttachment(attachmentId: string): Promise<void>
+}
 
 type ZephyrAttachmentResponse = Record<string, unknown>
 
@@ -42,33 +49,32 @@ type ZephyrTestCaseResponse = {
     attachments?: ZephyrAttachmentResponse[]
 }
 
-// разбор ссылки пользователя: ID vs KEY
 function parseRef(raw: string): { by: 'id' | 'key'; ref: string } {
-    const t = String(raw ?? '').trim()
-    if (/^\d+$/.test(t)) return { by: 'id', ref: t }  // только цифры → ID
-    if (/-/.test(t))   return { by: 'key', ref: t }   // есть дефис → KEY
-    return { by: 'key', ref: t }
+    const value = String(raw ?? '').trim()
+    if (/^\d+$/.test(value)) return { by: 'id', ref: value }
+    if (/-/.test(value)) return { by: 'key', ref: value }
+    return { by: 'key', ref: value }
 }
 
 export class ZephyrHttpProvider implements ITestProvider {
+    constructor(private client: ZephyrApiClient) {}
+
     async getTestDetails(externalId: string): Promise<ProviderTest> {
         const { by, ref } = parseRef(externalId)
-        // ⚠️ CORS обходим через IPC в main
-        const json = (await apiClient.zephyrGetTestCase(ref, by)) as ZephyrTestCaseResponse
+        const json = (await this.client.zephyrGetTestCase(ref, by)) as ZephyrTestCaseResponse
 
         const steps: ProviderStep[] = (json.testScript?.steps ?? [])
-            .filter((s) => s && (s.description || s.testData || s.expectedResult))
-            .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-            .map((s, index) => ({
-                action:   String(s.description ?? ''),
-                data:     String(s.testData ?? ''),
-                expected: String(s.expectedResult ?? ''),
-                text:     String(s.description ?? ''),
-                providerStepId: String(s.id ?? `index:${s.index ?? index + 1}`),
-                attachments: normalizeRemoteAttachments(s.attachments, `step:${s.id ?? index + 1}`),
+            .filter((step) => step && (step.description || step.testData || step.expectedResult))
+            .sort((left, right) => (left.index ?? 0) - (right.index ?? 0))
+            .map((step, index) => ({
+                action: String(step.description ?? ''),
+                data: String(step.testData ?? ''),
+                expected: String(step.expectedResult ?? ''),
+                text: String(step.description ?? ''),
+                providerStepId: String(step.id ?? `index:${step.index ?? index + 1}`),
+                attachments: normalizeRemoteAttachments(step.attachments, `step:${step.id ?? index + 1}`),
             }))
 
-        // ✨ Собираем extras — всё, что нужно разложить в meta.params
         const extras: Record<string, unknown> = {
             key: json.key,
             keyNumber: json.keyNumber,
@@ -99,7 +105,7 @@ export class ZephyrHttpProvider implements ITestProvider {
             steps,
             attachments: normalizeRemoteAttachments(json.attachments, json.key || ref),
             updatedAt: json.updatedOn ?? new Date().toISOString(),
-            extras, // ← NEW
+            extras,
         }
     }
 
@@ -112,7 +118,7 @@ export class ZephyrHttpProvider implements ITestProvider {
         let cursor = startAt
 
         while (out.length < limit) {
-            const raw = await apiClient.zephyrSearchTestCases(query, cursor, Math.min(pageSize, limit - out.length))
+            const raw = await this.client.zephyrSearchTestCases(query, cursor, Math.min(pageSize, limit - out.length))
             const page = normalizeSearchPage(raw)
             if (!page.items.length) break
 
@@ -131,14 +137,15 @@ export class ZephyrHttpProvider implements ITestProvider {
     }
 
     async upsertTest(payload: ProviderTest): Promise<{ externalId: string }> {
-        const ref = parseRef(payload.id).by === 'key' ? parseRef(payload.id).ref : ''
+        const parsed = parseRef(payload.id)
+        const ref = parsed.by === 'key' ? parsed.ref : ''
         const bodies = buildUpsertBodies(payload)
         let lastError: unknown = null
 
         for (let index = 0; index < bodies.length; index += 1) {
             const body = bodies[index]
             try {
-                const json = await apiClient.zephyrUpsertTestCase(body, ref || undefined)
+                const json = await this.client.zephyrUpsertTestCase<Record<string, unknown>>(body, ref || undefined)
                 return { externalId: safeStr(json?.key).trim() || ref || payload.id || '' }
             } catch (error) {
                 lastError = error
@@ -148,11 +155,13 @@ export class ZephyrHttpProvider implements ITestProvider {
 
         throw lastError instanceof Error ? lastError : new Error(String(lastError ?? 'Zephyr upsert failed'))
     }
+
     async attach(externalId: string, attachment: { name: string; pathOrDataUrl: string }) {
-        return apiClient.zephyrUploadAttachment(externalId, attachment)
+        return this.client.zephyrUploadAttachment(externalId, attachment)
     }
+
     async deleteAttachment(_externalId: string, attachmentId: string) {
-        return apiClient.zephyrDeleteAttachment(attachmentId)
+        return this.client.zephyrDeleteAttachment(attachmentId)
     }
 }
 

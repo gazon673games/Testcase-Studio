@@ -76,8 +76,6 @@ export function AttachmentsPanel({ attachments, onChange, onUploadFiles, accept 
                             <a
                                 className="file-name"
                                 href={attachment.pathOrDataUrl}
-                                target="_blank"
-                                rel="noreferrer"
                                 title={attachment.name}
                                 download={attachment.name}
                             >

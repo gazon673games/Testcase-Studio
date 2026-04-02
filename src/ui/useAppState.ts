@@ -41,6 +41,7 @@ export function useAppState(services: AppServices) {
     const [selectedId, setSelectedId] = React.useState<ID | null>(null)
     const [focusStepId, setFocusStepId] = React.useState<string | null>(null)
     const [dirtyTestIds, setDirtyTestIds] = React.useState<Set<string>>(() => new Set())
+    const [loadError, setLoadError] = React.useState<string | null>(null)
     const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false)
     const [saveError, setSaveError] = React.useState<string | null>(null)
     const [isSaving, setIsSaving] = React.useState(false)
@@ -54,14 +55,36 @@ export function useAppState(services: AppServices) {
     const sync = services.sync
 
     React.useEffect(() => {
-        loadWorkspaceState().then((nextState) => {
-            latestStateRef.current = nextState
-            latestRevisionRef.current = 0
-            setState(nextState)
-            setSelectedId(nextState.root.id)
-            setHasUnsavedChanges(false)
-            setSaveError(null)
-        })
+        let cancelled = false
+
+        loadWorkspaceState()
+            .then((nextState) => {
+                if (cancelled) return
+                latestStateRef.current = nextState
+                latestRevisionRef.current = 0
+                setState(nextState)
+                setSelectedId(nextState.root.id)
+                setDirtyTestIds(new Set())
+                setHasUnsavedChanges(false)
+                setSaveError(null)
+                setLoadError(null)
+            })
+            .catch((error) => {
+                if (cancelled) return
+                latestStateRef.current = null
+                latestRevisionRef.current = 0
+                setState(null)
+                setSelectedId(null)
+                setFocusStepId(null)
+                setDirtyTestIds(new Set())
+                setHasUnsavedChanges(false)
+                setSaveError(null)
+                setLoadError(error instanceof Error ? error.message : String(error))
+            })
+
+        return () => {
+            cancelled = true
+        }
     }, [])
 
     const cancelScheduledSave = React.useCallback(() => {
@@ -424,6 +447,7 @@ export function useAppState(services: AppServices) {
         state,
         selectedId,
         dirtyTestIds,
+        loadError,
         saveState,
         saveError,
         hasUnsavedChanges,

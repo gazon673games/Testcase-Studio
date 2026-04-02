@@ -17,6 +17,15 @@ export default defineConfig({
                     startup(['.'])
                 },
                 vite: {
+                    resolve: {
+                        alias: {
+                            '@app': path.resolve(__dirname, 'src/application'),
+                            '@core': path.resolve(__dirname, 'src/core'),
+                            '@shared': path.resolve(__dirname, 'src/shared'),
+                            '@providers': path.resolve(__dirname, 'src/providers'),
+                            '@ipc': path.resolve(__dirname, 'src/ipc'),
+                        },
+                    },
                     build: {
                         outDir: '../dist-electron',
                         target: 'node18',

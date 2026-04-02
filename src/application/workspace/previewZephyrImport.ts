@@ -1,4 +1,4 @@
-import { SyncEngine } from '@app/sync'
+import type { SyncService } from '@app/sync'
 import type { RootState } from '@core/domain'
 import type { ZephyrImportPreview, ZephyrImportRequest } from '@app/sync'
 import { getImportDestination } from './queries'
@@ -6,7 +6,7 @@ import { getImportDestination } from './queries'
 export async function previewZephyrImport(
     state: RootState | null,
     selectedId: string | null,
-    sync: SyncEngine,
+    sync: SyncService,
     rootLabel: string,
     request: Omit<ZephyrImportRequest, 'destinationFolderId'> & { destinationFolderId?: string }
 ): Promise<ZephyrImportPreview> {

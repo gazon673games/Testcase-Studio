@@ -1,38 +1,50 @@
-// src/ipc/client.ts
-import { CHANNELS } from './channels'
-import type { RootState } from '@core/domain'
+import type {
+    RootState,
+    TestCase,
+    TestCaseLink,
+} from '@core/domain'
 import type { AtlassianSettings } from '@core/settings'
+import type {
+    SyncFetchZephyrImportResponse,
+    SyncFetchZephyrPublishEntry,
+    SyncPublishZephyrPreviewResponse,
+    ZephyrImportRequest,
+    ZephyrPublishPreview,
+} from '@app/sync'
+import type { ProviderTest } from '@providers/types'
 
 export const apiClient = {
-    loadState: <T>(fallback: T) => window.api.invoke<T>(CHANNELS.LOAD_STATE, fallback),
-    saveState:  <T>(state: T)   => window.api.invoke<void>(CHANNELS.SAVE_STATE, state),
+    loadState: <T>(fallback: T) => window.api.loadState<T>(fallback),
+    saveState: <T>(state: T) => window.api.saveState<T>(state),
 
-    loadSettings: () => window.api.invoke<AtlassianSettings>(CHANNELS.LOAD_SETTINGS),
+    loadSettings: (): Promise<AtlassianSettings> => window.api.loadSettings(),
     saveSettings: (login: string, passwordOrToken?: string, baseUrl?: string) =>
-        window.api.invoke<AtlassianSettings>(CHANNELS.SAVE_SETTINGS, { login, passwordOrToken, baseUrl }),
+        window.api.saveSettings(login, passwordOrToken, baseUrl),
 
-    getAtlassianSecret: (login: string) =>
-        window.api.invoke<string>(CHANNELS.GET_ATLASSIAN_SECRET, { login }),
+    syncPullByLink: (link: TestCaseLink): Promise<ProviderTest> =>
+        window.api.syncPullByLink(link),
 
-    // ⬇️ теперь указываем, чем является ссылка: id | key
-    zephyrGetTestCase: (ref: string, by: 'id' | 'key') =>
-        window.api.invoke<any>(CHANNELS.ZEPHYR_GET_TESTCASE, { ref, by }),
+    syncPushTest: (test: TestCase, link: TestCaseLink, state?: RootState): Promise<{ externalId: string }> =>
+        window.api.syncPushTest(test, link, state),
 
-    zephyrSearchTestCases: (query: string, startAt = 0, maxResults = 100) =>
-        window.api.invoke<any>(CHANNELS.ZEPHYR_SEARCH_TESTCASES, { query, startAt, maxResults }),
+    syncTwoWaySync: (state: RootState): Promise<RootState> =>
+        window.api.syncTwoWaySync(state),
 
-    zephyrUpsertTestCase: (body: unknown, ref?: string) =>
-        window.api.invoke<any>(CHANNELS.ZEPHYR_UPSERT_TESTCASE, { body, ref }),
+    syncFetchZephyrImport: (request: ZephyrImportRequest): Promise<SyncFetchZephyrImportResponse> =>
+        window.api.syncFetchZephyrImport(request),
 
-    zephyrUploadAttachment: (testCaseKey: string, attachment: { name: string; pathOrDataUrl: string }) =>
-        window.api.invoke<any>(CHANNELS.ZEPHYR_UPLOAD_ATTACHMENT, { testCaseKey, attachment }),
+    syncFetchZephyrPublish: (externalIds: string[]): Promise<SyncFetchZephyrPublishEntry[]> =>
+        window.api.syncFetchZephyrPublish(externalIds),
 
-    zephyrDeleteAttachment: (attachmentId: string) =>
-        window.api.invoke<any>(CHANNELS.ZEPHYR_DELETE_ATTACHMENT, { attachmentId }),
+    syncPublishZephyrPreview: (
+        state: RootState,
+        preview: ZephyrPublishPreview
+    ): Promise<SyncPublishZephyrPreviewResponse> =>
+        window.api.syncPublishZephyrPreview(state, preview),
 
     writeStateSnapshot: (state: RootState, kind = 'snapshot', meta?: Record<string, unknown>) =>
-        window.api.invoke<string>(CHANNELS.WRITE_STATE_SNAPSHOT, { state, kind, meta }),
+        window.api.writeStateSnapshot(state, kind, meta),
 
     writePublishLog: (payload: Record<string, unknown>) =>
-        window.api.invoke<string>(CHANNELS.WRITE_PUBLISH_LOG, payload),
+        window.api.writePublishLog(payload),
 }

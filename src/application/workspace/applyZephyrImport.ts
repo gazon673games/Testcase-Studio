@@ -1,11 +1,11 @@
-import { SyncEngine } from '@app/sync'
+import type { SyncService } from '@app/sync'
 import type { RootState } from '@core/domain'
 import type { ZephyrImportApplyResult, ZephyrImportPreview } from '@app/sync'
 
 export async function applyZephyrImport(
     state: RootState | null,
     preview: ZephyrImportPreview,
-    sync: SyncEngine
+    sync: SyncService
 ): Promise<{
     nextState: RootState
     result: ZephyrImportApplyResult

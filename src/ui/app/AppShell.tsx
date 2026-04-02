@@ -22,6 +22,43 @@ const TestEditor = React.lazy(() =>
 )
 import type { TestEditorHandle } from '../testEditor/TestEditor'
 
+type AppErrorBoundaryProps = {
+    title: string
+    actionLabel: string
+    children: React.ReactNode
+}
+
+type AppErrorBoundaryState = {
+    error: Error | null
+}
+
+class AppErrorBoundary extends React.Component<AppErrorBoundaryProps, AppErrorBoundaryState> {
+    state: AppErrorBoundaryState = { error: null }
+
+    static getDerivedStateFromError(error: Error): AppErrorBoundaryState {
+        return { error }
+    }
+
+    componentDidCatch(error: Error) {
+        console.error('App render error:', error)
+    }
+
+    render() {
+        if (!this.state.error) return this.props.children
+        return (
+            <div className="app-shell__loading">
+                <h1>{this.props.title}</h1>
+                <p className="app-shell__message">{this.state.error.message}</p>
+                <div className="app-shell__actions">
+                    <button type="button" className="overview-button" onClick={() => window.location.reload()}>
+                        {this.props.actionLabel}
+                    </button>
+                </div>
+            </div>
+        )
+    }
+}
+
 export function AppShell() {
     const { t } = useUiPreferences()
     const services = React.useMemo(() => createAppServices(t), [t])
@@ -209,6 +246,20 @@ export function AppShell() {
         [app]
     )
 
+    if (app.loadError) {
+        return (
+            <div className="app-shell__loading">
+                <h1>{t('app.loadFailed')}</h1>
+                <p className="app-shell__message">{app.loadError}</p>
+                <div className="app-shell__actions">
+                    <button type="button" className="overview-button" onClick={() => window.location.reload()}>
+                        {t('app.reload')}
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
     if (!app.state) {
         return (
             <div className="app-shell__loading">
@@ -340,9 +391,19 @@ export function AppShell() {
 export function App() {
     return (
         <UiPreferencesProvider>
+            <AppWithBoundary />
+        </UiPreferencesProvider>
+    )
+}
+
+function AppWithBoundary() {
+    const { t } = useUiPreferences()
+
+    return (
+        <AppErrorBoundary title={t('app.unexpectedError')} actionLabel={t('app.reload')}>
             <UiKit>
                 <AppShell />
             </UiKit>
-        </UiPreferencesProvider>
+        </AppErrorBoundary>
     )
 }

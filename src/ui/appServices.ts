@@ -1,12 +1,11 @@
-import { SyncEngine, createSyncText } from '@app/sync'
-import { AllureStubProvider } from '@providers/allure.stub'
-import { ZephyrHttpProvider } from '@providers/zephyr.http'
+import { IpcSyncEngine, createSyncText, type SyncService } from '@app/sync'
+import { apiClient } from '@ipc/client'
 import type { MessageKey } from './preferences'
 
 type AppTranslate = (key: MessageKey, params?: Record<string, string | number>) => string
 
 export type AppServices = {
-    sync: SyncEngine
+    sync: SyncService
     defaults: {
         rootLabel: string
         newFolder: string
@@ -17,13 +16,8 @@ export type AppServices = {
 }
 
 export function createAppServices(t: AppTranslate): AppServices {
-    const providers = {
-        zephyr: new ZephyrHttpProvider(),
-        allure: new AllureStubProvider(),
-    }
-
     return {
-        sync: new SyncEngine(providers, createSyncText(t)),
+        sync: new IpcSyncEngine(apiClient, createSyncText(t)),
         defaults: {
             rootLabel: t('defaults.root'),
             newFolder: t('defaults.newFolder'),

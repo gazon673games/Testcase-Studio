@@ -1,6 +1,6 @@
 import { nowISO, type ID, type RootState, type TestCase } from '@core/domain'
 import { findNode, isFolder } from '@core/tree'
-import { SyncEngine, resolveZephyrExternalId } from '@app/sync'
+import { resolveZephyrExternalId, type SyncService } from '@app/sync'
 import { fromProviderPayload } from '@providers/mappers'
 import { getSelectedNode } from './queries'
 
@@ -17,7 +17,7 @@ export type PullSelectedCaseResult =
 export async function pullSelectedCase(
     state: RootState | null,
     selectedId: ID | null,
-    sync: SyncEngine
+    sync: SyncService
 ): Promise<PullSelectedCaseResult> {
     const node = getSelectedNode(state, selectedId)
     if (!state || !node) return { status: 'no-selection' }

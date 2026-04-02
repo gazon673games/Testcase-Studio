@@ -1,4 +1,6 @@
 export * from './SyncEngine'
+export * from './IpcSyncEngine'
+export * from './service'
 export * from './text'
 export * from './zephyrImport'
 export * from './zephyrPublish'

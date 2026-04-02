@@ -18,7 +18,6 @@ export function SettingsModal({ open, onClose }: Props) {
     const [secret, setSecret] = React.useState('')
     const [hasSecret, setHasSecret] = React.useState(false)
     const [saved, setSaved] = React.useState<'idle' | 'ok' | 'err'>('idle')
-    const [showSecret, setShowSecret] = React.useState(false)
     const loginRef = React.useRef<HTMLInputElement | null>(null)
     const secretRef = React.useRef<HTMLInputElement | null>(null)
 
@@ -27,7 +26,6 @@ export function SettingsModal({ open, onClose }: Props) {
         setLoading(true)
         setSaved('idle')
         setSecret('')
-        setShowSecret(false)
         apiClient.loadSettings()
             .then((settings: AtlassianSettings) => {
                 setLogin(settings.login ?? '')
@@ -66,25 +64,11 @@ export function SettingsModal({ open, onClose }: Props) {
             setHasSecret(next.hasSecret)
             setSaved('ok')
             setSecret('')
-            setShowSecret(false)
         } catch {
             setSaved('err')
         } finally {
             setLoading(false)
         }
-    }
-
-    async function toggleShowSecret() {
-        const next = !showSecret
-        if (next && hasSecret && !secret && login.trim()) {
-            try {
-                const fromStore = await apiClient.getAtlassianSecret(login.trim())
-                setSecret(fromStore || '')
-            } catch {
-                // best effort only
-            }
-        }
-        setShowSecret(next)
     }
 
     if (!open) return null
@@ -172,18 +156,9 @@ export function SettingsModal({ open, onClose }: Props) {
                                                     onChange={(event) => setSecret(event.target.value)}
                                                     className="settings-modal__input"
                                                     placeholder={hasSecret ? t('settings.passwordPlaceholder') : ''}
-                                                    type={showSecret ? 'text' : 'password'}
+                                                    type="password"
                                                     autoComplete="current-password"
                                                 />
-                                                <button
-                                                    type="button"
-                                                    onClick={toggleShowSecret}
-                                                    className="settings-modal__secret-toggle"
-                                                    aria-label={showSecret ? t('settings.hide') : t('settings.show')}
-                                                    title={showSecret ? t('settings.hidePassword') : t('settings.showPassword')}
-                                                >
-                                                    {showSecret ? t('settings.hide') : t('settings.show')}
-                                                </button>
                                             </div>
                                         </Field>
 

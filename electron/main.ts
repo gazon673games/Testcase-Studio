@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import path from 'node:path'
 import { registerHandlers } from '../src/ipc/handlers.js'
 
@@ -10,6 +10,33 @@ function resolveRendererPath() {
 
 function resolvePreloadPath() {
     return path.join(app.getAppPath(), 'electron', 'preload.cjs')
+}
+
+function isSafeExternalUrl(url: string) {
+    try {
+        const parsed = new URL(url)
+        const protocol = parsed.protocol.toLowerCase()
+        return protocol === 'http:' || protocol === 'https:' || protocol === 'mailto:'
+    } catch {
+        return false
+    }
+}
+
+function configureWindowSecurity(window: BrowserWindow) {
+    window.webContents.setWindowOpenHandler(({ url }) => {
+        if (isSafeExternalUrl(url)) {
+            void shell.openExternal(url)
+        }
+        return { action: 'deny' }
+    })
+
+    window.webContents.on('will-navigate', (event, url) => {
+        if (url === window.webContents.getURL()) return
+        event.preventDefault()
+        if (isSafeExternalUrl(url)) {
+            void shell.openExternal(url)
+        }
+    })
 }
 
 async function loadRenderer(window: BrowserWindow) {
@@ -37,6 +64,8 @@ async function createWindow() {
             contextIsolation: true,
             nodeIntegration: false,
             webSecurity: true,
+            sandbox: true,
+            safeDialogs: true,
         },
     })
 
@@ -44,6 +73,7 @@ async function createWindow() {
         win = null
     })
 
+    configureWindowSecurity(win)
     await loadRenderer(win)
 }
 

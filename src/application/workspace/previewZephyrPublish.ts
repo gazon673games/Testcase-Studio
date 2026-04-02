@@ -1,11 +1,11 @@
 import type { RootState } from '@core/domain'
-import { SyncEngine, type ZephyrPublishPreview } from '@app/sync'
+import { type SyncService, type ZephyrPublishPreview } from '@app/sync'
 import { getPublishSelection } from './queries'
 
 export async function previewZephyrPublish(
     state: RootState | null,
     selectedId: string | null,
-    sync: SyncEngine,
+    sync: SyncService,
     rootLabel: string
 ): Promise<ZephyrPublishPreview> {
     if (!state) throw new Error('State is not loaded yet')
