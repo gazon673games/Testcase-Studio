@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { collectSharedUsages, type ResolvedWikiRef, type SharedUsage } from '@core/refs'
+import { buildSharedUsageIndex, type ResolvedWikiRef, type SharedUsage } from '@core/refs'
 import type { SharedStep, TestCase } from '@core/domain'
 import { countBrokenRefs, flattenStepText, makeSharedPreview } from './sharedLibraryText'
 
@@ -34,10 +34,12 @@ export function useSharedLibraryDerived({
     filter,
     sort,
 }: UseSharedLibraryDerivedOptions) {
+    const usageIndex = React.useMemo(() => buildSharedUsageIndex(allTests, sharedSteps), [allTests, sharedSteps])
+
     const entries = React.useMemo<SharedListEntry[]>(
         () =>
             sharedSteps.map((shared) => {
-                const usages = collectSharedUsages(shared, allTests, sharedSteps)
+                const usages = usageIndex.get(shared.id) ?? []
                 const preview = makeSharedPreview(shared.steps)
 
                 return {
@@ -49,7 +51,7 @@ export function useSharedLibraryDerived({
                     preview,
                 }
             }),
-        [allTests, inspectRefs, sharedSteps]
+        [inspectRefs, sharedSteps, usageIndex]
     )
 
     const selectedEntry = React.useMemo(
