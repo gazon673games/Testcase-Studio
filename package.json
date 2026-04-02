@@ -1,5 +1,7 @@
 {
-  "name": "testshub",
+  "name": "testcase-studio",
+  "productName": "Testcase Studio",
+  "description": "Desktop app for editing manual test cases and syncing them with Zephyr Scale.",
   "version": "1.0.0",
   "private": true,
   "type": "module",
