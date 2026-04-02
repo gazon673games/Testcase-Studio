@@ -7,21 +7,19 @@ describe('workspace publish preview', () => {
         const { state, folderTest } = makeWorkspace()
         const sync = makeSyncService()
 
-        await previewZephyrPublish(state, folderTest.id, sync, 'Workspace')
+        const preview = await previewZephyrPublish(state, folderTest.id, sync, 'Workspace')
 
-        expect(sync.previewZephyrPublish).toHaveBeenCalledWith(state, [folderTest], folderTest.name)
+        expect(preview.selectionLabel).toBe(folderTest.name)
+        expect(preview.items.map((item) => item.testId)).toEqual([folderTest.id])
     })
 
     it('uses the caller-facing root label when nothing is selected', async () => {
         const { state, rootTest, folderTest } = makeWorkspace()
         const sync = makeSyncService()
 
-        await previewZephyrPublish(state, null, sync, 'Workspace')
+        const preview = await previewZephyrPublish(state, null, sync, 'Workspace')
 
-        expect(sync.previewZephyrPublish).toHaveBeenCalledWith(
-            state,
-            expect.arrayContaining([rootTest, folderTest]),
-            'Workspace'
-        )
+        expect(preview.selectionLabel).toBe('Workspace')
+        expect(preview.items.map((item) => item.testId)).toEqual(expect.arrayContaining([rootTest.id, folderTest.id]))
     })
 })

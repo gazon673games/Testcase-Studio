@@ -7,30 +7,30 @@ describe('workspace import preview', () => {
         const { state, childFolder, folderTest } = makeWorkspace()
         const sync = makeSyncService()
 
-        await previewZephyrImport(state, folderTest.id, sync, 'Workspace', {
+        const preview = await previewZephyrImport(state, folderTest.id, sync, 'Workspace', {
             mode: 'project',
             projectKey: 'PROJ',
         })
 
-        expect(sync.previewZephyrImport).toHaveBeenCalledWith(
-            state,
-            expect.objectContaining({ destinationFolderId: childFolder.id })
-        )
+        expect(preview.destinationFolderId).toBe(childFolder.id)
+        expect(preview.request).toMatchObject({
+            mode: 'project',
+            projectKey: 'PROJ',
+            destinationFolderId: childFolder.id,
+        })
     })
 
     it('respects an explicit destination folder override', async () => {
         const { state, folderTest } = makeWorkspace()
         const sync = makeSyncService()
 
-        await previewZephyrImport(state, folderTest.id, sync, 'Workspace', {
+        const preview = await previewZephyrImport(state, folderTest.id, sync, 'Workspace', {
             mode: 'project',
             projectKey: 'PROJ',
             destinationFolderId: 'folder-override',
         })
 
-        expect(sync.previewZephyrImport).toHaveBeenCalledWith(
-            state,
-            expect.objectContaining({ destinationFolderId: 'folder-override' })
-        )
+        expect(preview.destinationFolderId).toBe('folder-override')
+        expect(preview.request.destinationFolderId).toBe('folder-override')
     })
 })
