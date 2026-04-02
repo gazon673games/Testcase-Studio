@@ -2,7 +2,7 @@ import { mkFolder, mkTest, mkStep, mkShared, nowISO, type RootState } from '@cor
 import { insertChild, deleteNode, mapTests } from '@core/tree'
 import { loadWorkspaceState, saveWorkspaceState } from '@app/workspace'
 import { SyncEngine, createSyncText } from '@app/sync'
-import { ZephyrMockProvider } from '@providers/zephyr.mock'
+import { ZephyrMockProvider } from '@providers/zephyr/zephyr.mock'
 import { AllureStubProvider } from '@providers/allure.stub'
 import { v4 as uuid } from 'uuid'
 

@@ -1,4 +1,4 @@
-import { messages } from './i18nMessages'
+import { messages } from './i18n/messages'
 
 export type UiLocale = 'ru' | 'en'
 export type UiThemeMode = 'light' | 'dark'

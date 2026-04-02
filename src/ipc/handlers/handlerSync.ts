@@ -5,11 +5,11 @@ import {
     type SyncFetchZephyrPublishEntry,
     type ZephyrImportRequest,
     type ZephyrPublishPreview,
-} from '../application/sync/index.js'
-import type { RootState, TestCase, TestCaseLink } from '../core/domain.js'
-import { AllureStubProvider } from '../providers/allure.stub.js'
-import type { ITestProvider } from '../providers/types.js'
-import { ZephyrHttpProvider } from '../providers/zephyr.http.js'
+} from '../../application/sync/index.js'
+import type { RootState, TestCase, TestCaseLink } from '../../core/domain.js'
+import { AllureStubProvider } from '../../providers/allure.stub.js'
+import type { ITestProvider } from '../../providers/types.js'
+import { ZephyrHttpProvider } from '../../providers/zephyr/zephyr.http.js'
 import { createMainZephyrClient } from './handlerZephyrClient.js'
 
 function createMainSyncContext() {

@@ -1,8 +1,8 @@
 import type { IpcMain } from 'electron'
-import type { RootState, TestCase, TestCaseLink } from '../core/domain.js'
-import type { ZephyrImportRequest, ZephyrPublishPreview } from '../application/sync/index.js'
-import { loadFromFs, saveToFs, writePublishLog, writeStateSnapshot } from '../../electron/repo.js'
-import { CHANNELS } from './channels.js'
+import type { RootState, TestCase, TestCaseLink } from '../../core/domain.js'
+import type { ZephyrImportRequest, ZephyrPublishPreview } from '../../application/sync/index.js'
+import { loadFromFs, saveToFs, writePublishLog, writeStateSnapshot } from '../../../electron/repo.js'
+import { CHANNELS } from '../channels.js'
 import { loadMainSettings, saveMainSettings } from './handlerSettings.js'
 import {
     fetchZephyrImportInMain,

@@ -1,5 +1,5 @@
 import { promises as fsp } from 'fs'
-import { normalizeRootState, type RootState } from '../src/core/domain'
+import { normalizeRootState, type RootState } from '../../src/core/domain'
 import { PUBLISH_LOGS_DIR, SNAPSHOTS_DIR, ensureDir, getRepoDir, joinInside, safeSnapshotKind } from './repoShared'
 
 function createTimestampLabel() {

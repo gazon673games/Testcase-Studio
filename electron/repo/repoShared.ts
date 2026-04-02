@@ -8,7 +8,7 @@ import {
     type Folder,
     type SharedStep,
     type TestCase,
-} from '../src/core/domain'
+} from '../../src/core/domain'
 
 export const REPO_DIR = 'tests_repo'
 export const ROOT_DIR = 'root'

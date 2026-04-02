@@ -1,5 +1,5 @@
 // src/providers/zephyr.http.ts
-import type { ITestProvider, ProviderTest, ProviderStep, ProviderTestRef, SearchOptions } from './types'
+import type { ITestProvider, ProviderTest, ProviderStep, ProviderTestRef, SearchOptions } from '../types'
 import { normalizeSearchPage } from './zephyrSearchParsing'
 import { buildUpsertBodies, shouldRetryVariablePayload } from './zephyrUpsertPayload'
 import { normalizeRemoteAttachments, safeStr } from './zephyrValueMapping'

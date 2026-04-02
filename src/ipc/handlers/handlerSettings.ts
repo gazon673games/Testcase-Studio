@@ -2,7 +2,7 @@ import {
     getAtlassianSecret as getSecretMain,
     loadSettings as loadUserSettings,
     saveSettings as saveUserSettings,
-} from '../../electron/secureSettings.js'
+} from '../../../electron/secureSettings.js'
 
 export type ZephyrContext = {
     baseUrl: string

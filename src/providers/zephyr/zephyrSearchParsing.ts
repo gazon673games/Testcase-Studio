@@ -1,4 +1,4 @@
-import type { ProviderTestRef } from './types'
+import type { ProviderTestRef } from '../types'
 import { safeStr } from './zephyrValueMapping'
 
 export function normalizeSearchPage(raw: unknown): { items: ProviderTestRef[]; hasMore: boolean; nextStartAt: number } {

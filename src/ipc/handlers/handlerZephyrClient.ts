@@ -1,4 +1,4 @@
-import { type ZephyrApiClient } from '../providers/zephyr.http.js'
+import { type ZephyrApiClient } from '../../providers/zephyr/zephyr.http.js'
 import { deleteZephyrAttachment, uploadZephyrAttachment } from './handlerAttachments.js'
 import { fetchWithContext, readJsonResponse } from './handlerNetwork.js'
 import { loadZephyrContext } from './handlerSettings.js'

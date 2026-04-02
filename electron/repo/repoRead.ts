@@ -8,7 +8,7 @@ import {
     type RootState,
     type SharedStep,
     type TestCase,
-} from '../src/core/domain'
+} from '../../src/core/domain'
 import { createRepoIndex, setFolderEntry, setTestEntry } from './repoIndex'
 import {
     FOLDER_META_FILE,

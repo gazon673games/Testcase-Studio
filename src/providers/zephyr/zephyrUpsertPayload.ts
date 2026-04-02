@@ -1,4 +1,4 @@
-import type { ProviderTest } from './types'
+import type { ProviderTest } from '../types'
 import { normalizeCustomFields, normalizeParameters, safeStr } from './zephyrValueMapping'
 
 type ParameterMode = 'structured' | 'name-list'

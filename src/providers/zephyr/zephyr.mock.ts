@@ -1,4 +1,4 @@
-import type { ITestProvider, ProviderTest, ProviderStep } from './types'
+import type { ITestProvider, ProviderTest, ProviderStep } from '../types'
 
 /**
  * Простая мока Zephyr. Понимает:

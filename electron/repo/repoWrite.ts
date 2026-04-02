@@ -1,6 +1,6 @@
 import { promises as fsp } from 'fs'
 import path from 'node:path'
-import { type Folder, type SharedStep, type TestCase } from '../src/core/domain'
+import { type Folder, type SharedStep, type TestCase } from '../../src/core/domain'
 import { removeFolderSubtree, removeTestEntry, setFolderEntry, setTestEntry, updateFolderSubtreePaths } from './repoIndex'
 import {
     ATTACHMENTS_DIR,
