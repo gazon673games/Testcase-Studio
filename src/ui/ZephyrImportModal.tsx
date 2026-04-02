@@ -3,7 +3,6 @@ import type {
     ZephyrImportApplyResult,
     ZephyrImportMode,
     ZephyrImportPreview,
-    ZephyrImportPreviewItem,
     ZephyrImportRequest,
     ZephyrImportStrategy,
 } from '@app/sync'
@@ -12,7 +11,6 @@ import {
     PreviewBadge,
     PreviewButton,
     PreviewCard,
-    PreviewDiffCard,
     PreviewDialog,
     PreviewDialogSplit,
     PreviewEmptyState,
@@ -26,6 +24,9 @@ import {
     PreviewToolbarGroup,
 } from './PreviewDialog'
 import { useUiPreferences } from './preferences'
+import { ZephyrImportPreviewItemCard } from './ZephyrImportPreviewItemCard'
+import { useZephyrImportModalController } from './zephyrImportModalController'
+import { type ImportStatusFilter, useZephyrImportDerivedState } from './zephyrImportModalDerived'
 
 type Props = {
     open: boolean
@@ -35,14 +36,14 @@ type Props = {
     onApply(preview: ZephyrImportPreview): Promise<ZephyrImportApplyResult>
 }
 
-type ImportStatusFilter = 'all' | ZephyrImportPreviewItem['status']
-
 export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, onApply }: Props) {
     const { t } = useUiPreferences()
     const projectInputRef = React.useRef<HTMLInputElement | null>(null)
     const folderInputRef = React.useRef<HTMLInputElement | null>(null)
     const refsInputRef = React.useRef<HTMLTextAreaElement | null>(null)
     const itemRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
+
+    // Form state
     const [mode, setMode] = React.useState<ZephyrImportMode>('project')
     const [projectKey, setProjectKey] = React.useState('')
     const [folder, setFolder] = React.useState('')
@@ -68,107 +69,54 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
         setShowUnchanged(false)
     }, [open, destinationLabel])
 
-    const refs = React.useMemo(
-        () =>
-            refsText
-                .split(/[\s,;]+/g)
-                .map((item) => item.trim())
-                .filter(Boolean),
-        [refsText]
-    )
+    // Derived preview state
+    const {
+        refs,
+        request,
+        items,
+        conflictItems,
+        replaceCount,
+        strategySummary,
+        visibleItems,
+    } = useZephyrImportDerivedState({
+        mode,
+        projectKey,
+        folder,
+        refsText,
+        rawQuery,
+        maxResults,
+        mirrorRemoteFolders,
+        preview,
+        strategies,
+        statusFilter,
+        showUnchanged,
+    })
 
-    const request = React.useMemo<Omit<ZephyrImportRequest, 'destinationFolderId'>>(
-        () => ({
-            mode,
-            projectKey,
-            folder,
-            refs,
-            rawQuery,
-            maxResults: Math.max(1, Number(maxResults) || 100),
-            mirrorRemoteFolders,
-        }),
-        [folder, maxResults, mirrorRemoteFolders, mode, projectKey, rawQuery, refs]
-    )
-
-    const items = preview?.items ?? []
-    const conflictItems = React.useMemo(
-        () => items.filter((item) => item.status === 'conflict'),
-        [items]
-    )
-    const replaceCount = React.useMemo(
-        () =>
-            items.filter((item) => {
-                if (item.status === 'unchanged') return false
-                return (strategies[item.id] ?? item.strategy) === 'replace'
-            }).length,
-        [items, strategies]
-    )
-    const strategySummary = React.useMemo(() => {
-        const counts: Record<ZephyrImportStrategy, number> = {
-            replace: 0,
-            skip: 0,
-            'merge-locally-later': 0,
-        }
-        for (const item of conflictItems) {
-            const strategy = strategies[item.id] ?? item.strategy
-            counts[strategy] += 1
-        }
-        return counts
-    }, [conflictItems, strategies])
-    const visibleItems = React.useMemo(
-        () =>
-            items.filter((item) => {
-                if (statusFilter !== 'all' && item.status !== statusFilter) return false
-                if (!showUnchanged && statusFilter !== 'unchanged' && item.status === 'unchanged') return false
-                return true
-            }),
-        [items, showUnchanged, statusFilter]
-    )
     const hiddenCount = items.length - visibleItems.length
     const hiddenUnchangedCount = items.filter(
         (item) => item.status === 'unchanged' && (statusFilter !== 'unchanged' || !showUnchanged)
     ).length
     const firstConflictId = conflictItems[0]?.id
 
-    async function handlePreview(event?: React.FormEvent) {
-        event?.preventDefault()
-        setLoading(true)
-        setError(null)
-        try {
-            const nextPreview = await onPreview(request)
-            itemRefs.current = {}
-            setPreview(nextPreview)
-            setStrategies(Object.fromEntries(nextPreview.items.map((item) => [item.id, item.strategy])))
-            setStatusFilter('all')
-            setShowUnchanged(false)
-        } catch (err) {
-            setPreview(null)
-            setStrategies({})
-            setError(err instanceof Error ? err.message : t('import.previewError'))
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    async function handleApply() {
-        if (!preview) return
-        setApplying(true)
-        setError(null)
-        try {
-            await onApply({
-                ...preview,
-                items: preview.items.map((item) => ({
-                    ...item,
-                    strategy: strategies[item.id] ?? item.strategy,
-                })),
-            })
-            onClose()
-        } catch (err) {
-            setError(err instanceof Error ? err.message : t('import.applyError'))
-        } finally {
-            setApplying(false)
-        }
-    }
+    // Handlers
+    const { handlePreview, handleApply } = useZephyrImportModalController({
+        request,
+        preview,
+        strategies,
+        itemRefs,
+        onPreview,
+        onApply,
+        onClose,
+        previewErrorMessage: t('import.previewError'),
+        applyErrorMessage: t('import.applyError'),
+        setLoading,
+        setApplying,
+        setError,
+        setPreview,
+        setStrategies,
+        setStatusFilter,
+        setShowUnchanged,
+    })
 
     function handleStatusFilterChange(nextFilter: ImportStatusFilter) {
         if (nextFilter === 'unchanged') setShowUnchanged(true)
@@ -202,6 +150,7 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                 ? folderInputRef
                 : projectInputRef
 
+    // Render
     return (
         <PreviewDialog
             open={open}
@@ -458,7 +407,7 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                                         </PreviewEmptyState>
                                     ) : (
                                         visibleItems.map((item) => (
-                                            <PreviewItemCard
+                                            <ZephyrImportPreviewItemCard
                                                 key={item.id}
                                                 item={item}
                                                 strategy={strategies[item.id] ?? item.strategy}
@@ -505,92 +454,5 @@ export function ZephyrImportModal({ open, destinationLabel, onClose, onPreview, 
                 )}
             />
         </PreviewDialog>
-    )
-}
-
-function PreviewItemCard({
-    item,
-    strategy,
-    onChangeStrategy,
-    containerRef,
-}: {
-    item: ZephyrImportPreviewItem
-    strategy: ZephyrImportStrategy
-    onChangeStrategy(value: ZephyrImportStrategy): void
-    containerRef?: (node: HTMLDivElement | null) => void
-}) {
-    const { t } = useUiPreferences()
-    const statusTone =
-        item.status === 'new'
-            ? 'ok'
-            : item.status === 'update'
-                ? 'info'
-                : item.status === 'conflict'
-                    ? 'warn'
-                    : 'muted'
-
-    const options: Array<{ value: ZephyrImportStrategy; label: string }> = [
-        ...(!item.replaceDisabled ? [{ value: 'replace' as const, label: t('import.strategy.replace') }] : []),
-        { value: 'skip' as const, label: t('import.strategy.skip') },
-        { value: 'merge-locally-later' as const, label: t('import.strategy.mergeLater') },
-    ]
-
-    return (
-        <div ref={containerRef} tabIndex={-1}>
-            <PreviewCard>
-                <div className="preview-dialog__summary-row">
-                    <div className="preview-dialog__summary-copy">
-                        <div className="preview-dialog__card-title">{item.remoteName}</div>
-                        <div className="preview-dialog__subtitle">
-                            <span>{item.remoteId}</span>
-                            {item.remoteFolder ? ` / ${item.remoteFolder}` : ''}
-                        </div>
-                    </div>
-                    <PreviewBadge tone={statusTone}>{t(`import.status.${item.status}`)}</PreviewBadge>
-                </div>
-
-                <PreviewHint>{item.reason}</PreviewHint>
-
-                <PreviewInfoGrid>
-                    <PreviewInfoPair label={t('import.localTest')} value={item.localName ?? t('import.willBeCreated')} />
-                    <PreviewInfoPair label={t('import.localFolder')} value={item.localFolder ?? '-'} />
-                    <PreviewInfoPair label={t('import.importInto')} value={item.targetFolderLabel} />
-                    <PreviewInfoPair label={t('import.matches')} value={String(item.localMatchIds.length || 0)} />
-                </PreviewInfoGrid>
-
-                {item.diffs.length > 0 ? (
-                    <div className="preview-dialog__list">
-                        {item.diffs.map((diff) => (
-                            <PreviewDiffCard
-                                key={`${item.id}:${diff.field}`}
-                                title={diff.label}
-                                leftLabel={t('import.localTest')}
-                                rightLabel={t('preview.remote')}
-                                leftText={diff.local}
-                                rightText={diff.remote}
-                                stepRows={diff.stepRows}
-                                leftSide="local"
-                                rightSide="remote"
-                            />
-                        ))}
-                    </div>
-                ) : null}
-
-                <PreviewField label={t('import.conflictStrategy')}>
-                    <select
-                        className="preview-dialog__select"
-                        value={strategy}
-                        onChange={(event) => onChangeStrategy(event.target.value as ZephyrImportStrategy)}
-                        disabled={item.status === 'unchanged'}
-                    >
-                        {options.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
-                </PreviewField>
-            </PreviewCard>
-        </div>
     )
 }
