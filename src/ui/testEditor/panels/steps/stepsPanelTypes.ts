@@ -42,6 +42,8 @@ export type StepRowProps = {
     onClone(): void
     onAddNext(): void
     onRemove(): void
+    onBeautifyJson?(): void
+    canBeautifyJson?: boolean
     onEditTop(patch: Partial<Step>): void
     onAddPart(idx: number, kind: StepFieldKind): void
     onEditPart(idx: number, kind: StepFieldKind, partIndex: number, patch: Partial<PartItem>): void

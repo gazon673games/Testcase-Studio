@@ -34,7 +34,7 @@ type Props = {
     previewMode: 'raw' | 'preview'
 }
 
-export type TestEditorHandle = { commit(): void }
+export type TestEditorHandle = { commit(): boolean }
 
 export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function TestEditor(
     {
@@ -55,6 +55,10 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     ref
 ) {
     const { t } = useUiPreferences()
+    const [draftTest, setDraftTest] = React.useState(() => structuredClone(test))
+    const latestDraftRef = React.useRef(draftTest)
+    const latestSourceRef = React.useRef(test)
+
     const [showDetails, setShowDetails] = useStoredToggle('test-editor.show-details', true)
     const [showMeta, setShowMeta] = useStoredToggle('test-editor.show-meta', false)
     const [showAttachments, setShowAttachments] = useStoredToggle('test-editor.show-attachments', false)
@@ -62,7 +66,17 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     const [showSharedLibrary, setShowSharedLibrary] = useStoredToggle('test-editor.show-shared-library.v2', false)
     const [activeEditorApi, setActiveEditorApi] = React.useState<MarkdownEditorApi | null>(null)
 
-    const { zephyrLink, allureLink, upsertLink } = useTestEditorLinks({ test, onChange })
+    const applyDraftPatch = React.useCallback((
+        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments' | 'links'>>
+    ) => {
+        setDraftTest((current) => {
+            const next = { ...current, ...patch }
+            latestDraftRef.current = next
+            return next
+        })
+    }, [])
+
+    const { zephyrLink, allureLink, upsertLink } = useTestEditorLinks({ test: draftTest, onChange: applyDraftPatch })
     const { resolveRefs, inspectRefs, insertIntoActiveEditor } = useTestEditorReferenceTools({
         allTests,
         sharedSteps,
@@ -88,34 +102,56 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         onOpenTest,
     })
     const { externalLinksCount, summaryItems } = useTestEditorSummary({
-        test,
+        test: draftTest,
         zephyrLink,
         allureLink,
         t,
     })
-    const parseZephyrHtmlParts = isZephyrHtmlPartsEnabled(test.meta)
+    const parseZephyrHtmlParts = isZephyrHtmlPartsEnabled(draftTest.meta)
 
-    React.useImperativeHandle(ref, () => ({ commit: () => {} }), [])
+    React.useEffect(() => {
+        const nextDraft = structuredClone(test)
+        latestSourceRef.current = test
+        latestDraftRef.current = nextDraft
+        setDraftTest(nextDraft)
+    }, [test])
+
+    const commitDraft = React.useCallback(() => {
+        const current = latestDraftRef.current
+        const source = latestSourceRef.current
+        if (areEditableTestFieldsEqual(source, current)) return false
+        onChange({
+            name: current.name,
+            description: current.description,
+            steps: current.steps,
+            meta: current.meta,
+            attachments: current.attachments,
+            links: current.links,
+        })
+        return true
+    }, [onChange])
+
+    React.useImperativeHandle(ref, () => ({ commit: commitDraft }), [commitDraft])
 
     return (
         <div className={`test-editor-shell ${showSharedLibrary ? 'with-drawer' : ''}`}>
             <div className="test-editor-main">
                 <div className="test-editor">
                     <TestEditorHero
-                        testName={test.name}
+                        testName={draftTest.name}
                         summaryItems={summaryItems}
                         showSharedLibrary={showSharedLibrary}
                         sharedStepsCount={sharedSteps.length}
                         parseZephyrHtmlParts={parseZephyrHtmlParts}
                         onToggleSharedLibrary={() => setShowSharedLibrary((current) => !current)}
-                        onToggleParseZephyrHtmlParts={(value) => onChange({ meta: setZephyrHtmlPartsEnabled(test.meta, value) })}
-                        onChangeName={(value) => onChange({ name: value })}
+                        onToggleParseZephyrHtmlParts={(value) => applyDraftPatch({ meta: setZephyrHtmlPartsEnabled(draftTest.meta, value) })}
+                        onChangeName={(value) => applyDraftPatch({ name: value })}
                     />
 
                     <StepsPanel
-                        owner={{ type: 'test', id: test.id }}
-                        steps={test.steps}
-                        onChange={(next) => onChange({ steps: next })}
+                        owner={{ type: 'test', id: draftTest.id }}
+                        steps={draftTest.steps}
+                        onChange={(next) => applyDraftPatch({ steps: next })}
                         allTests={allTests}
                         sharedSteps={sharedSteps}
                         resolveRefs={resolveRefs}
@@ -130,7 +166,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                         onInsertText={insertIntoActiveEditor}
                     />
                     <TestEditorSecondaryPanels
-                        test={test}
+                        test={draftTest}
                         allTests={allTests}
                         sharedSteps={sharedSteps}
                         previewMode={previewMode}
@@ -144,7 +180,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                         resolveRefs={resolveRefs}
                         inspectRefs={inspectRefs}
                         onOpenRef={openResolvedRef}
-                        onChange={onChange}
+                        onChange={applyDraftPatch}
                         onActivateEditorApi={setActiveEditorApi}
                         onToggleDetails={() => setShowDetails((current) => !current)}
                         onToggleMeta={() => setShowMeta((current) => !current)}
@@ -179,3 +215,21 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         </div>
     )
 })
+
+function areEditableTestFieldsEqual(left: TestCase, right: TestCase) {
+    return JSON.stringify([
+        left.name,
+        left.description ?? '',
+        left.steps,
+        left.meta ?? null,
+        left.attachments ?? [],
+        left.links ?? [],
+    ]) === JSON.stringify([
+        right.name,
+        right.description ?? '',
+        right.steps,
+        right.meta ?? null,
+        right.attachments ?? [],
+        right.links ?? [],
+    ])
+}

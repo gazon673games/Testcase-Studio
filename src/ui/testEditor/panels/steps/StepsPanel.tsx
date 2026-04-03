@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { beautifyZephyrJsonBlocksInStep } from '@core/zephyrHtmlParts'
 import { StepRow } from './StepRow'
 import type { StepsPanelProps } from './stepsPanelTypes'
 import { useStepsPanelController } from './useStepsPanelController'
@@ -117,6 +118,8 @@ export default function StepsPanel({
                                 onClone={() => cloneStep(index)}
                                 onAddNext={() => addStepAfter(index)}
                                 onRemove={() => removeStep(index)}
+                                canBeautifyJson={beautifyZephyrJsonBlocksInStep(step) !== step}
+                                onBeautifyJson={() => updateStep(index, beautifyZephyrJsonBlocksInStep(step))}
                                 onEditTop={(patch) => updateStep(index, patch)}
                                 onAddPart={addPart}
                                 onEditPart={editPart}

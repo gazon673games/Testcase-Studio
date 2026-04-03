@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mkStep } from './domain'
-import { applyZephyrHtmlPartsParsing, isZephyrHtmlPartsEnabled, setZephyrHtmlPartsEnabled } from './zephyrHtmlParts'
+import { applyZephyrHtmlPartsParsing, beautifyZephyrJsonBlocksInStep, isZephyrHtmlPartsEnabled, setZephyrHtmlPartsEnabled } from './zephyrHtmlParts'
 
 describe('zephyr html parts parsing', () => {
     it('splits html fields into top level text and extra parts using double breaks', () => {
@@ -24,5 +24,44 @@ describe('zephyr html parts parsing', () => {
 
         expect(isZephyrHtmlPartsEnabled(enabled)).toBe(true)
         expect(isZephyrHtmlPartsEnabled(disabled)).toBe(false)
+    })
+
+    it('beautifies valid json blocks after splitting zephyr html', () => {
+        const step = mkStep(
+            '<strong>Inspect</strong><br /><br /><span><em>{<br />&quot;insurance_object&quot;: [<br />{<br />&quot;id&quot;: &quot;1&quot;,<br />&quot;active&quot;: true<br />}<br />]}</em></span>'
+        )
+
+        const parsed = applyZephyrHtmlPartsParsing(step)
+
+        expect(parsed.action).toBe('<strong>Inspect</strong>')
+        expect(parsed.internal?.parts?.action?.map((part) => part.text)).toEqual([
+            '<em>{<br />  "insurance_object": [<br />    {<br />      "id": "1",<br />      "active": true<br />    }<br />  ]<br />}</em>',
+        ])
+    })
+
+    it('keeps invalid json blocks unchanged', () => {
+        const step = mkStep(
+            '<strong>Inspect</strong><br /><br /><span><em>{<br />"insurance_object": [<br />{<br />"id": "1"<br />"active": true<br />}<br />]}</em></span>'
+        )
+
+        const parsed = applyZephyrHtmlPartsParsing(step)
+
+        expect(parsed.internal?.parts?.action?.map((part) => part.text)).toEqual([
+            '<span><em>{<br />"insurance_object": [<br />{<br />"id": "1"<br />"active": true<br />}<br />]}</em></span>',
+        ])
+    })
+
+    it('beautifies json blocks in existing step parts on demand', () => {
+        const step = mkStep('Inspect')
+        step.internal!.parts!.action = [{
+            id: 'part-1',
+            text: '<span><em>{<br />&quot;id&quot;: &quot;1&quot;,<br />&quot;active&quot;: true<br />}</em></span>',
+        }]
+
+        const beautified = beautifyZephyrJsonBlocksInStep(step)
+
+        expect(beautified.internal?.parts?.action?.map((part) => part.text)).toEqual([
+            '<em>{<br />  "id": "1",<br />  "active": true<br />}</em>',
+        ])
     })
 })

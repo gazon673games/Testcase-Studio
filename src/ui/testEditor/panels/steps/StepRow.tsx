@@ -142,6 +142,7 @@ function PartItemRow({
                 placeholder={label}
                 rows={2}
                 preview={preview}
+                editInPreview={preview}
                 className="md-editor--step"
                 resolveRefs={resolveRefs}
                 inspectRefs={inspectRefs}
@@ -186,6 +187,7 @@ function StepCell({ kind, label, index, step, preview, props, onInsertLink }: St
                 onChange={setTop}
                 placeholder={`${label}...`}
                 preview={preview}
+                editInPreview={preview}
                 className="md-editor--step"
                 resolveRefs={props.resolveRefs}
                 inspectRefs={props.inspectRefs}
@@ -350,6 +352,17 @@ function EditableStepCard({
                 </div>
                 <span className="spacer" />
                 <div className="step-header-actions">
+                    {props.onBeautifyJson && (
+                        <button
+                            type="button"
+                            className="btn-small"
+                            title={t('editor.beautifyJsonBlocks')}
+                            onClick={props.onBeautifyJson}
+                            disabled={!props.canBeautifyJson}
+                        >
+                            JSON
+                        </button>
+                    )}
                     <button type="button" className="btn-icon step-remove-btn" title={t('steps.remove')} onClick={props.onRemove}>
                         x
                     </button>

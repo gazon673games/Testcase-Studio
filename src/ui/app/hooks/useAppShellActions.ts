@@ -26,8 +26,8 @@ export function useAppShellActions({
     closeSyncCenter,
 }: UseAppShellActionsOptions) {
     const handleSave = React.useCallback(async () => {
-        editorRef.current?.commit?.()
-        const shouldAnnounceSave = app.saveState !== 'saved'
+        const committed = editorRef.current?.commit?.() ?? false
+        const shouldAnnounceSave = committed || app.saveState !== 'saved'
 
         try {
             const saved = await app.save()
@@ -153,6 +153,7 @@ export function useAppShellActions({
 
     const handlePush = React.useCallback(async () => {
         try {
+            editorRef.current?.commit?.()
             const result = await app.push()
             if (!result || result.status !== 'ok') {
                 push({
@@ -211,9 +212,8 @@ export function useAppShellActions({
     }, [app, push, t])
 
     const selectWithCommit = React.useCallback((id: string) => {
-        editorRef.current?.commit?.()
         app.select(id)
-    }, [app, editorRef])
+    }, [app])
 
     return {
         handleSave,

@@ -1048,3 +1048,11 @@ Object.assign(messages.en, {
     'app.unexpectedError': 'The app stopped because of an unexpected error',
     'app.reload': 'Reload',
 })
+
+Object.assign(messages.ru, {
+    'editor.beautifyJsonBlocks': '\u041e\u0442\u0444\u043e\u0440\u043c\u0430\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c JSON-\u0431\u043b\u043e\u043a\u0438',
+})
+
+Object.assign(messages.en, {
+    'editor.beautifyJsonBlocks': 'Beautify JSON blocks',
+})

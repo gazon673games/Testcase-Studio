@@ -111,10 +111,10 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     })
 
     React.useEffect(() => {
-        if (!preview) return
+        if (!preview || editInPreview) return
         taRef.current?.blur()
         closeAutocomplete()
-    }, [closeAutocomplete, preview])
+    }, [closeAutocomplete, editInPreview, preview])
 
     function onChangeWrapped(event: React.ChangeEvent<HTMLTextAreaElement>) {
         onChange(event.target.value)

@@ -108,9 +108,16 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     position: relative;
     z-index: 1;
     background: transparent;
+    border-color: transparent;
+    box-shadow: none;
     color: transparent;
     -webkit-text-fill-color: transparent;
     caret-color: var(--text-strong);
+}
+
+.md-editor.is-preview .md-textarea.md-textarea--preview-edit:focus {
+    border-color: var(--accent-border);
+    box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .md-editor.is-preview .md-textarea.md-textarea--preview-edit::placeholder {
@@ -153,7 +160,10 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 
 .md-editor .md-preview.md-preview--editable {
     pointer-events: none;
-    z-index: 0;
+    z-index: 2;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
 }
 /* если превью очень большое — ограничиваем и даём скролл */
 .md-editor .md-preview.clamped {

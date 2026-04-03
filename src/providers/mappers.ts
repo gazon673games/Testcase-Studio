@@ -130,13 +130,30 @@ function mapProviderSteps(
                     : {}),
             },
             subSteps: preserved?.subSteps ?? [],
-            internal: preserved?.internal ?? { parts: { action: [], data: [], expected: [] } },
+            internal: buildImportedStepInternal(preserved, options?.parseHtmlParts),
             usesShared: preserved?.usesShared,
             attachments: (providerStep.attachments?.length ? providerStep.attachments : preserved?.attachments ?? []).map(copyAttachment),
         }
 
         return options?.parseHtmlParts ? applyZephyrHtmlPartsParsing(mappedStep) : mappedStep
     })
+}
+
+function buildImportedStepInternal(preserved: Step | undefined, parseHtmlParts: boolean | undefined): Step['internal'] {
+    return {
+        ...(preserved?.internal ?? {}),
+        parts: parseHtmlParts
+            ? {
+                action: [...(preserved?.internal?.parts?.action ?? [])],
+                data: [...(preserved?.internal?.parts?.data ?? [])],
+                expected: [...(preserved?.internal?.parts?.expected ?? [])],
+            }
+            : {
+                action: [],
+                data: [],
+                expected: [],
+            },
+    }
 }
 
 function normalizeStepsForProvider(src: Array<Step | ExportStep>): ProviderStep[] {

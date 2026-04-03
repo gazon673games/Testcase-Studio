@@ -80,4 +80,51 @@ describe('workspace pull selected case', () => {
             '<span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>',
         ])
     })
+    it('clears previously parsed html blocks when the per-test flag is disabled before pull', async () => {
+        const { state, folderTest } = makeWorkspace()
+        const selected = findNode(state.root, folderTest.id)
+        if (!selected || isFolder(selected)) throw new Error('Expected a test node in the workspace state')
+
+        selected.links = [{ provider: 'zephyr', externalId: 'PROJ-T89' }]
+        selected.steps[0] = {
+            ...selected.steps[0],
+            action: '<strong>Old</strong>',
+            text: '<strong>Old</strong>',
+            internal: {
+                ...(selected.steps[0]?.internal ?? {}),
+                parts: {
+                    action: [{ id: 'part-1', text: '<em>SELECT 1</em>' }],
+                    data: [],
+                    expected: [],
+                },
+            },
+        }
+        selected.meta = setZephyrHtmlPartsEnabled(selected.meta, false)
+
+        const remoteHtml = '<strong>Inspect</strong><br /><br />Prepare data<br /><br /><span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>'
+        const sync = makeSyncService({
+            pullByLink: vi.fn(async () =>
+                makeProviderTest({
+                    id: 'PROJ-T89',
+                    name: 'Remote case',
+                    steps: [{
+                        action: remoteHtml,
+                        data: '',
+                        expected: '',
+                        text: remoteHtml,
+                    }],
+                })
+            ),
+        })
+
+        const result = await pullSelectedCase(state, folderTest.id, sync)
+        if (result.status !== 'ok') throw new Error('Expected ok result')
+
+        const updated = findNode(result.nextState.root, folderTest.id)
+        if (!updated || isFolder(updated)) throw new Error('Expected updated test node')
+
+        expect(isZephyrHtmlPartsEnabled(updated.meta)).toBe(false)
+        expect(updated.steps[0]?.action).toBe(remoteHtml)
+        expect(updated.steps[0]?.internal?.parts?.action).toEqual([])
+    })
 })

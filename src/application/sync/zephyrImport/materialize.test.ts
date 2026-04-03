@@ -75,4 +75,24 @@ describe('zephyr import local match index', () => {
             '<span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>',
         ])
     })
+    it('beautifies valid json blocks during import when the test flag is enabled', () => {
+        const existing = mkTest('Imported case')
+        existing.meta = setZephyrHtmlPartsEnabled(existing.meta, true)
+
+        const imported = materializeImportedTest({
+            id: 'PROJ-T501',
+            name: 'Imported case',
+            steps: [{
+                action: '<strong>Inspect</strong><br /><br /><span><em>{<br />&quot;id&quot;: &quot;1&quot;,<br />&quot;active&quot;: true<br />}</em></span>',
+                data: '',
+                expected: '',
+                text: '<strong>Inspect</strong><br /><br /><span><em>{<br />&quot;id&quot;: &quot;1&quot;,<br />&quot;active&quot;: true<br />}</em></span>',
+            }],
+            attachments: [],
+        }, existing)
+
+        expect(imported.steps[0]?.internal?.parts?.action?.map((part) => part.text)).toEqual([
+            '<em>{<br />  "id": "1",<br />  "active": true<br />}</em>',
+        ])
+    })
 })
