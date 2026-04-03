@@ -32,7 +32,7 @@ In development mode:
 - Electron opens a desktop window and loads that renderer
 - the app reads and writes local workspace data in the repository folder
 
-Saved secrets are handled through the desktop integration layer, not stored in plain UI state.
+Saved secrets are handled through the desktop integration layer. When the OS credential store is not available, the app falls back to encrypted workspace storage instead of keeping the secret in UI state.
 
 ## Workspace layout
 
@@ -77,7 +77,8 @@ Useful notes:
 - the app needs all three values before Zephyr requests can work
 - the base URL should be the main Atlassian or Jira address, not a specific REST endpoint
 - the non-secret part of settings is stored in `tests_repo/.settings.json`
-- the secret itself is stored through the OS credential store integration
+- the secret is stored through the OS credential store when available
+- if the OS credential store is unavailable, the app falls back to encrypted local storage inside the workspace
 
 If settings are missing, Zephyr import and publish requests will fail until they are filled in.
 
@@ -136,6 +137,86 @@ npm run start
 
 This is useful when you want to check the app without the Vite dev server.
 
+## Packaging
+
+You can build distributable desktop packages instead of only running the app from source.
+
+### Windows
+
+```bash
+npm run dist:win
+```
+
+This builds:
+
+- `NSIS` installer `.exe`
+- `portable` `.exe`
+
+### macOS
+
+```bash
+npm run dist:mac
+```
+
+This builds:
+
+- `dmg`
+- `zip`
+
+### Linux
+
+```bash
+npm run dist:linux
+```
+
+This builds:
+
+- `AppImage`
+- `tar.gz`
+
+### Current platform
+
+```bash
+npm run dist
+```
+
+All packaged artifacts are written to:
+
+- `release/`
+
+In packaged builds, workspace data is stored in a writable app data location.
+For Windows portable builds, the app keeps using the portable executable directory when available.
+
+## GitHub Releases
+
+The repository can build release artifacts automatically from version tags.
+
+Typical flow:
+
+1. Update the version in `package.json` if needed.
+2. Create a tag like `v1.0.0`.
+3. Push the tag to GitHub.
+4. The release workflow builds platform packages and uploads them to GitHub Releases.
+
+Example:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The release workflow currently builds:
+
+- Windows `x64` and `arm64`
+- macOS `x64` and `arm64`
+- Linux `x64` and `arm64`
+
+By default these builds are unsigned:
+
+- Windows may show a SmartScreen warning
+- macOS may warn about an unidentified developer until signing/notarization is added
+- Linux packages usually do not require signing for local use
+
 ## Main scripts
 
 - `npm run dev` - start the development workflow
@@ -143,6 +224,10 @@ This is useful when you want to check the app without the Vite dev server.
 - `npm test` - run Vitest
 - `npm run build` - typecheck and build renderer + Electron main
 - `npm run start` - build and launch Electron locally
+- `npm run dist` - package the app for the current platform
+- `npm run dist:win` - build Windows installer + portable package
+- `npm run dist:mac` - build macOS packages
+- `npm run dist:linux` - build Linux packages
 
 ## GitHub Actions
 
@@ -153,7 +238,7 @@ It runs on:
 - pushes to `main`
 - every pull request
 
-The workflow checks the project on Windows and runs:
+The workflow checks the project on Windows, macOS, and Linux and runs:
 
 - `npm ci`
 - `npm run typecheck`
@@ -161,6 +246,14 @@ The workflow checks the project on Windows and runs:
 - `npm run build`
 
 This is enough to catch broken builds, failed tests, and basic integration issues before changes pile up.
+
+The repository can also publish release artifacts to GitHub Releases from version tags for Windows, macOS, and Linux on both `x64` and `arm64`.
+
+## Platform compatibility
+
+- Windows is the primary tested platform.
+- macOS and Linux are now checked in CI for install, typecheck, tests, and build.
+- Secret storage on macOS and Linux depends on the desktop environment. If the OS credential store is unavailable, the app uses an encrypted fallback in the workspace instead of failing outright.
 
 ## Current state of the project
 

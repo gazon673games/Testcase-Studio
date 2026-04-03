@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { randomUUID } from 'crypto'
 import { promises as fsp } from 'fs'
 import path from 'node:path'
+import { getAppDataRoot, getWorkspaceDir } from '../runtimePaths'
 import {
     normalizeSharedStep,
     normalizeTestCase,
@@ -47,11 +48,11 @@ export type RepoIndex = {
 }
 
 export function getBaseDir() {
-    return app.isPackaged ? path.dirname(app.getPath('exe')) : process.cwd()
+    return getAppDataRoot()
 }
 
 export function getRepoDir() {
-    return path.resolve(path.join(getBaseDir(), REPO_DIR))
+    return getWorkspaceDir()
 }
 
 export function assertPathInside(baseDir: string, targetPath: string) {

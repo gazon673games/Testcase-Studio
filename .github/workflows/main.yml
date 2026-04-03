@@ -14,8 +14,15 @@ concurrency:
 
 jobs:
   ci:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - macos-latest
+          - ubuntu-latest
 
     steps:
       - name: Checkout repository
