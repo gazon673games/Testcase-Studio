@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 import type { AutoItem, AutoStage } from './autocomplete'
 
 type AutocompleteBoxProps = {
@@ -61,7 +62,7 @@ export const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({
         rootRef.current.style.left = `${left}px`
     }, [left, top])
 
-    return (
+    const content = (
         <div
             ref={rootRef}
             className="autocomplete"
@@ -104,4 +105,7 @@ export const AutocompleteBox: React.FC<AutocompleteBoxProps> = ({
             )}
         </div>
     )
+
+    if (typeof document === 'undefined') return content
+    return createPortal(content, document.body)
 }

@@ -151,6 +151,25 @@ export function useAppShellActions({
         }
     }, [app, push, t])
 
+    const handlePush = React.useCallback(async () => {
+        try {
+            await app.push()
+            push({
+                kind: 'success',
+                text: t('toast.pushSuccess'),
+                ttl: 0,
+            })
+        } catch (error) {
+            push({
+                kind: 'error',
+                text: t('toast.pushFailed', {
+                    message: error instanceof Error ? error.message : String(error),
+                }),
+                ttl: 0,
+            })
+        }
+    }, [app, push, t])
+
     const handleQuickSync = React.useCallback(async () => {
         try {
             const result = await app.syncAll()
@@ -181,6 +200,7 @@ export function useAppShellActions({
         handleApplyImport,
         handleApplyPublish,
         handlePull,
+        handlePush,
         handleQuickSync,
         selectWithCommit,
     }

@@ -1,5 +1,6 @@
 import React from 'react'
 import type { ZephyrImportPreview, ZephyrPublishPreview } from '@app/sync'
+import { findNode, isFolder } from '@core/tree'
 import { SettingsModal } from '../settings'
 import { Toolbar } from '../toolbar'
 import { useToast } from '../uiKit'
@@ -40,6 +41,7 @@ export function AppShell() {
         handleApplyImport,
         handleApplyPublish,
         handlePull,
+        handlePush,
         handleQuickSync,
         selectWithCommit,
     } = useAppShellActions({
@@ -82,9 +84,28 @@ export function AppShell() {
         canDelete,
         canExport,
         canPull,
+        canPush,
         canPublish,
         canSyncAll,
     } = shellViewState
+
+    const confirmDelete = React.useCallback((targetId?: string | null) => {
+        const id = typeof targetId === 'string' && targetId ? targetId : app.selectedId
+        const node = id ? findNode(app.state!.root, id) : null
+        if (!node || node.id === app.state!.root.id) return false
+        const kindLabel = isFolder(node) ? t('confirm.deleteFolderKind') : t('confirm.deleteCaseKind')
+        return window.confirm(t('confirm.deleteNode', { kind: kindLabel, name: node.name || t('tree.untitled') }))
+    }, [app.selectedId, app.state, t])
+
+    const handleDeleteSelection = React.useCallback(() => {
+        if (!confirmDelete()) return
+        void app.removeSelected()
+    }, [app, confirmDelete])
+
+    const handleDeleteNodeById = React.useCallback((id: string) => {
+        if (!confirmDelete(id)) return
+        void app.deleteNodeById(id)
+    }, [app, confirmDelete])
 
     const rightPane = (
         <AppShellRightPane
@@ -121,10 +142,13 @@ export function AppShell() {
                 publishSelectionLabel={publishSelection.label}
                 publishCount={publishSelection.tests.length}
                 saveState={app.saveState}
+                selectionKind={selectedTest ? 'case' : 'folder'}
                 onAddFolder={app.addFolder}
                 onAddTest={app.addTest}
-                onDelete={app.removeSelected}
+                onDelete={handleDeleteSelection}
                 onSave={() => void handleSave()}
+                onPull={selectedTest ? () => void handlePull() : undefined}
+                onPush={selectedTest ? () => void handlePush() : undefined}
                 onExport={() => void handleExport()}
                 onOpenSettings={() => setSettingsOpen(true)}
                 onToggleSyncCenter={() => setSyncCenterOpen((current) => !current)}
@@ -132,6 +156,8 @@ export function AppShell() {
                 syncCenterOpen={syncCenterOpen}
                 canDelete={canDelete}
                 canExport={canExport}
+                canPull={canPull}
+                canPush={canPush}
                 canTogglePreview={!!selectedTest}
                 previewMode={previewAll ? 'preview' : 'raw'}
             />
@@ -147,7 +173,7 @@ export function AppShell() {
                 onCreateFolderAt={app.addFolderAt}
                 onCreateTestAt={app.addTestAt}
                 onRename={app.renameNode}
-                onDelete={app.deleteNodeById}
+                onDelete={handleDeleteNodeById}
                 onOpenStep={app.openStep}
                 rightPane={rightPane}
                 syncCenter={

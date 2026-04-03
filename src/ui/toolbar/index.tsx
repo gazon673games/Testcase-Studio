@@ -8,10 +8,13 @@ type Props = {
     publishSelectionLabel: string
     publishCount: number
     saveState: 'saved' | 'pending' | 'saving' | 'error'
+    selectionKind: 'folder' | 'case'
     onAddFolder(): void
     onAddTest(): void
     onDelete(): void
     onSave(): void
+    onPull?(): void
+    onPush?(): void
     onExport(): void
     onOpenSettings(): void
     onToggleSyncCenter(): void
@@ -19,6 +22,8 @@ type Props = {
     syncCenterOpen: boolean
     canDelete?: boolean
     canExport?: boolean
+    canPull?: boolean
+    canPush?: boolean
     canTogglePreview?: boolean
     previewMode?: 'raw' | 'preview'
 }
@@ -95,10 +100,33 @@ export function Toolbar(props: Props) {
                             {props.previewMode === 'preview' ? t('toolbar.raw') : t('toolbar.preview')}
                         </ToolbarButton>
                     ) : null}
-                    <ToolbarButton onClick={props.onAddTest}>{t('toolbar.newCase')}</ToolbarButton>
-                    <ToolbarButton onClick={props.onAddFolder} tone="quiet">
-                        {t('toolbar.newFolder')}
-                    </ToolbarButton>
+                    {props.selectionKind === 'case' ? (
+                        <>
+                            <ToolbarButton
+                                onClick={props.onPull}
+                                tone="info"
+                                disabled={!props.canPull}
+                                title={t('sync.pullCurrent')}
+                            >
+                                {t('sync.pullCurrent')}
+                            </ToolbarButton>
+                            <ToolbarButton
+                                onClick={props.onPush}
+                                tone="quiet"
+                                disabled={!props.canPush}
+                                title={t('sync.pushCurrent')}
+                            >
+                                {t('sync.pushCurrent')}
+                            </ToolbarButton>
+                        </>
+                    ) : (
+                        <>
+                            <ToolbarButton onClick={props.onAddTest}>{t('toolbar.newCase')}</ToolbarButton>
+                            <ToolbarButton onClick={props.onAddFolder} tone="quiet">
+                                {t('toolbar.newFolder')}
+                            </ToolbarButton>
+                        </>
+                    )}
                 </ToolbarCluster>
 
                 <ToolbarCluster label={t('toolbar.panels')}>

@@ -1,8 +1,6 @@
 import * as React from 'react'
 import type { RootState } from '@core/domain'
 
-const AUTOSAVE_DELAY_MS = 700
-
 type UseAutosavePersistenceOptions = {
     saveWorkspace: (snapshot: RootState) => Promise<boolean>
     latestStateRef: React.MutableRefObject<RootState | null>
@@ -80,13 +78,7 @@ export function useAutosavePersistence({
 
     const scheduleSave = React.useCallback(() => {
         cancelScheduledSave()
-        saveTimerRef.current = window.setTimeout(() => {
-            saveTimerRef.current = null
-            const snapshot = latestStateRef.current
-            if (!snapshot) return
-            void enqueueSave(snapshot, latestRevisionRef.current).catch(() => undefined)
-        }, AUTOSAVE_DELAY_MS)
-    }, [cancelScheduledSave, enqueueSave, latestRevisionRef, latestStateRef])
+    }, [cancelScheduledSave])
 
     const flushSave = React.useCallback(async () => {
         const snapshot = latestStateRef.current

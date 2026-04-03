@@ -30,6 +30,7 @@ export function buildAppShellViewState(
         canDelete: !!selected && selected.id !== state.root.id,
         canExport: !!selectedTest,
         canPull: !!selectedTest,
+        canPush: !!selectedTest && (selectedTest.links?.length ?? 0) > 0,
         canPublish: publishSelection.tests.length > 0,
         canSyncAll: allTests.some((test) => (test.links?.length ?? 0) > 0),
     }
