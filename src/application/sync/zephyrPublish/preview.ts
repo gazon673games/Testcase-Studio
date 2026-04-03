@@ -153,14 +153,6 @@ function buildPreviewItem(
     const remoteAttachments = collectProviderAttachments(remote)
     const attachmentPlan = buildAttachmentPlan(localAttachments, remoteAttachments)
     let diffs = diffPayloadAgainstRemote(payload, remote, t)
-    const parameterMode = safeString(payload.extras?.__parametersMode)
-    const hasStepDiff = diffs.some((diff) => diff.field === 'steps')
-    if (!hasStepDiff && parameterMode === 'inferred') {
-        diffs = diffs.filter((diff) => diff.field !== 'parameters')
-        if (payload.extras && typeof payload.extras === 'object') {
-            delete (payload.extras as Record<string, unknown>).parameters
-        }
-    }
     if (payload.extras && typeof payload.extras === 'object') {
         ;(payload.extras as Record<string, unknown>).__changedFields = diffs.map((diff) => diff.field)
     }

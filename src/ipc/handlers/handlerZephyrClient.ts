@@ -1,7 +1,51 @@
-import { type ZephyrApiClient } from '../../providers/zephyr/zephyr.http.js'
+import {
+    type ZephyrApiClient,
+    type ZephyrRequestDebug,
+    type ZephyrResponseDebug,
+} from '../../providers/zephyr/zephyr.http.js'
 import { deleteZephyrAttachment, uploadZephyrAttachment } from './handlerAttachments.js'
 import { fetchWithContext, readJsonResponse } from './handlerNetwork.js'
 import { loadZephyrContext } from './handlerSettings.js'
+
+type ZephyrDebugError = Error & {
+    request?: ZephyrRequestDebug
+    response?: ZephyrResponseDebug
+}
+
+function createZephyrDebugError(
+    message: string,
+    request: ZephyrRequestDebug,
+    response?: ZephyrResponseDebug
+): ZephyrDebugError {
+    const error = new Error(message) as ZephyrDebugError
+    error.request = request
+    if (response) error.response = response
+    return error
+}
+
+async function readUpsertResponse<T>(
+    response: Response,
+    scope: string,
+    request: ZephyrRequestDebug,
+    fallback?: T,
+    limit = 4000
+): Promise<T> {
+    if (!response.ok) {
+        const text = await response.text().catch(() => '')
+        throw createZephyrDebugError(
+            `${scope} ${response.status} ${response.statusText}` +
+            (text ? ` - ${text.slice(0, limit)}` : ''),
+            request,
+            {
+                status: response.status,
+                statusText: response.statusText,
+                body: text,
+            }
+        )
+    }
+
+    return await response.json().catch(() => fallback as T)
+}
 
 export function createMainZephyrClient(): ZephyrApiClient {
     return {
@@ -47,22 +91,34 @@ export function createMainZephyrClient(): ZephyrApiClient {
             const url = normalizedRef
                 ? `${context.baseUrl}/rest/atm/1.0/testcase/${encodeURIComponent(normalizedRef)}`
                 : `${context.baseUrl}/rest/atm/1.0/testcase`
-
-            const response = await fetchWithContext(
+            const method = normalizedRef ? 'PUT' : 'POST'
+            const request: ZephyrRequestDebug = {
+                method,
                 url,
-                {
-                    method: normalizedRef ? 'PUT' : 'POST',
-                    headers: {
-                        Authorization: context.auth,
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(body ?? {}),
-                },
-                'Zephyr(upsert)'
-            )
+                body: body ?? {},
+            }
 
-            return readJsonResponse<T>(response, 'Zephyr(upsert)', 400, {} as T)
+            let response: Response
+            try {
+                response = await fetchWithContext(
+                    url,
+                    {
+                        method,
+                        headers: {
+                            Authorization: context.auth,
+                            Accept: 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(body ?? {}),
+                    },
+                    'Zephyr(upsert)'
+                )
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error)
+                throw createZephyrDebugError(message, request)
+            }
+
+            return readUpsertResponse<T>(response, 'Zephyr(upsert)', request, {} as T)
         },
 
         async zephyrUploadAttachment(testCaseKey: string, attachment: { name: string; pathOrDataUrl: string }) {

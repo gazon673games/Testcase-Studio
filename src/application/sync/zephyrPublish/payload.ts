@@ -88,33 +88,22 @@ function buildPublishCustomFields(meta: TestMeta | undefined): Record<string, un
 
 function buildPublishParameters(
     meta: TestMeta | undefined,
-    steps: ProviderStep[]
+    _steps: ProviderStep[]
 ): {
     value?: { variables?: unknown[]; entries?: unknown[] }
-    mode: 'none' | 'explicit' | 'inferred' | 'mixed'
+    mode: 'none' | 'explicit'
 } {
     const params = meta?.params ?? {}
     const hasVariables = Object.prototype.hasOwnProperty.call(params, 'parameters.variables')
     const hasEntries = Object.prototype.hasOwnProperty.call(params, 'parameters.entries')
-    const inferredVariables = inferStepVariables(steps)
-    if (!hasVariables && !hasEntries && inferredVariables.length === 0) return { mode: 'none' }
+    if (!hasVariables && !hasEntries) return { mode: 'none' }
 
     const next: { variables?: unknown[]; entries?: unknown[] } = {}
     const existingVariables = hasVariables ? normalizeParameterVariableList(parseStoredArrayValue(params['parameters.variables'])) : []
-    const mergedVariables = mergeParameterVariables(existingVariables, inferredVariables)
-    if (hasVariables || mergedVariables.length) next.variables = mergedVariables
+    if (existingVariables.length) next.variables = existingVariables
     const entries = hasEntries ? parseStoredArrayValue(params['parameters.entries']) : []
     if (entries.length) next.entries = entries
-    const hasExplicitData = existingVariables.length > 0 || entries.length > 0
-    const hasInferredData = inferredVariables.length > 0
-    const mode =
-        hasExplicitData && hasInferredData
-            ? 'mixed'
-            : hasExplicitData
-                ? 'explicit'
-                : hasInferredData
-                    ? 'inferred'
-                    : 'none'
+    const mode = existingVariables.length > 0 || entries.length > 0 ? 'explicit' : 'none'
     return Object.keys(next).length ? { value: next, mode } : { mode }
 }
 
@@ -131,44 +120,6 @@ function parseStoredParamValue(value: string | undefined): unknown {
 function parseStoredArrayValue(value: string | undefined): unknown[] {
     const parsed = parseStoredParamValue(value)
     return Array.isArray(parsed) ? parsed : []
-}
-
-function inferStepVariables(steps: ProviderStep[]): Array<{ name: string; defaultValue: string }> {
-    const found = new Set<string>()
-    for (const step of steps) {
-        for (const field of [step.action, step.data, step.expected]) {
-            for (const name of collectVariableNamesFromText(field)) {
-                for (const alias of expandVariableAliases(name)) found.add(alias)
-            }
-        }
-    }
-    return [...found].sort((left, right) => left.localeCompare(right)).map((name) => ({ name, defaultValue: '' }))
-}
-
-function collectVariableNamesFromText(value: string | undefined): string[] {
-    const text = String(value ?? '')
-    if (!text) return []
-
-    const found = new Set<string>()
-
-    for (const match of text.matchAll(/\{\{\s*([$\p{L}_][\p{L}\p{N}_.$-]*)\s*\}\}/gu)) {
-        const name = match[1]?.trim()
-        if (name) found.add(name)
-    }
-
-    for (const match of text.matchAll(/(^|[^{])\{\s*([$\p{L}_][\p{L}\p{N}_.$-]*)\s*\}(?!\})/gu)) {
-        const name = match[2]?.trim()
-        if (name) found.add(name)
-    }
-
-    return [...found]
-}
-
-function expandVariableAliases(name: string): string[] {
-    const trimmed = name.trim()
-    if (!trimmed) return []
-    if (trimmed.startsWith('$') && trimmed.length > 1) return [trimmed, trimmed.slice(1)]
-    return [trimmed]
 }
 
 function normalizeParameterVariableList(values: unknown[]): Array<{ name: string; [key: string]: unknown }> {
@@ -193,16 +144,4 @@ function normalizeParameterVariableList(values: unknown[]): Array<{ name: string
         }
     }
     return normalized
-}
-
-function mergeParameterVariables(
-    existing: Array<{ name: string; [key: string]: unknown }>,
-    inferred: Array<{ name: string; defaultValue: string }>
-): Array<{ name: string; [key: string]: unknown }> {
-    const byName = new Map<string, { name: string; [key: string]: unknown }>()
-    for (const item of existing) byName.set(item.name, item)
-    for (const item of inferred) {
-        if (!byName.has(item.name)) byName.set(item.name, item)
-    }
-    return [...byName.values()].sort((left, right) => left.name.localeCompare(right.name))
 }

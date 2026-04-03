@@ -1,25 +1,24 @@
 import type { ProviderTest } from '../../types'
-import { normalizeCustomFields, normalizeParameters, safeStr } from './zephyrValueMapping'
-
-type ParameterMode = 'structured' | 'name-list'
+import { normalizeCustomFields, normalizeParameters, safeStr, type VariableTypePolicy } from './zephyrValueMapping'
 
 export function buildUpsertBodies(payload: ProviderTest, isUpdate: boolean) {
-    const primaryBody = buildUpsertBody(payload, 'structured', isUpdate)
-    const fallbackBody = buildUpsertBody(payload, 'name-list', isUpdate)
+    const policies: VariableTypePolicy[] = ['zephyr-text', 'zephyr-string', 'legacy-lowercase']
     const seenSignatures = new Set<string>()
 
-    return [primaryBody, fallbackBody].filter((body) => {
-        const signature = JSON.stringify(body)
-        if (seenSignatures.has(signature)) return false
-        seenSignatures.add(signature)
-        return true
-    })
+    return policies
+        .map((policy) => buildUpsertBody(payload, isUpdate, policy))
+        .filter((body) => {
+            const signature = JSON.stringify(body)
+            if (seenSignatures.has(signature)) return false
+            seenSignatures.add(signature)
+            return true
+        })
 }
 
 export function buildUpsertBody(
     payload: ProviderTest,
-    parameterMode: ParameterMode = 'structured',
-    isUpdate = false
+    isUpdate = false,
+    variableTypePolicy: VariableTypePolicy = 'zephyr-text'
 ) {
     const extras = payload.extras ?? {}
     const changedFields = normalizeChangedFields(extras.__changedFields)
@@ -52,15 +51,14 @@ export function buildUpsertBody(
     const customFields = normalizeCustomFields(extras.customFields)
     if (Object.keys(customFields).length) body.customFields = customFields
 
-    const providerParameterMode = safeStr(extras.__parametersMode)
     const shouldIncludeParameters =
         !isUpdate ||
         !changedFields ||
         changedFields.has('steps') ||
-        (changedFields.has('parameters') && providerParameterMode !== 'inferred')
+        changedFields.has('parameters')
 
     if (shouldIncludeParameters) {
-        const parameters = normalizeParameters(extras.parameters, parameterMode)
+        const parameters = normalizeParameters(extras.parameters, variableTypePolicy)
         if ('variables' in parameters || 'entries' in parameters) body.parameters = parameters
     }
 

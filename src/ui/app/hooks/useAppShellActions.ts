@@ -103,6 +103,10 @@ export function useAppShellActions({
     const handleApplyPublish = React.useCallback(async (preview: ZephyrPublishPreview) => {
         closeSyncCenter()
         const result = await app.publishZephyr(preview)
+        const firstFailure = result.logItems.find((item) => item.status === 'failed' || item.status === 'blocked')
+        const failureHint = firstFailure
+            ? `\n- ${firstFailure.testName}: ${firstFailure.error ?? firstFailure.reason ?? 'Unknown error'}`
+            : ''
         push({
             kind: result.failed ? 'error' : 'success',
             text: t('toast.publishFinished', {
@@ -111,7 +115,9 @@ export function useAppShellActions({
                 skipped: result.skipped,
                 failed: result.failed,
                 blocked: result.blocked,
-            }),
+                snapshotPath: result.snapshotPath || '-',
+                logPath: result.logPath || '-',
+            }) + failureHint,
             ttl: 0,
         })
         return result

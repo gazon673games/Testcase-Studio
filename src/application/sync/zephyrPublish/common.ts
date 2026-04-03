@@ -47,13 +47,20 @@ export function normalizeLabels(value: unknown): string[] {
 export function normalizeStructuredValue(value: unknown): unknown {
     if (Array.isArray(value)) return value.map((item) => normalizeStructuredValue(item))
     if (value && typeof value === 'object') {
-        return Object.fromEntries(
-            Object.entries(value as Record<string, unknown>)
-                .sort(([left], [right]) => left.localeCompare(right))
-                .map(([key, entry]) => [key, normalizeStructuredValue(entry)])
-        )
+        const entries = Object.entries(value as Record<string, unknown>)
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([key, entry]) => [key, normalizeStructuredValue(entry)] as const)
+            .filter(([, entry]) => !isEmptyStructuredValue(entry))
+        return Object.fromEntries(entries)
     }
     return value
+}
+
+function isEmptyStructuredValue(value: unknown): boolean {
+    if (value == null) return true
+    if (Array.isArray(value)) return value.length === 0
+    if (typeof value === 'object') return Object.keys(value as Record<string, unknown>).length === 0
+    return false
 }
 
 export function summarizeStructuredValue(value: unknown, emptyLabel: string): string {

@@ -4,20 +4,22 @@ import type { MarkdownEditorApi } from './types'
 type UseMarkdownEditorApiOptions = {
     value: string
     onChange(value: string): void
-    active: boolean
     taRef: React.MutableRefObject<HTMLTextAreaElement | null>
     apiRef?: React.MutableRefObject<MarkdownEditorApi | null>
-    onActivateApi?: (api: MarkdownEditorApi | null) => void
 }
 
 export function useMarkdownEditorApi({
     value,
     onChange,
-    active,
     taRef,
     apiRef,
-    onActivateApi,
 }: UseMarkdownEditorApiOptions) {
+    const valueRef = React.useRef(value)
+    const onChangeRef = React.useRef(onChange)
+
+    valueRef.current = value
+    onChangeRef.current = onChange
+
     const dispatchTextareaInput = React.useCallback((element: HTMLTextAreaElement) => {
         const event =
             typeof InputEvent === 'function'
@@ -69,7 +71,7 @@ export function useMarkdownEditorApi({
 
         const start = Math.min(element.selectionStart, element.selectionEnd)
         const end = Math.max(element.selectionStart, element.selectionEnd)
-        const middle = value.slice(start, end)
+        const middle = valueRef.current.slice(start, end)
         const inserted = `${before}${middle}${after}`
         const selection = start + inserted.length
 
@@ -77,13 +79,13 @@ export function useMarkdownEditorApi({
         requestAnimationFrame(() => {
             element.focus()
         })
-    }, [applyNativeEdit, taRef, value])
+    }, [applyNativeEdit, taRef])
 
     const doInsertPrefix = React.useCallback((prefix: string) => {
         const element = taRef.current
         if (!element) return
 
-        const lines = value.split('\n')
+        const lines = valueRef.current.split('\n')
         const start = element.selectionStart
         const end = element.selectionEnd
         let startLine = 0
@@ -109,9 +111,9 @@ export function useMarkdownEditorApi({
             lines[index] = lines[index].length ? `${prefix} ${lines[index]}` : `${prefix} `
         }
 
-        onChange(lines.join('\n'))
+        onChangeRef.current(lines.join('\n'))
         requestAnimationFrame(() => element.focus())
-    }, [onChange, taRef, value])
+    }, [taRef])
 
     const doInsertText = React.useCallback((text: string) => {
         const element = taRef.current
@@ -141,10 +143,6 @@ export function useMarkdownEditorApi({
             if (apiRef?.current === editorApi) apiRef.current = null
         }
     }, [apiRef, editorApi])
-
-    React.useEffect(() => {
-        if (active && onActivateApi) onActivateApi(editorApi)
-    }, [active, editorApi, onActivateApi])
 
     return {
         editorApi,

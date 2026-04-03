@@ -1,5 +1,5 @@
-type ParameterMode = 'structured' | 'name-list'
 type ZephyrAttachmentResponse = Record<string, unknown>
+export type VariableTypePolicy = 'zephyr-text' | 'zephyr-string' | 'legacy-lowercase'
 
 export function safeStr(value: unknown): string {
     return value == null ? '' : String(value)
@@ -31,12 +31,15 @@ export function normalizeCustomFields(value: unknown): Record<string, unknown> {
     )
 }
 
-export function normalizeParameters(value: unknown, mode: ParameterMode): { variables?: unknown[]; entries?: unknown[] } {
+export function normalizeParameters(
+    value: unknown,
+    typePolicy: VariableTypePolicy = 'zephyr-text'
+): { variables?: unknown[]; entries?: unknown[] } {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
 
     const raw = value as Record<string, unknown>
     const next: { variables?: unknown[]; entries?: unknown[] } = {}
-    const variables = 'variables' in raw ? normalizeParameterVariables(raw.variables, mode) : []
+    const variables = 'variables' in raw ? normalizeParameterVariables(raw.variables, typePolicy) : []
     const entries = 'entries' in raw && Array.isArray(raw.entries) ? raw.entries.map(normalizeStructuredValue) : []
 
     if (variables.length) next.variables = variables
@@ -45,17 +48,15 @@ export function normalizeParameters(value: unknown, mode: ParameterMode): { vari
     return next
 }
 
-function normalizeParameterVariables(value: unknown, mode: ParameterMode): unknown[] {
+function normalizeParameterVariables(value: unknown, typePolicy: VariableTypePolicy): unknown[] {
     if (!Array.isArray(value)) return []
 
-    const names: string[] = []
-    const structured: Record<string, unknown>[] = []
+    const byName = new Map<string, { name: string; type: string }>()
 
     for (const item of value) {
         if (typeof item === 'string' && item.trim()) {
             const name = item.trim()
-            names.push(name)
-            structured.push({ name, defaultValue: '' })
+            if (!byName.has(name)) byName.set(name, { name, type: toZephyrVariableType('', typePolicy) })
             continue
         }
 
@@ -64,28 +65,44 @@ function normalizeParameterVariables(value: unknown, mode: ParameterMode): unkno
             const name = typeof raw.name === 'string' ? raw.name.trim() : ''
             if (!name) continue
 
-            names.push(name)
-            structured.push({
-                ...Object.fromEntries(
-                    Object.entries(raw).map(([key, entry]) => [key, normalizeStructuredValue(entry)])
-                ),
-                name,
-                defaultValue: typeof raw.defaultValue === 'string' ? raw.defaultValue : '',
-            })
+            const rawType = typeof raw.type === 'string' ? raw.type.trim() : ''
+            const type = toZephyrVariableType(rawType, typePolicy)
+            if (!byName.has(name)) byName.set(name, { name, type })
         }
     }
 
-    const uniqueNames = [...new Set(names)].sort((left, right) => left.localeCompare(right))
-    if (mode === 'name-list') return uniqueNames
+    return [...byName.values()].sort((left, right) => left.name.localeCompare(right.name))
+}
 
-    const byName = new Map<string, Record<string, unknown>>()
-    for (const item of structured) {
-        const name = typeof item.name === 'string' ? item.name : ''
-        if (!name || byName.has(name)) continue
-        byName.set(name, item)
+function toZephyrVariableType(rawType: string, typePolicy: VariableTypePolicy): string {
+    const normalized = rawType.trim().toLowerCase()
+    const family =
+        normalized === 'boolean' || normalized === 'bool'
+            ? 'boolean'
+            : normalized === 'integer' || normalized === 'int'
+                ? 'integer'
+                : normalized === 'double' || normalized === 'float' || normalized === 'number' || normalized === 'numeric'
+                    ? 'number'
+                    : 'string'
+
+    if (typePolicy === 'legacy-lowercase') {
+        if (family === 'boolean') return 'boolean'
+        if (family === 'integer') return 'integer'
+        if (family === 'number') return 'double'
+        return normalized || 'string'
     }
 
-    return [...byName.values()].sort((left, right) => String(left.name).localeCompare(String(right.name)))
+    if (typePolicy === 'zephyr-string') {
+        if (family === 'boolean') return 'BOOLEAN'
+        if (family === 'integer') return 'INTEGER'
+        if (family === 'number') return 'DOUBLE'
+        return 'STRING'
+    }
+
+    if (family === 'boolean') return 'BOOLEAN'
+    if (family === 'integer') return 'INTEGER'
+    if (family === 'number') return 'DOUBLE'
+    return 'TEXT'
 }
 
 export function normalizeStructuredValue(value: unknown): unknown {

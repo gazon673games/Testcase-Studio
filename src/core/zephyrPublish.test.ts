@@ -117,7 +117,7 @@ describe('buildZephyrPublishPreview', () => {
         expect(item.diffs.some((diff) => diff.field === 'customFields')).toBe(true)
     })
 
-    it('auto-defines Zephyr variables that are used in step text', () => {
+    it('does not auto-define Zephyr variables from step text', () => {
         const test = mkTest('Publish case')
         test.id = 'test-publish'
         test.links = [{ provider: 'zephyr', externalId: 'PROJ-T6170' }]
@@ -146,18 +146,10 @@ describe('buildZephyrPublishPreview', () => {
 
         const payload = buildZephyrPublishPayload(test, state)
 
-        expect(payload.extras?.parameters).toEqual({
-            variables: [
-                { name: '$guid', defaultValue: '' },
-                { name: 'guid', defaultValue: '' },
-                { name: 'id', defaultValue: '' },
-                { name: 'ms-insurance-contract-object', defaultValue: '' },
-                { name: 'objectId', defaultValue: '' },
-            ],
-        })
+        expect(payload.extras?.parameters).toBeUndefined()
     })
 
-    it('does not keep inferred parameter diffs when remote steps are unchanged', () => {
+    it('does not add parameter diffs when local test has no explicit Zephyr parameters', () => {
         const test = mkTest('Publish case')
         test.id = 'test-publish'
         test.links = [{ provider: 'zephyr', externalId: 'PROJ-T6170' }]

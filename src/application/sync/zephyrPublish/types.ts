@@ -61,6 +61,22 @@ export interface ZephyrPublishLogItem {
     reason?: string
     error?: string
     attachmentWarnings?: string[]
+    debug?: {
+        upsertAttempts?: Array<{
+            requestBody: unknown
+            request?: {
+                method: string
+                url: string
+                body?: unknown
+            }
+            response?: {
+                status?: number
+                statusText?: string
+                body?: string
+            }
+            error: string
+        }>
+    }
 }
 
 export interface ZephyrPublishResult {

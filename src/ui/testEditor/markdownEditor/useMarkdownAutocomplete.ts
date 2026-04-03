@@ -53,6 +53,26 @@ export function useMarkdownAutocomplete({
     const [anchor, setAnchor] = React.useState<{ top: number; left: number } | null>(null)
     const [range, setRange] = React.useState<{ from: number; to: number } | null>(null)
 
+    const sameItems = React.useCallback((left: AutoItem[], right: AutoItem[]) => {
+        if (left === right) return true
+        if (left.length !== right.length) return false
+        for (let index = 0; index < left.length; index += 1) {
+            const a = left[index]
+            const b = right[index]
+            if (
+                a.label !== b.label ||
+                a.detail !== b.detail ||
+                a.insert !== b.insert ||
+                a.stage !== b.stage ||
+                a.continues !== b.continues ||
+                a.muted !== b.muted
+            ) {
+                return false
+            }
+        }
+        return true
+    }, [])
+
     const suggestionCatalog = React.useMemo(
         () => buildRefCatalog(allTests as never[], sharedSteps as never[]),
         [allTests, sharedSteps]
@@ -70,6 +90,7 @@ export function useMarkdownAutocomplete({
 
     const closeAutocomplete = React.useCallback(() => {
         setOpen(false)
+        setRange(null)
     }, [])
 
     const updateSuggestions = React.useCallback((element: HTMLTextAreaElement, text = value, caretOverride?: number) => {
@@ -79,8 +100,8 @@ export function useMarkdownAutocomplete({
         const close = before.lastIndexOf(']]')
 
         if (start === -1 || (close !== -1 && close > start)) {
-            setOpen(false)
-            setRange(null)
+            setOpen((current) => (current ? false : current))
+            setRange((current) => (current ? null : current))
             return
         }
 
@@ -103,8 +124,16 @@ export function useMarkdownAutocomplete({
             )
             : fallbackRect.bottom
 
-        setAnchor({ top, left })
-        setRange({ from: start, to: caret })
+        setAnchor((current) => (
+            current && current.top === top && current.left === left
+                ? current
+                : { top, left }
+        ))
+        setRange((current) => (
+            current && current.from === start && current.to === caret
+                ? current
+                : { from: start, to: caret }
+        ))
 
         const hashPos = query.indexOf('#')
         let nextStage: AutoStage = 'owner'
@@ -144,12 +173,12 @@ export function useMarkdownAutocomplete({
             }
         }
 
-        setStage(nextStage)
-        setItems(nextItems)
-        setIndex(0)
-        setHorizontalScroll(0)
-        setOpen(nextItems.length > 0)
-    }, [autocompleteIndex, resolveDisplayText, t, value])
+        setStage((current) => (current === nextStage ? current : nextStage))
+        setItems((current) => (sameItems(current, nextItems) ? current : nextItems))
+        setIndex((current) => (current === 0 ? current : 0))
+        setHorizontalScroll((current) => (current === 0 ? current : 0))
+        setOpen((current) => (current === (nextItems.length > 0) ? current : nextItems.length > 0))
+    }, [autocompleteIndex, sameItems, t, value])
 
     const applySuggestion = React.useCallback((item: AutoItem) => {
         const element = taRef.current

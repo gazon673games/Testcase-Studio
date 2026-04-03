@@ -45,10 +45,8 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     } = useMarkdownEditorApi({
         value,
         onChange,
-        active,
         taRef,
         apiRef,
-        onActivateApi,
     })
 
     const renderPreviewHtml = React.useCallback((input: string) => {
