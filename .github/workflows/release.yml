@@ -97,6 +97,7 @@ jobs:
       - name: Create or update release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           $tag = "${{ github.ref_name }}"
           $title = "Testcase Studio $tag"
@@ -110,17 +111,18 @@ jobs:
             "",
             "The release workflow uploads the compiled assets for x64 and arm64 where the target platform supports them."
           ) -join "`n"
-          gh release view $tag 1>$null 2>$null
+          gh release view $tag --repo $env:GH_REPO 1>$null 2>$null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --title $title --notes $notes
+            gh release create $tag --repo $env:GH_REPO --title $title --notes $notes
           }
         shell: pwsh
 
       - name: Upload release assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           Get-ChildItem -Path release-artifacts -Recurse -File | ForEach-Object {
-            gh release upload "${{ github.ref_name }}" "$($_.FullName)" --clobber
+            gh release upload "${{ github.ref_name }}" "$($_.FullName)" --repo $env:GH_REPO --clobber
           }
         shell: pwsh
