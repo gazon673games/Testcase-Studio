@@ -64,7 +64,14 @@ function renderZephyrText(value: string | undefined, catalog: ReturnType<typeof 
     const raw = String(value ?? '')
     if (!raw.trim()) return ''
     const resolved = renderRefsInText(raw, catalog, { mode: 'html' })
-    return looksLikeHtml(resolved) ? resolved : mdToHtml(resolved)
+    return looksLikeHtml(resolved) ? normalizeZephyrHtmlText(resolved) : mdToHtml(resolved)
+}
+
+function normalizeZephyrHtmlText(value: string): string {
+    return String(value ?? '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\n{2,}/g, '<br /><br />')
+        .replace(/\n/g, '<br />')
 }
 
 function resolveProjectKey(test: TestCase): string | undefined {

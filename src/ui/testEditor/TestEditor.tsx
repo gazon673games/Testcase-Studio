@@ -1,6 +1,7 @@
 import * as React from 'react'
 import './TestEditor.css'
 import type { SharedStep, Step, TestCase } from '@core/domain'
+import { isZephyrHtmlPartsEnabled, setZephyrHtmlPartsEnabled } from '@core/zephyrHtmlParts'
 import type { MarkdownEditorApi } from './markdownEditor/MarkdownEditor'
 import './panels/MetaParamsPanel.css'
 import './panels/AttachmentsPanel.css'
@@ -92,6 +93,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         allureLink,
         t,
     })
+    const parseZephyrHtmlParts = isZephyrHtmlPartsEnabled(test.meta)
 
     React.useImperativeHandle(ref, () => ({ commit: () => {} }), [])
 
@@ -104,7 +106,9 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                         summaryItems={summaryItems}
                         showSharedLibrary={showSharedLibrary}
                         sharedStepsCount={sharedSteps.length}
+                        parseZephyrHtmlParts={parseZephyrHtmlParts}
                         onToggleSharedLibrary={() => setShowSharedLibrary((current) => !current)}
+                        onToggleParseZephyrHtmlParts={(value) => onChange({ meta: setZephyrHtmlPartsEnabled(test.meta, value) })}
                         onChangeName={(value) => onChange({ name: value })}
                     />
 

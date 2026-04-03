@@ -1,15 +1,17 @@
 import { v4 as uuid } from 'uuid'
 import { normalizeStep, type Attachment, type Step, type TestCase, type TestMeta } from '@core/domain'
+import { applyZephyrHtmlPartsParsing } from '@core/zephyrHtmlParts'
 import type { ProviderStep, ProviderTest } from '@providers/types'
 import type { ExportStep, ExportTest } from '@core/export'
 
 export function fromProviderPayload(
     src: ProviderTest,
-    previousSteps: Step[] = []
+    previousSteps: Step[] = [],
+    options?: { parseHtmlParts?: boolean }
 ): Pick<TestCase, 'name' | 'description' | 'steps' | 'attachments' | 'updatedAt' | 'meta'> {
     const name = src.name ?? ''
     const description = src.description ?? ''
-    const steps = mapProviderSteps(src.steps ?? [], previousSteps)
+    const steps = mapProviderSteps(src.steps ?? [], previousSteps, options)
     const attachments = (src.attachments ?? []).map(copyAttachment)
     const updatedAt = src.updatedAt ?? new Date().toISOString()
 
@@ -83,7 +85,11 @@ export function toProviderPayload(
     }
 }
 
-function mapProviderSteps(src: ProviderStep[], previousSteps: Step[] = []): Step[] {
+function mapProviderSteps(
+    src: ProviderStep[],
+    previousSteps: Step[] = [],
+    options?: { parseHtmlParts?: boolean }
+): Step[] {
     const previous = previousSteps.map(normalizeStep)
     const used = new Set<string>()
     const byProviderId = new Map<string, Step[]>()
@@ -109,7 +115,7 @@ function mapProviderSteps(src: ProviderStep[], previousSteps: Step[] = []): Step
         const expected = safeStr(providerStep.expected)
         const text = safeStr(providerStep.text ?? providerStep.action)
 
-        return {
+        const mappedStep: Step = {
             id: preserved?.id ?? uuid(),
             action,
             data,
@@ -128,6 +134,8 @@ function mapProviderSteps(src: ProviderStep[], previousSteps: Step[] = []): Step
             usesShared: preserved?.usesShared,
             attachments: (providerStep.attachments?.length ? providerStep.attachments : preserved?.attachments ?? []).map(copyAttachment),
         }
+
+        return options?.parseHtmlParts ? applyZephyrHtmlPartsParsing(mappedStep) : mappedStep
     })
 }
 

@@ -153,10 +153,31 @@ export function useAppShellActions({
 
     const handlePush = React.useCallback(async () => {
         try {
-            await app.push()
+            const result = await app.push()
+            if (!result || result.status !== 'ok') {
+                push({
+                    kind: 'error',
+                    text: t('toast.pushNoSelection'),
+                    ttl: 0,
+                })
+                return
+            }
+
+            const firstFailure = result.result.logItems.find((item) => item.status === 'failed' || item.status === 'blocked')
+            const failureHint = firstFailure
+                ? `\n- ${firstFailure.testName}: ${firstFailure.error ?? firstFailure.reason ?? 'Unknown error'}`
+                : ''
             push({
-                kind: 'success',
-                text: t('toast.pushSuccess'),
+                kind: result.result.failed || result.result.blocked ? 'error' : 'success',
+                text: t('toast.publishFinished', {
+                    created: result.result.created,
+                    updated: result.result.updated,
+                    skipped: result.result.skipped,
+                    failed: result.result.failed,
+                    blocked: result.result.blocked,
+                    snapshotPath: result.snapshotPath || '-',
+                    logPath: result.logPath || '-',
+                }) + failureHint,
                 ttl: 0,
             })
         } catch (error) {

@@ -59,4 +59,29 @@ describe('buildUpsertBodies', () => {
             expect(parameterJson).not.toContain('defaultValue')
         })
     })
+
+    it('normalizes mixed html step text into br tags in the final request body', () => {
+        const payload: ProviderTest = {
+            id: 'INSO-E01.01',
+            name: 'Create insurance object',
+            description: '',
+            steps: [
+                {
+                    action: '<strong>Предварительные условия</strong><br />1. Получен токен авторизации\ndsfds',
+                    data: '',
+                    expected: '',
+                    text: '<strong>Предварительные условия</strong><br />1. Получен токен авторизации\ndsfds',
+                },
+            ],
+            attachments: [],
+            extras: {
+                projectKey: 'INSO',
+            },
+        }
+
+        const [body] = buildUpsertBodies(payload, true)
+        const steps = (body as { testScript?: { steps?: Array<{ description?: string }> } }).testScript?.steps ?? []
+
+        expect(steps[0]?.description).toBe('<strong>Предварительные условия</strong><br />1. Получен токен авторизации<br />dsfds')
+    })
 })

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { mkTest } from '@core/domain'
+import { setZephyrHtmlPartsEnabled } from '@core/zephyrHtmlParts'
 import type { ProviderTest } from '@providers/types'
-import { buildLocalMatchIndex, findLocalMatches, upsertLocalMatch } from './materialize'
+import { buildLocalMatchIndex, findLocalMatches, materializeImportedTest, upsertLocalMatch } from './materialize'
 
 function remote(ref: string): ProviderTest {
     return {
@@ -50,5 +51,28 @@ describe('zephyr import local match index', () => {
 
         expect(findLocalMatches(remote('PROJ-T10'), index)).toEqual([])
         expect(findLocalMatches(remote('PROJ-T11'), index).map((item) => item.id)).toEqual([test.id])
+    })
+
+    it('splits imported Zephyr html into parts only when the test flag is enabled', () => {
+        const existing = mkTest('Imported case')
+        existing.meta = setZephyrHtmlPartsEnabled(existing.meta, true)
+
+        const imported = materializeImportedTest({
+            id: 'PROJ-T500',
+            name: 'Imported case',
+            steps: [{
+                action: '<strong>Проверить</strong><br /><br />Подготовить данные<br /><br /><span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>',
+                data: '',
+                expected: '',
+                text: '<strong>Проверить</strong><br /><br />Подготовить данные<br /><br /><span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>',
+            }],
+            attachments: [],
+        }, existing)
+
+        expect(imported.steps[0]?.action).toBe('<strong>Проверить</strong>')
+        expect(imported.steps[0]?.internal?.parts?.action?.map((part) => part.text)).toEqual([
+            'Подготовить данные',
+            '<span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>',
+        ])
     })
 })

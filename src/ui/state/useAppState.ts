@@ -143,7 +143,7 @@ export function useAppState(services: AppServices) {
         [adoptStateSnapshot, cancelScheduledSave, enqueueSave]
     )
 
-    const { getSelected, ...selectionApi } = createAppStateSelection({
+    const selectionApi = createAppStateSelection({
         getCurrentState,
         selectedId,
         rootLabel: services.defaults.rootLabel,
@@ -165,7 +165,6 @@ export function useAppState(services: AppServices) {
         selectedId,
         sync,
         rootLabel: services.defaults.rootLabel,
-        getSelected,
         persistStateNow,
         clearDirty,
         cancelScheduledSave,

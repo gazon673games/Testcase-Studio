@@ -1,4 +1,5 @@
 import { nowISO, type ID, type RootState, type TestCase } from '@core/domain'
+import { isZephyrHtmlPartsEnabled, preserveZephyrHtmlPartsFlag } from '@core/zephyrHtmlParts'
 import { findNode, isFolder } from '@core/tree'
 import { resolveZephyrExternalId, type SyncService } from '@app/sync'
 import { fromProviderPayload } from '@providers/mappers'
@@ -34,13 +35,15 @@ export async function pullSelectedCase(
     const remote = await sync.pullByLink(fallbackLink)
     const nextState = structuredClone(state)
     const target = findNode(nextState.root, node.id) as TestCase
-    const patch = fromProviderPayload(remote, target.steps)
+    const patch = fromProviderPayload(remote, target.steps, {
+        parseHtmlParts: isZephyrHtmlPartsEnabled(target.meta),
+    })
 
     target.name = patch.name
     target.description = patch.description
     target.steps = patch.steps
     target.attachments = patch.attachments
-    target.meta = patch.meta
+    target.meta = preserveZephyrHtmlPartsFlag(node.meta, patch.meta)
     target.updatedAt = patch.updatedAt ?? nowISO()
 
     return {

@@ -6,7 +6,9 @@ type Props = {
     summaryItems: string[]
     showSharedLibrary: boolean
     sharedStepsCount: number
+    parseZephyrHtmlParts: boolean
     onToggleSharedLibrary(): void
+    onToggleParseZephyrHtmlParts(value: boolean): void
     onChangeName(value: string): void
 }
 
@@ -15,7 +17,9 @@ export function TestEditorHero({
     summaryItems,
     showSharedLibrary,
     sharedStepsCount,
+    parseZephyrHtmlParts,
     onToggleSharedLibrary,
+    onToggleParseZephyrHtmlParts,
     onChangeName,
 }: Props) {
     const { t } = useUiPreferences()
@@ -34,6 +38,14 @@ export function TestEditorHero({
                     </div>
                 </div>
                 <div className="editor-hero-actions">
+                    <label className="editor-hero-toggle">
+                        <input
+                            type="checkbox"
+                            checked={parseZephyrHtmlParts}
+                            onChange={(event) => onToggleParseZephyrHtmlParts(event.target.checked)}
+                        />
+                        <span>{t('editor.parseZephyrHtmlParts')}</span>
+                    </label>
                     <button
                         type="button"
                         className={`btn-small editor-side-button ${showSharedLibrary ? 'active' : ''}`}

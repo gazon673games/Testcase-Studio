@@ -1,4 +1,5 @@
 import type { ProviderTest } from '../../types'
+import { looksLikeHtml } from '@core/markdown'
 import { normalizeCustomFields, normalizeParameters, safeStr, type VariableTypePolicy } from './zephyrValueMapping'
 
 export function buildUpsertBodies(payload: ProviderTest, isUpdate: boolean) {
@@ -29,7 +30,7 @@ export function buildUpsertBody(
     const projectKey = safeStr(extras.projectKey).trim()
     if (projectKey) body.projectKey = projectKey
 
-    const description = safeStr(payload.description).trim()
+    const description = normalizeZephyrRequestText(safeStr(payload.description).trim())
     if (!isUpdate || !changedFields || changedFields.has('description')) {
         if (description) body.description = description
     }
@@ -37,10 +38,10 @@ export function buildUpsertBody(
     const folder = safeStr(extras.folder).trim()
     if ((!isUpdate || !changedFields || changedFields.has('folder')) && folder) body.folder = folder
 
-    const objective = safeStr(extras.objective).trim()
+    const objective = normalizeZephyrRequestText(safeStr(extras.objective).trim())
     if ((!isUpdate || !changedFields || changedFields.has('objective')) && objective) body.objective = objective
 
-    const preconditions = safeStr(extras.preconditions).trim()
+    const preconditions = normalizeZephyrRequestText(safeStr(extras.preconditions).trim())
     if ((!isUpdate || !changedFields || changedFields.has('preconditions')) && preconditions) body.precondition = preconditions
 
     const labels = Array.isArray(extras.labels)
@@ -66,14 +67,23 @@ export function buildUpsertBody(
         body.testScript = {
             type: 'STEP_BY_STEP',
             steps: (payload.steps ?? []).map((step) => ({
-                description: safeStr(step.action || step.text).trim(),
-                testData: safeStr(step.data).trim(),
-                expectedResult: safeStr(step.expected).trim(),
+                description: normalizeZephyrRequestText(safeStr(step.action || step.text).trim()),
+                testData: normalizeZephyrRequestText(safeStr(step.data).trim()),
+                expectedResult: normalizeZephyrRequestText(safeStr(step.expected).trim()),
             })),
         }
     }
 
     return body
+}
+
+function normalizeZephyrRequestText(value: string): string {
+    if (!value) return ''
+    if (!looksLikeHtml(value)) return value
+    return value
+        .replace(/\r\n/g, '\n')
+        .replace(/\n{2,}/g, '<br /><br />')
+        .replace(/\n/g, '<br />')
 }
 
 export function shouldRetryVariablePayload(error: unknown): boolean {

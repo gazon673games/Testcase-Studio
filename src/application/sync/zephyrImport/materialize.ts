@@ -1,4 +1,5 @@
 import { mkTest, normalizeTestCase, nowISO, type TestCase, type TestCaseLink } from '@core/domain'
+import { isZephyrHtmlPartsEnabled } from '@core/zephyrHtmlParts'
 import { fromProviderPayload } from '@providers/mappers'
 import type { ProviderTest } from '@providers/types'
 import {
@@ -19,7 +20,9 @@ export type LocalMatchIndex = {
 }
 
 export function materializeImportedTest(remote: ProviderTest, existing?: TestCase): TestCase {
-    const patch = fromProviderPayload(remote, existing?.steps ?? [])
+    const patch = fromProviderPayload(remote, existing?.steps ?? [], {
+        parseHtmlParts: isZephyrHtmlPartsEnabled(existing?.meta),
+    })
     const base = existing ? normalizeTestCase(existing) : mkTest(patch.name, patch.description)
     const previousImportedKeys = getImportMetaKeys(existing) ?? []
     const nextImportedKeys = getManagedMetaKeys({ ...base, meta: patch.meta } as TestCase)

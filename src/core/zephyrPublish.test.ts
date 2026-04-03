@@ -149,6 +149,24 @@ describe('buildZephyrPublishPreview', () => {
         expect(payload.extras?.parameters).toBeUndefined()
     })
 
+    it('keeps exported action parts on separate html lines for Zephyr', () => {
+        const test = mkTest('Publish case')
+        test.id = 'test-publish'
+        test.links = [{ provider: 'zephyr', externalId: 'PROJ-T6170' }]
+        const step = mkStep('<strong>Предварительные условия</strong><br />1. Получен токен авторизации', '', '')
+        step.internal!.parts!.action = [{ id: 'part-note', text: 'dsfds' }]
+        test.steps = [step]
+
+        const state: RootState = {
+            root: mkFolder('Root', [test]),
+            sharedSteps: [],
+        }
+
+        const payload = buildZephyrPublishPayload(test, state)
+
+        expect(payload.steps[0]?.action).toBe('<strong>Предварительные условия</strong><br />1. Получен токен авторизации<br />dsfds')
+    })
+
     it('does not add parameter diffs when local test has no explicit Zephyr parameters', () => {
         const test = mkTest('Publish case')
         test.id = 'test-publish'

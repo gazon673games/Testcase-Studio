@@ -1,15 +1,14 @@
 import {
     applyZephyrImport as applyZephyrImportUseCase,
+    pushSelectedCase as pushSelectedCaseUseCase,
     previewZephyrImport as previewZephyrImportUseCase,
     previewZephyrPublish as previewZephyrPublishUseCase,
     publishZephyrPreview as publishZephyrPreviewUseCase,
     pullSelectedCase,
 } from '@app/workspace'
 import { type SyncService, type ZephyrImportPreview, type ZephyrImportRequest, type ZephyrPublishPreview, type ZephyrPublishResult } from '@app/sync'
-import type { Folder, ID, RootState, TestCase } from '@core/domain'
-import { isFolder, mapTests } from '@core/tree'
-
-type Node = Folder | TestCase
+import type { ID, RootState } from '@core/domain'
+import { mapTests } from '@core/tree'
 type SyncAllResult = { status: 'ok'; count: number }
 
 type AppStateSyncActionsOptions = {
@@ -17,7 +16,6 @@ type AppStateSyncActionsOptions = {
     selectedId: ID | null
     sync: SyncService
     rootLabel: string
-    getSelected: () => Node | null
     persistStateNow: (next: RootState, dirtyIds?: string[]) => Promise<void>
     clearDirty: (testIds?: string[]) => void
     cancelScheduledSave: () => void
@@ -32,7 +30,6 @@ export function createAppStateSyncActions({
     selectedId,
     sync,
     rootLabel,
-    getSelected,
     persistStateNow,
     clearDirty,
     cancelScheduledSave,
@@ -53,11 +50,18 @@ export function createAppStateSyncActions({
     }
 
     async function push() {
-        const currentState = getCurrentState()
-        if (!currentState) return
-        const node = getSelected()
-        if (!node || isFolder(node) || node.links.length === 0) return
-        await sync.pushTest(node, node.links[0], currentState)
+        cancelScheduledSave()
+        await waitForPendingSaves()
+
+        const result = await pushSelectedCaseUseCase(getCurrentState(), selectedId, sync, rootLabel)
+        if (result.status !== 'ok') return result
+
+        adoptStateSnapshot(result.nextState)
+        clearDirty(result.clearedDirtyIds)
+        setHasUnsavedChanges(false)
+        setSaveError(null)
+
+        return result
     }
 
     async function syncAll(): Promise<SyncAllResult> {
