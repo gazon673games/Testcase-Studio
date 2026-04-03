@@ -51,6 +51,30 @@ describe('zephyr html parts parsing', () => {
         ])
     })
 
+    it('repairs a missing comma in tolerant mode before beautifying', () => {
+        const step = mkStep(
+            '<strong>Inspect</strong><br /><br /><span><em>{<br />"id": "1"<br />"active": true<br />}</em></span>'
+        )
+
+        const parsed = applyZephyrHtmlPartsParsing(step, { tolerant: true })
+
+        expect(parsed.internal?.parts?.action?.map((part) => part.text)).toEqual([
+            '<em>{<br />  "id": "1",<br />  "active": true<br />}</em>',
+        ])
+    })
+
+    it('repairs a later missing comma between string fields in tolerant mode', () => {
+        const step = mkStep(
+            '<strong>Inspect</strong><br /><br /><span><em>{<br />"scoring_request_id": "8116acb5-4b3c-40df-8c05-9c02af105fa0"<br />"is_deleted": false,<br />"deleted_at": null<br />}</em></span>'
+        )
+
+        const parsed = applyZephyrHtmlPartsParsing(step, { tolerant: true })
+
+        expect(parsed.internal?.parts?.action?.map((part) => part.text)).toEqual([
+            '<em>{<br />  "scoring_request_id": "8116acb5-4b3c-40df-8c05-9c02af105fa0",<br />  "is_deleted": false,<br />  "deleted_at": null<br />}</em>',
+        ])
+    })
+
     it('beautifies json blocks in existing step parts on demand', () => {
         const step = mkStep('Inspect')
         step.internal!.parts!.action = [{

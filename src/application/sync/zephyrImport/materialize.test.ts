@@ -95,4 +95,52 @@ describe('zephyr import local match index', () => {
             '<em>{<br />  "id": "1",<br />  "active": true<br />}</em>',
         ])
     })
+
+    it('repairs a missing comma during import only when tolerant json beautify is enabled', () => {
+        const existing = mkTest('Imported case')
+        existing.meta = setZephyrHtmlPartsEnabled(existing.meta, true)
+
+        const remote = {
+            id: 'PROJ-T502',
+            name: 'Imported case',
+            steps: [{
+                action: '<strong>Inspect</strong><br /><br /><span><em>{<br />"id": "1"<br />"active": true<br />}</em></span>',
+                data: '',
+                expected: '',
+                text: '<strong>Inspect</strong><br /><br /><span><em>{<br />"id": "1"<br />"active": true<br />}</em></span>',
+            }],
+            attachments: [],
+        }
+
+        const strictImported = materializeImportedTest(remote, existing, { tolerantJsonBeautify: false })
+        const tolerantImported = materializeImportedTest(remote, existing, { tolerantJsonBeautify: true })
+
+        expect(strictImported.steps[0]?.internal?.parts?.action?.map((part) => part.text)).toEqual([
+            '<span><em>{<br />"id": "1"<br />"active": true<br />}</em></span>',
+        ])
+        expect(tolerantImported.steps[0]?.internal?.parts?.action?.map((part) => part.text)).toEqual([
+            '<em>{<br />  "id": "1",<br />  "active": true<br />}</em>',
+        ])
+    })
+
+    it('repairs a later missing comma between JSON fields during import in tolerant mode', () => {
+        const existing = mkTest('Imported case')
+        existing.meta = setZephyrHtmlPartsEnabled(existing.meta, true)
+
+        const tolerantImported = materializeImportedTest({
+            id: 'PROJ-T503',
+            name: 'Imported case',
+            steps: [{
+                action: '<strong>Inspect</strong><br /><br /><span><em>{<br />"scoring_request_id": "8116acb5-4b3c-40df-8c05-9c02af105fa0"<br />"is_deleted": false,<br />"deleted_at": null<br />}</em></span>',
+                data: '',
+                expected: '',
+                text: '<strong>Inspect</strong><br /><br /><span><em>{<br />"scoring_request_id": "8116acb5-4b3c-40df-8c05-9c02af105fa0"<br />"is_deleted": false,<br />"deleted_at": null<br />}</em></span>',
+            }],
+            attachments: [],
+        }, existing, { tolerantJsonBeautify: true })
+
+        expect(tolerantImported.steps[0]?.internal?.parts?.action?.map((part) => part.text)).toEqual([
+            '<em>{<br />  "scoring_request_id": "8116acb5-4b3c-40df-8c05-9c02af105fa0",<br />  "is_deleted": false,<br />  "deleted_at": null<br />}</em>',
+        ])
+    })
 })

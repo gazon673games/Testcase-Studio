@@ -7,7 +7,7 @@ import type { ExportStep, ExportTest } from '@core/export'
 export function fromProviderPayload(
     src: ProviderTest,
     previousSteps: Step[] = [],
-    options?: { parseHtmlParts?: boolean }
+    options?: { parseHtmlParts?: boolean; tolerantJsonBeautify?: boolean }
 ): Pick<TestCase, 'name' | 'description' | 'steps' | 'attachments' | 'updatedAt' | 'meta'> {
     const name = src.name ?? ''
     const description = src.description ?? ''
@@ -88,7 +88,7 @@ export function toProviderPayload(
 function mapProviderSteps(
     src: ProviderStep[],
     previousSteps: Step[] = [],
-    options?: { parseHtmlParts?: boolean }
+    options?: { parseHtmlParts?: boolean; tolerantJsonBeautify?: boolean }
 ): Step[] {
     const previous = previousSteps.map(normalizeStep)
     const used = new Set<string>()
@@ -135,7 +135,9 @@ function mapProviderSteps(
             attachments: (providerStep.attachments?.length ? providerStep.attachments : preserved?.attachments ?? []).map(copyAttachment),
         }
 
-        return options?.parseHtmlParts ? applyZephyrHtmlPartsParsing(mappedStep) : mappedStep
+        return options?.parseHtmlParts
+            ? applyZephyrHtmlPartsParsing(mappedStep, { tolerant: options?.tolerantJsonBeautify })
+            : mappedStep
     })
 }
 

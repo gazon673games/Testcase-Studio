@@ -23,7 +23,7 @@ export default function StepsPanel({
     onOpenShared,
     onInsertText,
 }: StepsPanelProps) {
-    const { t } = useUiPreferences()
+    const { t, jsonBeautifyTolerant } = useUiPreferences()
     const sharedById = React.useMemo(() => new Map(sharedSteps.map((item) => [item.id, item] as const)), [sharedSteps])
 
     const {
@@ -97,49 +97,53 @@ export default function StepsPanel({
                             </button>
                         </div>
                     ) : (
-                        steps.map((step, index) => (
-                            <StepRow
-                                key={step.id}
-                                ref={(element) => {
-                                    stepRefs.current[step.id] = element
-                                }}
-                                owner={owner}
-                                index={index}
-                                step={step}
-                                preview={previewEnabled}
-                                isNarrow={isNarrow}
-                                allTests={allTests}
-                                sharedSteps={sharedSteps}
-                                sharedById={sharedById}
-                                resolveRefs={resolveRefs}
-                                inspectRefs={inspectRefs}
-                                onOpenRef={onOpenRef}
-                                onActivateEditorApi={onActivateEditorApi}
-                                onClone={() => cloneStep(index)}
-                                onAddNext={() => addStepAfter(index)}
-                                onRemove={() => removeStep(index)}
-                                canBeautifyJson={beautifyZephyrJsonBlocksInStep(step) !== step}
-                                onBeautifyJson={() => updateStep(index, beautifyZephyrJsonBlocksInStep(step))}
-                                onEditTop={(patch) => updateStep(index, patch)}
-                                onAddPart={addPart}
-                                onEditPart={editPart}
-                                onRemovePart={removePart}
-                                onHandleDragStart={(event) => handleDragStart(index, event)}
-                                onHandleDragEnd={handleDragEnd}
-                                onCardDragOver={handleCardDragOver}
-                                onCardDragEnter={() => handleCardDragEnter(index)}
-                                onCardDragLeave={() => handleCardDragLeave(index)}
-                                onCardDrop={() => handleCardDrop(index)}
-                                isDragging={draggingIndex === index}
-                                isDropTarget={hoverIndex === index}
-                                getStepAttachments={() => (Array.isArray(step.attachments) ? step.attachments : [])}
-                                setStepAttachments={(nextAttachments) => updateStep(index, { attachments: nextAttachments })}
-                                onUploadStepFiles={onUploadStepFiles}
-                                onCreateSharedFromStep={onCreateSharedFromStep}
-                                onOpenShared={onOpenShared}
-                                onInsertText={onInsertText}
-                            />
-                        ))
+                        steps.map((step, index) => {
+                            const beautifiedStep = beautifyZephyrJsonBlocksInStep(step, { tolerant: jsonBeautifyTolerant })
+
+                            return (
+                                <StepRow
+                                    key={step.id}
+                                    ref={(element) => {
+                                        stepRefs.current[step.id] = element
+                                    }}
+                                    owner={owner}
+                                    index={index}
+                                    step={step}
+                                    preview={previewEnabled}
+                                    isNarrow={isNarrow}
+                                    allTests={allTests}
+                                    sharedSteps={sharedSteps}
+                                    sharedById={sharedById}
+                                    resolveRefs={resolveRefs}
+                                    inspectRefs={inspectRefs}
+                                    onOpenRef={onOpenRef}
+                                    onActivateEditorApi={onActivateEditorApi}
+                                    onClone={() => cloneStep(index)}
+                                    onAddNext={() => addStepAfter(index)}
+                                    onRemove={() => removeStep(index)}
+                                    canBeautifyJson={beautifiedStep !== step}
+                                    onBeautifyJson={() => updateStep(index, beautifiedStep)}
+                                    onEditTop={(patch) => updateStep(index, patch)}
+                                    onAddPart={addPart}
+                                    onEditPart={editPart}
+                                    onRemovePart={removePart}
+                                    onHandleDragStart={(event) => handleDragStart(index, event)}
+                                    onHandleDragEnd={handleDragEnd}
+                                    onCardDragOver={handleCardDragOver}
+                                    onCardDragEnter={() => handleCardDragEnter(index)}
+                                    onCardDragLeave={() => handleCardDragLeave(index)}
+                                    onCardDrop={() => handleCardDrop(index)}
+                                    isDragging={draggingIndex === index}
+                                    isDropTarget={hoverIndex === index}
+                                    getStepAttachments={() => (Array.isArray(step.attachments) ? step.attachments : [])}
+                                    setStepAttachments={(nextAttachments) => updateStep(index, { attachments: nextAttachments })}
+                                    onUploadStepFiles={onUploadStepFiles}
+                                    onCreateSharedFromStep={onCreateSharedFromStep}
+                                    onOpenShared={onOpenShared}
+                                    onInsertText={onInsertText}
+                                />
+                            )
+                        })
                     )}
                 </div>
             )}

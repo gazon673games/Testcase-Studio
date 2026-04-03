@@ -2,6 +2,7 @@ import { mkTest, normalizeTestCase, nowISO, type TestCase, type TestCaseLink } f
 import { isZephyrHtmlPartsEnabled } from '@core/zephyrHtmlParts'
 import { fromProviderPayload } from '@providers/mappers'
 import type { ProviderTest } from '@providers/types'
+import { getStoredJsonBeautifyTolerant } from '@shared/uiPreferences'
 import {
     applyImportMarkers,
     buildImportedMeta,
@@ -19,9 +20,14 @@ export type LocalMatchIndex = {
     byDigits: Map<string, Set<string>>
 }
 
-export function materializeImportedTest(remote: ProviderTest, existing?: TestCase): TestCase {
+export function materializeImportedTest(
+    remote: ProviderTest,
+    existing?: TestCase,
+    options?: { tolerantJsonBeautify?: boolean }
+): TestCase {
     const patch = fromProviderPayload(remote, existing?.steps ?? [], {
         parseHtmlParts: isZephyrHtmlPartsEnabled(existing?.meta),
+        tolerantJsonBeautify: options?.tolerantJsonBeautify ?? getStoredJsonBeautifyTolerant(),
     })
     const base = existing ? normalizeTestCase(existing) : mkTest(patch.name, patch.description)
     const previousImportedKeys = getImportMetaKeys(existing) ?? []

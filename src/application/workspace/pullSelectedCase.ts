@@ -3,6 +3,7 @@ import { isZephyrHtmlPartsEnabled, preserveZephyrHtmlPartsFlag } from '@core/zep
 import { findNode, isFolder } from '@core/tree'
 import { resolveZephyrExternalId, type SyncService } from '@app/sync'
 import { fromProviderPayload } from '@providers/mappers'
+import { getStoredJsonBeautifyTolerant } from '@shared/uiPreferences'
 import { getSelectedNode } from './queries'
 
 export type PullSelectedCaseResult =
@@ -37,6 +38,7 @@ export async function pullSelectedCase(
     const target = findNode(nextState.root, node.id) as TestCase
     const patch = fromProviderPayload(remote, target.steps, {
         parseHtmlParts: isZephyrHtmlPartsEnabled(target.meta),
+        tolerantJsonBeautify: getStoredJsonBeautifyTolerant(),
     })
 
     target.name = patch.name

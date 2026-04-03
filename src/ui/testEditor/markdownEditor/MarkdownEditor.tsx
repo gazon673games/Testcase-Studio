@@ -129,8 +129,10 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     const refs = React.useMemo(() => (inspectRefs ? inspectRefs(value) : []), [inspectRefs, value])
     const previewHtml = React.useMemo(() => renderPreviewHtml(value), [renderPreviewHtml, value])
 
+    const previewEditActive = preview && editInPreview && active
+
     return (
-        <div className={`md-editor ${preview ? 'is-preview' : ''} ${className}`}>
+        <div className={`md-editor ${preview ? 'is-preview' : ''} ${previewEditActive ? 'is-preview-editing' : ''} ${className}`}>
             <MarkdownEditorToolbar
                 visible={!hideToolbar && active}
                 preview={preview}

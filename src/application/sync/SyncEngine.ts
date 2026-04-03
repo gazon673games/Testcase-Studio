@@ -3,6 +3,7 @@ import { fromProviderPayload, toProviderPayload } from '@providers/mappers'
 import type { ProviderKind, RootState, TestCase, TestCaseLink } from '@core/domain'
 import { buildExport } from '@core/export'
 import { isZephyrHtmlPartsEnabled, preserveZephyrHtmlPartsFlag } from '@core/zephyrHtmlParts'
+import { getStoredJsonBeautifyTolerant } from '@shared/uiPreferences'
 import type { SyncText } from './text'
 import type { SyncService } from './service'
 import {
@@ -183,6 +184,7 @@ export class SyncEngine implements SyncService {
 
                 const patch = fromProviderPayload(remote, test.steps, {
                     parseHtmlParts: isZephyrHtmlPartsEnabled(test.meta),
+                    tolerantJsonBeautify: getStoredJsonBeautifyTolerant(),
                 })
                 test.name = patch.name
                 test.description = patch.description

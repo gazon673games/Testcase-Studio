@@ -10,7 +10,7 @@ const TABS = ['atlassian', 'appearance'] as const
 type TabKey = typeof TABS[number]
 
 export function SettingsModal({ open, onClose }: Props) {
-    const { locale, setLocale, themeMode, setThemeMode, t } = useUiPreferences()
+    const { locale, setLocale, themeMode, setThemeMode, jsonBeautifyTolerant, setJsonBeautifyTolerant, t } = useUiPreferences()
     const [tab, setTab] = React.useState<TabKey>('atlassian')
     const [loading, setLoading] = React.useState(true)
     const [login, setLogin] = React.useState('')
@@ -209,6 +209,18 @@ export function SettingsModal({ open, onClose }: Props) {
                                         </select>
                                         <div className="settings-modal__hint">{t('settings.themeHint')}</div>
                                     </Field>
+
+                                    <div className="settings-modal__field">
+                                        <label className="settings-modal__checkbox">
+                                            <input
+                                                type="checkbox"
+                                                checked={jsonBeautifyTolerant}
+                                                onChange={(event) => setJsonBeautifyTolerant(event.target.checked)}
+                                            />
+                                            <span>{t('settings.jsonBeautifyTolerant')}</span>
+                                        </label>
+                                        <div className="settings-modal__hint">{t('settings.jsonBeautifyTolerantHint')}</div>
+                                    </div>
 
                                     <div className="settings-modal__actions">
                                         <button

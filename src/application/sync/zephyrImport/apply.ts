@@ -1,5 +1,6 @@
 import type { Folder, RootState, TestCase } from '@core/domain'
 import { findNode, findParentFolder, insertChild, isFolder, mapTests, moveNode as moveTreeNode } from '@core/tree'
+import { getStoredJsonBeautifyTolerant } from '@shared/uiPreferences'
 import type { SyncText } from '../text'
 import { buildTargetFolderSegments, ensureTargetFolder, getConflictFolderName, resolveDestinationFolder } from './folders'
 import { IMPORT_CONFLICT_LOCAL_ID, IMPORT_CONFLICT_REMOTE_KEY } from './markers'
@@ -11,6 +12,7 @@ export function applyZephyrImportPreview(state: RootState, preview: ZephyrImport
     const currentTests = mapTests(state.root)
     const localMatchIndex = buildLocalMatchIndex(currentTests)
     const conflictDraftIndex = buildConflictDraftIndex(currentTests)
+    const tolerantJsonBeautify = getStoredJsonBeautifyTolerant()
     const result: ZephyrImportApplyResult = { created: 0, updated: 0, skipped: 0, drafts: 0, unchanged: 0 }
 
     for (const item of preview.items) {
@@ -37,7 +39,7 @@ export function applyZephyrImportPreview(state: RootState, preview: ZephyrImport
 
         const localMatches = findLocalMatches(item.remote, localMatchIndex)
         const existing = localMatches.length === 1 ? localMatches[0] : undefined
-        const imported = materializeImportedTest(item.remote, existing)
+        const imported = materializeImportedTest(item.remote, existing, { tolerantJsonBeautify })
         const targetFolder = ensureTargetFolder(state.root, destinationFolder.id, item.targetFolderSegments)
 
         if (existing) {
@@ -75,7 +77,9 @@ function upsertConflictDraft(
 ) {
     const local = item.localTestId ? findNode(state.root, item.localTestId) : null
     const localTest = local && !isFolder(local) ? local : undefined
-    const imported = materializeImportedTest(item.remote)
+    const imported = materializeImportedTest(item.remote, undefined, {
+        tolerantJsonBeautify: getStoredJsonBeautifyTolerant(),
+    })
     imported.name = `[Import draft] ${item.remote.name}`
     imported.links = imported.links.filter((link) => link.provider !== 'zephyr')
     imported.meta = imported.meta ?? { tags: [], params: {} }

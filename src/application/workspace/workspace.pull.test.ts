@@ -80,6 +80,60 @@ describe('workspace pull selected case', () => {
             '<span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>',
         ])
     })
+    it('uses the tolerant json beautify setting during pull when html-part parsing is enabled', async () => {
+        const storage = new Map<string, string>()
+        const originalWindow = (globalThis as { window?: Window }).window
+        ;(globalThis as { window?: Window }).window = {
+            localStorage: {
+                getItem: (key: string) => storage.get(key) ?? null,
+                setItem: (key: string, value: string) => void storage.set(key, value),
+                removeItem: (key: string) => void storage.delete(key),
+                clear: () => void storage.clear(),
+                key: (index: number) => [...storage.keys()][index] ?? null,
+                get length() {
+                    return storage.size
+                },
+            } as Storage,
+        } as Window
+        globalThis.window.localStorage.setItem('ui.jsonBeautifyTolerant', 'true')
+        try {
+            const { state, folderTest } = makeWorkspace()
+            const selected = findNode(state.root, folderTest.id)
+            if (!selected || isFolder(selected)) throw new Error('Expected a test node in the workspace state')
+
+            selected.links = [{ provider: 'zephyr', externalId: 'PROJ-T90' }]
+            selected.meta = setZephyrHtmlPartsEnabled(selected.meta, true)
+
+            const sync = makeSyncService({
+                pullByLink: vi.fn(async () =>
+                    makeProviderTest({
+                        id: 'PROJ-T90',
+                        name: 'Remote case',
+                        steps: [{
+                            action: '<strong>Inspect</strong><br /><br /><span><em>{<br />"id": "1"<br />"active": true<br />}</em></span>',
+                            data: '',
+                            expected: '',
+                            text: '<strong>Inspect</strong><br /><br /><span><em>{<br />"id": "1"<br />"active": true<br />}</em></span>',
+                        }],
+                    })
+                ),
+            })
+
+            const result = await pullSelectedCase(state, folderTest.id, sync)
+            if (result.status !== 'ok') throw new Error('Expected ok result')
+
+            const updated = findNode(result.nextState.root, folderTest.id)
+            if (!updated || isFolder(updated)) throw new Error('Expected updated test node')
+
+            expect(updated.steps[0]?.internal?.parts?.action?.map((part) => part.text)).toEqual([
+                '<em>{<br />  "id": "1",<br />  "active": true<br />}</em>',
+            ])
+        } finally {
+            if (originalWindow) (globalThis as { window?: Window }).window = originalWindow
+            else delete (globalThis as { window?: Window }).window
+        }
+    })
+
     it('clears previously parsed html blocks when the per-test flag is disabled before pull', async () => {
         const { state, folderTest } = makeWorkspace()
         const selected = findNode(state.root, folderTest.id)

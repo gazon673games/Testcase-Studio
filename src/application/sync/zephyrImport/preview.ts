@@ -2,6 +2,7 @@ import { nowISO, type Folder, type RootState, type TestCase, type TestMeta } fro
 import { buildPreviewStepDiffRows, summarizePreviewSteps, summarizePreviewText, type PreviewStepDiffRow } from '@core/previewDiff'
 import { findParentFolder, mapTests } from '@core/tree'
 import type { ProviderTest } from '@providers/types'
+import { getStoredJsonBeautifyTolerant } from '@shared/uiPreferences'
 import type { SyncText } from '../text'
 import {
     buildTargetFolderSegments,
@@ -65,7 +66,9 @@ function buildPreviewItem(
 ): ZephyrImportPreviewItem {
     const localMatches = findLocalMatches(remote, localMatchIndex)
     const existing = localMatches.length === 1 ? localMatches[0] : undefined
-    const imported = materializeImportedTest(remote, existing)
+    const imported = materializeImportedTest(remote, existing, {
+        tolerantJsonBeautify: getStoredJsonBeautifyTolerant(),
+    })
     const targetFolderSegments = buildTargetFolderSegments(remote, request)
     const targetFolderLabel = joinFolderLabel(describeFolderPath(root, destinationFolder.id, text.rootLabel), targetFolderSegments)
     const localFolder = existing ? describeFolderPath(root, findParentFolder(root, existing.id)?.id ?? root.id, text.rootLabel) : undefined
