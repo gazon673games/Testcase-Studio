@@ -57,6 +57,28 @@ export function AppShell() {
         setCompactWorkspace,
     })
 
+    const shellViewState = buildAppShellViewState(app, t, services.defaults.rootLabel)
+
+    const confirmDelete = React.useCallback((targetId?: string | null) => {
+        const currentState = app.state
+        if (!currentState) return false
+        const id = typeof targetId === 'string' && targetId ? targetId : app.selectedId
+        const node = id ? findNode(currentState.root, id) : null
+        if (!node || node.id === currentState.root.id) return false
+        const kindLabel = isFolder(node) ? t('confirm.deleteFolderKind') : t('confirm.deleteCaseKind')
+        return window.confirm(t('confirm.deleteNode', { kind: kindLabel, name: node.name || t('tree.untitled') }))
+    }, [app.selectedId, app.state, t])
+
+    const handleDeleteSelection = React.useCallback(() => {
+        if (!confirmDelete()) return
+        void app.removeSelected()
+    }, [app, confirmDelete])
+
+    const handleDeleteNodeById = React.useCallback((id: string) => {
+        if (!confirmDelete(id)) return
+        void app.deleteNodeById(id)
+    }, [app, confirmDelete])
+
     if (app.loadError) {
         return (
             <AppShellStatus
@@ -72,7 +94,6 @@ export function AppShell() {
         return <AppShellStatus title={t('app.loading')} />
     }
 
-    const shellViewState = buildAppShellViewState(app, t, services.defaults.rootLabel)
     if (!shellViewState) return null
 
     const {
@@ -88,24 +109,6 @@ export function AppShell() {
         canPublish,
         canSyncAll,
     } = shellViewState
-
-    const confirmDelete = React.useCallback((targetId?: string | null) => {
-        const id = typeof targetId === 'string' && targetId ? targetId : app.selectedId
-        const node = id ? findNode(app.state!.root, id) : null
-        if (!node || node.id === app.state!.root.id) return false
-        const kindLabel = isFolder(node) ? t('confirm.deleteFolderKind') : t('confirm.deleteCaseKind')
-        return window.confirm(t('confirm.deleteNode', { kind: kindLabel, name: node.name || t('tree.untitled') }))
-    }, [app.selectedId, app.state, t])
-
-    const handleDeleteSelection = React.useCallback(() => {
-        if (!confirmDelete()) return
-        void app.removeSelected()
-    }, [app, confirmDelete])
-
-    const handleDeleteNodeById = React.useCallback((id: string) => {
-        if (!confirmDelete(id)) return
-        void app.deleteNodeById(id)
-    }, [app, confirmDelete])
 
     const rightPane = (
         <AppShellRightPane

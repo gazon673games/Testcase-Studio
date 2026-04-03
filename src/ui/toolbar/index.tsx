@@ -107,16 +107,20 @@ export function Toolbar(props: Props) {
                                 tone="info"
                                 disabled={!props.canPull}
                                 title={t('sync.pullCurrent')}
+                                aria-label={t('sync.pullCurrent')}
+                                className="toolbar-button--icon-only"
                             >
-                                {t('sync.pullCurrent')}
+                                <ToolbarIcon direction="down" />
                             </ToolbarButton>
                             <ToolbarButton
                                 onClick={props.onPush}
-                                tone="quiet"
+                                tone="danger"
                                 disabled={!props.canPush}
                                 title={t('sync.pushCurrent')}
+                                aria-label={t('sync.pushCurrent')}
+                                className="toolbar-button--icon-only"
                             >
-                                {t('sync.pushCurrent')}
+                                <ToolbarIcon direction="up" />
                             </ToolbarButton>
                         </>
                     ) : (
@@ -148,6 +152,37 @@ export function Toolbar(props: Props) {
                 />
             </div>
         </div>
+    )
+}
+
+function ToolbarIcon({ direction }: { direction: 'up' | 'down' }) {
+    return (
+        <svg
+            className="toolbar-button__icon"
+            viewBox="0 0 16 16"
+            width="16"
+            height="16"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            {direction === 'down' ? (
+                <>
+                    <path d="M8 2.5v8" />
+                    <path d="M4.5 7.5 8 11l3.5-3.5" />
+                    <path d="M3 13.5h10" />
+                </>
+            ) : (
+                <>
+                    <path d="M8 13.5v-8" />
+                    <path d="M4.5 8.5 8 5l3.5 3.5" />
+                    <path d="M3 2.5h10" />
+                </>
+            )}
+        </svg>
     )
 }
 

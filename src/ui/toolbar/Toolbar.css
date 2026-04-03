@@ -112,6 +112,19 @@
     white-space: nowrap;
 }
 
+.toolbar-button--icon-only {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toolbar-button__icon {
+    display: block;
+}
+
 .toolbar-button:disabled {
     opacity: 0.45;
     cursor: default;
