@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { beautifyZephyrJsonBlocksInStep } from '@core/zephyrHtmlParts'
+import { beautifyZephyrJsonBlocksInStep, inspectZephyrJsonBeautifyStep } from '@core/zephyrHtmlParts'
 import { StepRow } from './StepRow'
 import type { StepsPanelProps } from './stepsPanelTypes'
 import { useStepsPanelController } from './useStepsPanelController'
@@ -99,6 +99,30 @@ export default function StepsPanel({
                     ) : (
                         steps.map((step, index) => {
                             const beautifiedStep = beautifyZephyrJsonBlocksInStep(step, { tolerant: jsonBeautifyTolerant })
+                            const beautifyDiagnostics = inspectZephyrJsonBeautifyStep(step, { tolerant: jsonBeautifyTolerant })
+                            const handleBeautifyJson = () => {
+                                if (beautifiedStep !== step) {
+                                    updateStep(index, beautifiedStep)
+                                    return
+                                }
+
+                                if (beautifyDiagnostics.failures.length) {
+                                    console.warn('[Testcase Studio] JSON beautify failed', {
+                                        stepId: step.id,
+                                        stepIndex: index + 1,
+                                        tolerant: jsonBeautifyTolerant,
+                                        failures: beautifyDiagnostics.failures,
+                                    })
+                                    return
+                                }
+
+                                console.info('[Testcase Studio] JSON beautify skipped: no JSON-like blocks found', {
+                                    stepId: step.id,
+                                    stepIndex: index + 1,
+                                    tolerant: jsonBeautifyTolerant,
+                                    candidateCount: beautifyDiagnostics.candidateCount,
+                                })
+                            }
 
                             return (
                                 <StepRow
@@ -121,8 +145,8 @@ export default function StepsPanel({
                                     onClone={() => cloneStep(index)}
                                     onAddNext={() => addStepAfter(index)}
                                     onRemove={() => removeStep(index)}
-                                    canBeautifyJson={beautifiedStep !== step}
-                                    onBeautifyJson={() => updateStep(index, beautifiedStep)}
+                                    canBeautifyJson={beautifiedStep !== step || beautifyDiagnostics.candidateCount > 0}
+                                    onBeautifyJson={handleBeautifyJson}
                                     onEditTop={(patch) => updateStep(index, patch)}
                                     onAddPart={addPart}
                                     onEditPart={editPart}

@@ -3,6 +3,21 @@ import type { Step, TestMeta } from './domain'
 
 export const ZEPHYR_PARSE_HTML_PARTS_KEY = '__zephyr.parseHtmlParts'
 export type ZephyrJsonBeautifyOptions = { tolerant?: boolean }
+export type ZephyrJsonBeautifyFailure = {
+    kind: 'action' | 'data' | 'expected'
+    source: 'field' | 'part'
+    partId?: string
+    original: string
+    candidate: string
+    repaired?: string
+    strictError: string
+    tolerantError?: string
+}
+
+export type ZephyrJsonBeautifyDiagnostics = {
+    candidateCount: number
+    failures: ZephyrJsonBeautifyFailure[]
+}
 
 export function isZephyrHtmlPartsEnabled(meta: Pick<TestMeta, 'params'> | undefined): boolean {
     const raw = String(meta?.params?.[ZEPHYR_PARSE_HTML_PARTS_KEY] ?? '').trim().toLowerCase()
@@ -81,6 +96,39 @@ export function beautifyZephyrJsonBlocksInStep(step: Step, options?: ZephyrJsonB
     return changed ? next : step
 }
 
+export function inspectZephyrJsonBeautifyStep(
+    step: Step,
+    options?: ZephyrJsonBeautifyOptions
+): ZephyrJsonBeautifyDiagnostics {
+    const failures: ZephyrJsonBeautifyFailure[] = []
+    let candidateCount = 0
+
+    for (const kind of ['action', 'data', 'expected'] as const) {
+        const current = getStepFieldValue(step, kind)
+        const fieldAttempt = analyzeJsonHtmlBlock(current, options)
+        if (fieldAttempt.candidate) candidateCount += 1
+        if (fieldAttempt.failure) failures.push({
+            kind,
+            source: 'field',
+            ...fieldAttempt.failure,
+        })
+
+        const parts = step.internal?.parts?.[kind] ?? []
+        for (const part of parts) {
+            const partAttempt = analyzeJsonHtmlBlock(part.text, options)
+            if (partAttempt.candidate) candidateCount += 1
+            if (partAttempt.failure) failures.push({
+                kind,
+                source: 'part',
+                partId: part.id,
+                ...partAttempt.failure,
+            })
+        }
+    }
+
+    return { candidateCount, failures }
+}
+
 function applyFieldParsing(step: Step, kind: 'action' | 'data' | 'expected', options?: ZephyrJsonBeautifyOptions) {
     const current = getStepFieldValue(step, kind)
     const blocks = splitZephyrHtmlBlocks(current, options)
@@ -119,36 +167,70 @@ function looksLikeHtml(value: string) {
 }
 
 function maybeBeautifyJsonHtmlBlock(block: string, options?: ZephyrJsonBeautifyOptions): string {
-    if (!looksLikeJsonBlockCandidate(block)) return block
+    return analyzeJsonHtmlBlock(block, options).output
+}
 
-    const candidate = toJsonCandidate(block)
-    if (!candidate) return block
-
-    const parsed = parseJsonCandidate(candidate.text, options)
-    if (parsed == null) return block
-
+function parseJsonCandidate(text: string, options?: ZephyrJsonBeautifyOptions): {
+    parsed: unknown | null
+    strictError?: string
+    repaired?: string
+    tolerantError?: string
+} {
     try {
-        const beautified = JSON.stringify(parsed, null, 2)
-        return wrapBeautifiedJsonHtml(beautified, candidate.wrappers)
-    } catch {
-        return block
+        return { parsed: JSON.parse(text) }
+    } catch (error) {
+        const strictError = error instanceof Error ? error.message : String(error)
+        if (!options?.tolerant) return { parsed: null, strictError }
+
+        const repaired = repairJsonText(text)
+        if (repaired === text) return { parsed: null, strictError }
+
+        try {
+            return { parsed: JSON.parse(repaired), strictError, repaired }
+        } catch (repairError) {
+            return {
+                parsed: null,
+                strictError,
+                repaired,
+                tolerantError: repairError instanceof Error ? repairError.message : String(repairError),
+            }
+        }
     }
 }
 
-function parseJsonCandidate(text: string, options?: ZephyrJsonBeautifyOptions): unknown | null {
-    try {
-        return JSON.parse(text)
-    } catch {
-        if (!options?.tolerant) return null
+function analyzeJsonHtmlBlock(block: string, options?: ZephyrJsonBeautifyOptions): {
+    output: string
+    candidate: boolean
+    changed: boolean
+    failure?: Omit<ZephyrJsonBeautifyFailure, 'kind' | 'source' | 'partId'>
+} {
+    if (!looksLikeJsonBlockCandidate(block)) return { output: block, candidate: false, changed: false }
+
+    const candidate = toJsonCandidate(block)
+    if (!candidate) return { output: block, candidate: false, changed: false }
+
+    const parsedResult = parseJsonCandidate(candidate.text, options)
+    if (parsedResult.parsed == null) {
+        return {
+            output: block,
+            candidate: true,
+            changed: false,
+            failure: {
+                original: block,
+                candidate: candidate.text,
+                repaired: parsedResult.repaired,
+                strictError: parsedResult.strictError ?? 'Unknown JSON.parse error',
+                tolerantError: parsedResult.tolerantError,
+            },
+        }
     }
 
-    const repaired = repairJsonText(text)
-    if (repaired === text) return null
-
     try {
-        return JSON.parse(repaired)
+        const beautified = JSON.stringify(parsedResult.parsed, null, 2)
+        const output = wrapBeautifiedJsonHtml(beautified, candidate.wrappers)
+        return { output, candidate: true, changed: output !== block }
     } catch {
-        return null
+        return { output: block, candidate: true, changed: false }
     }
 }
 

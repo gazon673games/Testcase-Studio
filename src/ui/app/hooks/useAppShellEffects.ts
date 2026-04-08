@@ -10,8 +10,10 @@ export function useAppShellEffects({ onSave, setCompactWorkspace }: UseAppShellE
         const onKey = (event: KeyboardEvent) => {
             const isMac = navigator.platform.toLowerCase().includes('mac')
             const modifier = isMac ? event.metaKey : event.ctrlKey
+            const key = event.key.toLowerCase()
+            const isSaveShortcut = event.code === 'KeyS' || key === 's'
 
-            if (modifier && event.key.toLowerCase() === 's') {
+            if (modifier && isSaveShortcut) {
                 event.preventDefault()
                 void onSave()
             }

@@ -107,20 +107,26 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     pointer-events: auto;
     position: relative;
     z-index: 1;
+    opacity: 0;
     background: transparent;
     border-color: transparent;
     box-shadow: none;
-    color: transparent;
-    -webkit-text-fill-color: transparent;
     caret-color: var(--text-strong);
 }
 
-.md-editor.is-preview.is-preview-editing .md-textarea.md-textarea--preview-edit {
-    background: var(--bg-elevated);
-    border-color: var(--border);
+.md-editor.is-preview .md-textarea.md-textarea--preview-edit.md-textarea--preview-edit-active {
+    z-index: 2;
+    opacity: 1;
     color: var(--text);
     -webkit-text-fill-color: var(--text);
-    caret-color: var(--text-strong);
+    background: var(--bg-elevated);
+    border-color: var(--accent-border);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.md-editor.is-preview .md-textarea.md-textarea--preview-edit.md-textarea--preview-edit-active::selection {
+    color: inherit;
+    background: var(--focus-ring);
 }
 
 .md-editor.is-preview .md-textarea.md-textarea--preview-edit:focus {
@@ -134,13 +140,7 @@ MarkdownEditor.css — reusable Markdown textarea + preview
 }
 
 .md-editor.is-preview .md-textarea.md-textarea--preview-edit::selection {
-    color: transparent;
-    background: var(--focus-ring);
-}
-
-.md-editor.is-preview.is-preview-editing .md-textarea.md-textarea--preview-edit::selection {
-    color: var(--text);
-    -webkit-text-fill-color: var(--text);
+    color: inherit;
     background: var(--focus-ring);
 }
 
@@ -180,8 +180,47 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     box-shadow: none;
 }
 
-.md-editor.is-preview.is-preview-editing .md-preview.md-preview--editable {
+.md-editor .md-preview.md-preview--editable.md-preview--editing {
     opacity: 0;
+}
+
+.md-editor .md-rich-editor {
+    position: relative;
+    inset: auto;
+    display: block;
+    min-height: var(--md-min-height);
+    width: 100%;
+    outline: none;
+    white-space: pre-wrap;
+    cursor: text;
+    overflow: visible;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    user-select: text;
+    -webkit-user-select: text;
+    caret-color: var(--text-strong);
+}
+
+.md-editor .md-rich-editor,
+.md-editor .md-rich-editor * {
+    caret-color: inherit;
+}
+
+.md-editor .md-rich-editor:focus {
+    border-color: var(--accent-border);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.md-editor .md-rich-editor::selection,
+.md-editor .md-rich-editor *::selection {
+    background: var(--focus-ring);
+    color: inherit;
+}
+
+.md-editor .md-rich-editor:empty::before {
+    content: attr(data-placeholder);
+    color: var(--text-dim);
+    pointer-events: none;
 }
 /* если превью очень большое — ограничиваем и даём скролл */
 .md-editor .md-preview.clamped {

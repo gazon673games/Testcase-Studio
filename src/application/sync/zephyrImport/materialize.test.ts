@@ -143,4 +143,25 @@ describe('zephyr import local match index', () => {
             '<em>{<br />  "scoring_request_id": "8116acb5-4b3c-40df-8c05-9c02af105fa0",<br />  "is_deleted": false,<br />  "deleted_at": null<br />}</em>',
         ])
     })
+
+    it('repairs a same-line missing comma during import in tolerant mode', () => {
+        const existing = mkTest('Imported case')
+        existing.meta = setZephyrHtmlPartsEnabled(existing.meta, true)
+
+        const tolerantImported = materializeImportedTest({
+            id: 'PROJ-T504',
+            name: 'Imported case',
+            steps: [{
+                action: '<strong>Inspect</strong><br /><br /><span><em>{ "test": 12, "test1": "test" "test2": "test" }</em></span>',
+                data: '',
+                expected: '',
+                text: '<strong>Inspect</strong><br /><br /><span><em>{ "test": 12, "test1": "test" "test2": "test" }</em></span>',
+            }],
+            attachments: [],
+        }, existing, { tolerantJsonBeautify: true })
+
+        expect(tolerantImported.steps[0]?.internal?.parts?.action?.map((part) => part.text)).toEqual([
+            '<em>{<br />  "test": 12,<br />  "test1": "test",<br />  "test2": "test"<br />}</em>',
+        ])
+    })
 })

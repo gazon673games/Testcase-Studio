@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { mkStep } from './domain'
-import { applyZephyrHtmlPartsParsing, beautifyZephyrJsonBlocksInStep, isZephyrHtmlPartsEnabled, setZephyrHtmlPartsEnabled } from './zephyrHtmlParts'
+import {
+    applyZephyrHtmlPartsParsing,
+    beautifyZephyrJsonBlocksInStep,
+    inspectZephyrJsonBeautifyStep,
+    isZephyrHtmlPartsEnabled,
+    setZephyrHtmlPartsEnabled,
+} from './zephyrHtmlParts'
 
 describe('zephyr html parts parsing', () => {
     it('splits html fields into top level text and extra parts using double breaks', () => {
@@ -75,6 +81,18 @@ describe('zephyr html parts parsing', () => {
         ])
     })
 
+    it('repairs a missing comma between keys on the same line in tolerant mode', () => {
+        const step = mkStep(
+            '<strong>Inspect</strong><br /><br /><span><em>{ "test": 12, "test1": "test" "test2": "test" }</em></span>'
+        )
+
+        const parsed = applyZephyrHtmlPartsParsing(step, { tolerant: true })
+
+        expect(parsed.internal?.parts?.action?.map((part) => part.text)).toEqual([
+            '<em>{<br />  "test": 12,<br />  "test1": "test",<br />  "test2": "test"<br />}</em>',
+        ])
+    })
+
     it('beautifies json blocks in existing step parts on demand', () => {
         const step = mkStep('Inspect')
         step.internal!.parts!.action = [{
@@ -87,5 +105,21 @@ describe('zephyr html parts parsing', () => {
         expect(beautified.internal?.parts?.action?.map((part) => part.text)).toEqual([
             '<em>{<br />  "id": "1",<br />  "active": true<br />}</em>',
         ])
+    })
+
+    it('reports parse errors for json-like blocks that still cannot be repaired', () => {
+        const step = mkStep('Inspect')
+        step.internal!.parts!.action = [{
+            id: 'part-1',
+            text: '<span><em>{ "test": 12, "test1": "test" "test2":"test }</em></span>',
+        }]
+
+        const diagnostics = inspectZephyrJsonBeautifyStep(step, { tolerant: true })
+
+        expect(diagnostics.candidateCount).toBe(1)
+        expect(diagnostics.failures).toHaveLength(1)
+        expect(diagnostics.failures[0]?.source).toBe('part')
+        expect(diagnostics.failures[0]?.strictError).toBeTruthy()
+        expect(diagnostics.failures[0]?.candidate).toContain('"test1": "test" "test2"')
     })
 })
