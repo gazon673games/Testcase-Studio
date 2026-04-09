@@ -74,6 +74,35 @@ describe('buildZephyrPublishPreview', () => {
         })
     })
 
+    it('maps dedicated meta fields to Zephyr custom fields when explicit params are absent', () => {
+        const test = mkTest('Publish case')
+        test.id = 'test-publish'
+        test.meta = {
+            ...(test.meta ?? { tags: [], params: {} }),
+            automation: 'Automated',
+            testType: 'Regression',
+            assignedTo: 'user-1',
+            params: {
+                ...(test.meta?.params ?? {}),
+                projectKey: 'PROJ',
+            },
+        }
+        test.steps = [mkStep('Action', '', 'Expected')]
+
+        const state: RootState = {
+            root: mkFolder('Root', [test]),
+            sharedSteps: [],
+        }
+
+        const payload = buildZephyrPublishPayload(test, state)
+
+        expect(payload.extras?.customFields).toEqual({
+            Automation: 'Automated',
+            'Assigned to': 'user-1',
+            'Test Type': 'Regression',
+        })
+    })
+
     it('shows custom field differences in publish preview', () => {
         const test = mkTest('Publish case')
         test.id = 'test-publish'

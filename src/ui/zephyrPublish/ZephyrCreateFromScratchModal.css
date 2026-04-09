@@ -1,0 +1,67 @@
+.zephyr-create-modal {
+    display: grid;
+    align-content: start;
+    gap: 14px;
+    min-height: 0;
+    max-height: 100%;
+    overflow: auto;
+    padding: 18px;
+}
+
+.zephyr-create-modal__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.zephyr-create-modal__title {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-strong);
+}
+
+.zephyr-create-modal__checks {
+    display: grid;
+    gap: 10px;
+}
+
+.zephyr-create-modal__check {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    background: var(--bg);
+}
+
+.zephyr-create-modal__check-main {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.zephyr-create-modal__check-label {
+    color: var(--text-strong);
+    font-weight: 700;
+}
+
+.zephyr-create-modal__check-detail {
+    color: var(--text-muted);
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.zephyr-create-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+    position: sticky;
+    bottom: 0;
+    padding-top: 10px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0), var(--bg-elevated) 32%);
+}

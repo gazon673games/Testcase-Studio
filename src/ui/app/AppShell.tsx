@@ -13,6 +13,7 @@ import { useAppState } from '../state/useAppState'
 import { createAppServices } from '../services'
 import { ZephyrImportModal } from '../zephyrImport/ZephyrImportModal'
 import { ZephyrPublishModal } from '../zephyrPublish'
+import { ZephyrCreateFromScratchModal } from '../zephyrPublish/ZephyrCreateFromScratchModal'
 import { IncludedCaseResolutionModal } from '../includedCases/IncludedCaseResolutionModal'
 import { AppShellRightPane } from './components/AppShellRightPane'
 import { AppShellStatus } from './components/AppShellStatus'
@@ -33,6 +34,7 @@ export function AppShell() {
     const [settingsOpen, setSettingsOpen] = React.useState(false)
     const [importOpen, setImportOpen] = React.useState(false)
     const [publishOpen, setPublishOpen] = React.useState(false)
+    const [createFromScratchPreview, setCreateFromScratchPreview] = React.useState<ZephyrPublishPreview | null>(null)
     const [syncCenterOpen, setSyncCenterOpen] = React.useState(false)
     const [includedCasesOpen, setIncludedCasesOpen] = React.useState(false)
     const [includedCasesItems, setIncludedCasesItems] = React.useState<IncludedCaseCandidate[]>([])
@@ -63,6 +65,7 @@ export function AppShell() {
             setIncludedCasesItems(items)
             setIncludedCasesOpen(true)
         },
+        openCreateFromScratch: (preview) => setCreateFromScratchPreview(preview),
     })
 
     const handleApplyIncludedCases = React.useCallback((decisions: Record<string, IncludedCaseResolution>) => {
@@ -253,6 +256,14 @@ export function AppShell() {
                 onClose={() => setPublishOpen(false)}
                 onPreview={() => app.previewZephyrPublish()}
                 onApply={handleApplyPublish}
+            />
+            <ZephyrCreateFromScratchModal
+                open={!!createFromScratchPreview}
+                preview={createFromScratchPreview}
+                onClose={() => setCreateFromScratchPreview(null)}
+                onCreate={async (preview) => {
+                    await handleApplyPublish(preview)
+                }}
             />
             <IncludedCaseResolutionModal
                 open={includedCasesOpen}

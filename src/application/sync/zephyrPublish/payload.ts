@@ -89,8 +89,22 @@ function buildPublishCustomFields(meta: TestMeta | undefined): Record<string, un
         .map(([key, value]) => [key.slice('customFields.'.length), parseStoredParamValue(value)] as const)
         .filter(([key]) => Boolean(key.trim()))
 
-    if (!entries.length) return undefined
-    return Object.fromEntries(entries)
+    const next = Object.fromEntries(entries) as Record<string, unknown>
+    const fallbackFields: Array<[string, unknown]> = [
+        ['Automation', meta?.automation],
+        ['Test Type', meta?.testType],
+        ['Assigned to', meta?.assignedTo],
+    ]
+
+    for (const [key, value] of fallbackFields) {
+        if (next[key] !== undefined) continue
+        const normalized = typeof value === 'string' ? value.trim() : value == null ? '' : String(value).trim()
+        if (!normalized) continue
+        next[key] = normalized
+    }
+
+    if (!Object.keys(next).length) return undefined
+    return next
 }
 
 function buildPublishParameters(

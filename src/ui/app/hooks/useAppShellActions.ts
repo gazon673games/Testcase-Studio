@@ -6,6 +6,7 @@ import { findNode, isFolder } from '@core/tree'
 import type { useAppState } from '../../state/useAppState'
 import type { useToast } from '../../uiKit'
 import type { TestEditorHandle } from '../../testEditor/TestEditor'
+import { getCreateFromScratchItem } from '../../zephyrPublish/createFromScratch'
 
 type AppStateApi = ReturnType<typeof useAppState>
 type ToastPush = ReturnType<typeof useToast>['push']
@@ -18,6 +19,7 @@ type UseAppShellActionsOptions = {
     t: Translate
     closeSyncCenter(): void
     openIncludedCasesResolution(items: IncludedCaseCandidate[]): void
+    openCreateFromScratch(preview: ZephyrPublishPreview): void
 }
 
 export function useAppShellActions({
@@ -27,6 +29,7 @@ export function useAppShellActions({
     t,
     closeSyncCenter,
     openIncludedCasesResolution,
+    openCreateFromScratch,
 }: UseAppShellActionsOptions) {
     const handleSave = React.useCallback(async () => {
         const committed = editorRef.current?.commit?.() ?? false
@@ -159,8 +162,14 @@ export function useAppShellActions({
     const handlePush = React.useCallback(async () => {
         try {
             editorRef.current?.commit?.()
-            const result = await app.push()
-            if (!result || result.status !== 'ok') {
+            const preview = await app.previewZephyrPublish()
+            const createCandidate = getCreateFromScratchItem(preview)
+            if (createCandidate) {
+                openCreateFromScratch(preview)
+                return
+            }
+
+            if (!preview.items.length) {
                 push({
                     kind: 'error',
                     text: t('toast.pushNoSelection'),
@@ -169,23 +178,7 @@ export function useAppShellActions({
                 return
             }
 
-            const firstFailure = result.result.logItems.find((item) => item.status === 'failed' || item.status === 'blocked')
-            const failureHint = firstFailure
-                ? `\n- ${firstFailure.testName}: ${firstFailure.error ?? firstFailure.reason ?? 'Unknown error'}`
-                : ''
-            push({
-                kind: result.result.failed || result.result.blocked ? 'error' : 'success',
-                text: t('toast.publishFinished', {
-                    created: result.result.created,
-                    updated: result.result.updated,
-                    skipped: result.result.skipped,
-                    failed: result.result.failed,
-                    blocked: result.result.blocked,
-                    snapshotPath: result.snapshotPath || '-',
-                    logPath: result.logPath || '-',
-                }) + failureHint,
-                ttl: 0,
-            })
+            await handleApplyPublish(preview)
         } catch (error) {
             push({
                 kind: 'error',
@@ -195,7 +188,7 @@ export function useAppShellActions({
                 ttl: 0,
             })
         }
-    }, [app, push, t])
+    }, [app, editorRef, handleApplyPublish, openCreateFromScratch, push, t])
 
     const handleQuickSync = React.useCallback(async () => {
         try {
