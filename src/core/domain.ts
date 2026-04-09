@@ -38,6 +38,7 @@ export interface StepRaw {
     data?: string
     expected?: string
     providerStepId?: string
+    testCaseKey?: string
 }
 
 export interface Step {
@@ -275,6 +276,11 @@ export function normalizeStep(step: Partial<Step> | null | undefined): Step {
         (source as any)?.providerStepId ??
         (source as any)?.internal?.meta?.providerStepId
     )
+    const testCaseKey = toOptionalString(
+        source.raw?.testCaseKey ??
+        (source as any)?.testCaseKey ??
+        (source as any)?.internal?.meta?.zephyrIncludedTestKey
+    )
 
     const rawMeta = (source.internal && typeof source.internal === 'object' && source.internal.meta && typeof source.internal.meta === 'object')
         ? { ...source.internal.meta }
@@ -292,6 +298,7 @@ export function normalizeStep(step: Partial<Step> | null | undefined): Step {
             data: toOptionalString(source.raw?.data) ?? toOptionalString(source.data),
             expected: toOptionalString(source.raw?.expected) ?? toOptionalString(source.expected),
             ...(providerStepId ? { providerStepId } : {}),
+            ...(testCaseKey ? { testCaseKey } : {}),
         },
         subSteps: Array.isArray(source.subSteps) ? source.subSteps.map(normalizeSubStep) : [],
         internal: {

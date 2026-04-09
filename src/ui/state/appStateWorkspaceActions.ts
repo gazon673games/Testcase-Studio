@@ -11,8 +11,10 @@ import {
     moveWorkspaceNode,
     removeSelectedNode,
     renameWorkspaceNode,
+    resolveIncludedCaseDecisions,
     updateSharedStep as updateSharedStepCommand,
     updateTestCase,
+    type IncludedCaseResolution,
 } from '@app/workspace'
 import type { ID, RootState, SharedStep, Step, TestCase } from '@core/domain'
 import type { AppServices } from '../services'
@@ -157,6 +159,15 @@ export function createAppStateWorkspaceActions({
         stageLocalState(result.nextState, result.dirtyIds)
     }
 
+    async function resolveIncludedCases(decisions: Record<string, IncludedCaseResolution>) {
+        const currentState = getCurrentState()
+        if (!currentState) return null
+        if (!Object.keys(decisions).length) return null
+        const result = resolveIncludedCaseDecisions(currentState, decisions)
+        stageLocalState(result.nextState, result.dirtyIds)
+        return result
+    }
+
     return {
         addFolderAt,
         addTestAt,
@@ -172,5 +183,6 @@ export function createAppStateWorkspaceActions({
         updateSharedStep,
         deleteSharedStep,
         insertSharedReference,
+        resolveIncludedCases,
     }
 }

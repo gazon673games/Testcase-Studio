@@ -1,5 +1,6 @@
 export * from './applyZephyrImport'
 export * from './commands'
+export * from './includedCases'
 export * from './previewZephyrImport'
 export * from './previewZephyrPublish'
 export * from './publishZephyrPreview'

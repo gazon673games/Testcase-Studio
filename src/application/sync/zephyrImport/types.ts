@@ -62,7 +62,9 @@ export interface ZephyrImportPreview {
 
 export interface ZephyrImportApplyResult {
     created: number
+    createdTestIds: string[]
     updated: number
+    updatedTestIds: string[]
     skipped: number
     drafts: number
     unchanged: number

@@ -10,6 +10,7 @@ export async function applyZephyrImport(
     nextState: RootState
     result: ZephyrImportApplyResult
     clearedDirtyIds: string[]
+    changedTestIds: string[]
 }> {
     if (!state) throw new Error('State is not loaded yet')
     const nextState = structuredClone(state)
@@ -24,5 +25,6 @@ export async function applyZephyrImport(
                 .map((item) => item.localTestId ?? '')
                 .filter(Boolean)
         )],
+        changedTestIds: [...new Set([...(result.createdTestIds ?? []), ...(result.updatedTestIds ?? [])])],
     }
 }

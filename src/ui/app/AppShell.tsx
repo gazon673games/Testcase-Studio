@@ -1,4 +1,5 @@
 import React from 'react'
+import type { IncludedCaseCandidate, IncludedCaseResolution } from '@app/workspace'
 import type { ZephyrImportPreview, ZephyrPublishPreview } from '@app/sync'
 import { findNode, isFolder } from '@core/tree'
 import { SettingsModal } from '../settings'
@@ -10,6 +11,7 @@ import { useAppState } from '../state/useAppState'
 import { createAppServices } from '../services'
 import { ZephyrImportModal } from '../zephyrImport/ZephyrImportModal'
 import { ZephyrPublishModal } from '../zephyrPublish'
+import { IncludedCaseResolutionModal } from '../includedCases/IncludedCaseResolutionModal'
 import { AppShellRightPane } from './components/AppShellRightPane'
 import { AppShellStatus } from './components/AppShellStatus'
 import { SyncCenterHost } from './components/SyncCenterHost'
@@ -30,6 +32,8 @@ export function AppShell() {
     const [importOpen, setImportOpen] = React.useState(false)
     const [publishOpen, setPublishOpen] = React.useState(false)
     const [syncCenterOpen, setSyncCenterOpen] = React.useState(false)
+    const [includedCasesOpen, setIncludedCasesOpen] = React.useState(false)
+    const [includedCasesItems, setIncludedCasesItems] = React.useState<IncludedCaseCandidate[]>([])
     const [previewAll, setPreviewAll] = useStoredToggle('test-editor.preview-all', false)
     const [compactWorkspace, setCompactWorkspace] = React.useState(() =>
         typeof window !== 'undefined' ? window.innerWidth < 980 : false
@@ -50,7 +54,21 @@ export function AppShell() {
         push,
         t,
         closeSyncCenter: () => setSyncCenterOpen(false),
+        openIncludedCasesResolution: (items) => {
+            if (!items.length) return
+            setIncludedCasesItems(items)
+            setIncludedCasesOpen(true)
+        },
     })
+
+    const handleApplyIncludedCases = React.useCallback((decisions: Record<string, IncludedCaseResolution>) => {
+        void (async () => {
+            const result = await app.resolveIncludedCases(decisions)
+            if (result) await app.save()
+            setIncludedCasesOpen(false)
+            setIncludedCasesItems([])
+        })()
+    }, [app])
 
     useAppShellEffects({
         onSave: handleSave,
@@ -212,6 +230,15 @@ export function AppShell() {
                 onClose={() => setPublishOpen(false)}
                 onPreview={() => app.previewZephyrPublish()}
                 onApply={handleApplyPublish}
+            />
+            <IncludedCaseResolutionModal
+                open={includedCasesOpen}
+                items={includedCasesItems}
+                onClose={() => {
+                    setIncludedCasesOpen(false)
+                    setIncludedCasesItems([])
+                }}
+                onApply={handleApplyIncludedCases}
             />
         </div>
     )

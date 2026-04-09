@@ -1,0 +1,24 @@
+.included-cases-modal {
+    display: grid;
+    gap: 16px;
+}
+
+.included-cases-modal__list {
+    display: grid;
+    gap: 12px;
+    max-height: min(58vh, 640px);
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.included-cases-modal__title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.included-cases-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}

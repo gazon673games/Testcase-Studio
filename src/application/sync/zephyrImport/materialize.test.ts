@@ -164,4 +164,45 @@ describe('zephyr import local match index', () => {
             '<em>{<br />  "test": 12,<br />  "test1": "test",<br />  "test2": "test"<br />}</em>',
         ])
     })
+
+    it('materializes included Zephyr testCaseKey steps into local subSteps', () => {
+        const imported = materializeImportedTest({
+            id: 'PROJ-T900',
+            name: 'Parent case',
+            steps: [{
+                action: '',
+                data: '',
+                expected: '',
+                text: '',
+                testCaseKey: 'PROJ-T901',
+                includedTest: {
+                    id: 'PROJ-T901',
+                    name: 'Included case',
+                    description: '',
+                    steps: [{
+                        action: 'Call nested API',
+                        data: 'Input body',
+                        expected: '200 OK',
+                        text: 'Call nested API',
+                    }],
+                    attachments: [],
+                    updatedAt: '2026-04-08T09:00:00.000Z',
+                    extras: {},
+                },
+            }],
+            attachments: [],
+            updatedAt: '2026-04-08T08:00:00.000Z',
+            extras: {},
+        })
+
+        expect(imported.steps[0]?.raw?.testCaseKey).toBe('PROJ-T901')
+        expect(imported.steps[0]?.internal?.meta?.zephyrIncludedTestKey).toBe('PROJ-T901')
+        expect(imported.steps[0]?.internal?.meta?.zephyrIncludedTestName).toBe('Included case')
+        expect(imported.steps[0]?.subSteps).toEqual([
+            expect.objectContaining({
+                title: '#1 Call nested API',
+                text: 'Input body\n\n200 OK',
+            }),
+        ])
+    })
 })

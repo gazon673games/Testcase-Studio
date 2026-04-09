@@ -3,6 +3,8 @@ import type { Attachment, Step } from '@core/domain'
 
 export type ProviderStep = Pick<Step, 'action' | 'data' | 'expected' | 'text'> & {
     providerStepId?: string
+    testCaseKey?: string
+    includedTest?: ProviderTest
     attachments?: Attachment[]
 }
 

@@ -91,9 +91,7 @@ export class ZephyrHttpProvider implements ITestProvider {
     constructor(private client: ZephyrApiClient) {}
 
     async getTestDetails(externalId: string): Promise<ProviderTest> {
-        const { by, ref } = parseZephyrRef(externalId)
-        const json = (await this.client.zephyrGetTestCase(ref, by)) as ZephyrTestCaseResponse
-        return mapZephyrTestDetails(json, ref)
+        return this.loadTestDetails(externalId, new Set())
     }
 
     async searchTestsByQuery(query: string, opts: SearchOptions = {}): Promise<ProviderTestRef[]> {
@@ -129,5 +127,40 @@ export class ZephyrHttpProvider implements ITestProvider {
 
     async deleteAttachment(_externalId: string, attachmentId: string) {
         return this.client.zephyrDeleteAttachment(attachmentId)
+    }
+
+    private async loadTestDetails(externalId: string, stack: Set<string>): Promise<ProviderTest> {
+        const { by, ref } = parseZephyrRef(externalId)
+        const visitKey = `${by}:${ref}`.toUpperCase()
+        const json = (await this.client.zephyrGetTestCase(ref, by)) as ZephyrTestCaseResponse
+
+        const nextStack = new Set(stack)
+        nextStack.add(visitKey)
+
+        const nestedRefs = [...new Set(
+            (json.testScript?.steps ?? [])
+                .map((step) => safeStr(step?.testCaseKey).trim())
+                .filter(Boolean)
+        )]
+
+        const includedTests = new Map<string, ProviderTest>()
+        await Promise.all(
+            nestedRefs.map(async (nestedRef) => {
+                const parsed = parseZephyrRef(nestedRef)
+                const nestedVisitKey = `${parsed.by}:${parsed.ref}`.toUpperCase()
+                if (nextStack.has(nestedVisitKey)) return
+
+                try {
+                    const nestedTest = await this.loadTestDetails(nestedRef, nextStack)
+                    includedTests.set(nestedRef, nestedTest)
+                    includedTests.set(nestedTest.id, nestedTest)
+                    includedTests.set(nestedTest.id.toUpperCase(), nestedTest)
+                } catch {
+                    // Keep the parent test available even if one included Zephyr case cannot be loaded.
+                }
+            })
+        )
+
+        return mapZephyrTestDetails(json, ref, includedTests)
     }
 }

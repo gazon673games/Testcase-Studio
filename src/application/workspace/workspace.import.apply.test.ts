@@ -35,7 +35,9 @@ describe('workspace import apply', () => {
         const sync = makeSyncService({
             applyZephyrImport: vi.fn(() => ({
                 created: 0,
+                createdTestIds: [],
                 updated: 1,
+                updatedTestIds: [rootTest.id],
                 skipped: 1,
                 drafts: 1,
                 unchanged: 0,

@@ -1,4 +1,5 @@
 import * as React from 'react'
+import type { IncludedCaseCandidate } from '@app/workspace'
 import type { ZephyrImportPreview, ZephyrPublishPreview } from '@app/sync'
 import { buildExport } from '@core/export'
 import { findNode, isFolder } from '@core/tree'
@@ -16,6 +17,7 @@ type UseAppShellActionsOptions = {
     push: ToastPush
     t: Translate
     closeSyncCenter(): void
+    openIncludedCasesResolution(items: IncludedCaseCandidate[]): void
 }
 
 export function useAppShellActions({
@@ -24,6 +26,7 @@ export function useAppShellActions({
     push,
     t,
     closeSyncCenter,
+    openIncludedCasesResolution,
 }: UseAppShellActionsOptions) {
     const handleSave = React.useCallback(async () => {
         const committed = editorRef.current?.commit?.() ?? false
@@ -86,6 +89,7 @@ export function useAppShellActions({
     const handleApplyImport = React.useCallback(async (preview: ZephyrImportPreview) => {
         closeSyncCenter()
         const result = await app.applyZephyrImport(preview)
+        if (result.includedCases.length) openIncludedCasesResolution(result.includedCases)
         push({
             kind: 'success',
             text: t('toast.importApplied', {
@@ -98,7 +102,7 @@ export function useAppShellActions({
             ttl: 0,
         })
         return result
-    }, [app, closeSyncCenter, push, t])
+    }, [app, closeSyncCenter, openIncludedCasesResolution, push, t])
 
     const handleApplyPublish = React.useCallback(async (preview: ZephyrPublishPreview) => {
         closeSyncCenter()
@@ -127,6 +131,7 @@ export function useAppShellActions({
         try {
             const result = await app.pull()
             if (result.status === 'ok') {
+                if (result.includedCases.length) openIncludedCasesResolution(result.includedCases)
                 push({
                     kind: 'success',
                     text: t('toast.pullSuccess', { externalId: result.externalId || 'Zephyr' }),
@@ -149,7 +154,7 @@ export function useAppShellActions({
                 ttl: 0,
             })
         }
-    }, [app, push, t])
+    }, [app, openIncludedCasesResolution, push, t])
 
     const handlePush = React.useCallback(async () => {
         try {

@@ -313,6 +313,8 @@ function EditableStepCard({
     const { t } = useUiPreferences()
     const { owner, index, step, preview, isNarrow } = props
     const attachments = props.getStepAttachments()
+    const includedTestKey = String(step.raw?.testCaseKey ?? step.internal?.meta?.zephyrIncludedTestKey ?? '').trim()
+    const includedTestName = String(step.internal?.meta?.zephyrIncludedTestName ?? '').trim()
     const blockCount =
         countBlocksForKind(step, 'action') +
         countBlocksForKind(step, 'data') +
@@ -382,6 +384,30 @@ function EditableStepCard({
             </div>
 
             <div className={`step-footer ${isNarrow ? 'step-footer--compact' : 'step-footer--regular'}`}>
+                {step.subSteps?.length ? (
+                    <div className="step-nested-block">
+                        <div className="step-nested-head">
+                            <div className="step-nested-title">
+                                {includedTestName
+                                    ? t('steps.includedCaseNamed', { name: includedTestName, key: includedTestKey || '?' })
+                                    : includedTestKey
+                                        ? t('steps.includedCaseKey', { key: includedTestKey })
+                                        : t('steps.includedCase')}
+                            </div>
+                            <span className="step-chip">{t('steps.includedCount', { count: step.subSteps.length })}</span>
+                        </div>
+                        <div className="step-nested-list">
+                            {step.subSteps.map((subStep, subIndex) => (
+                                <div key={subStep.id} className="step-nested-item">
+                                    <div className="step-nested-item-title">
+                                        {subStep.title || t('steps.stepNumber', { index: subIndex + 1 })}
+                                    </div>
+                                    {subStep.text ? <div className="step-nested-item-body">{subStep.text}</div> : null}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : null}
                 <StepAttachmentsPanel
                     stepId={step.id}
                     attachments={attachments}

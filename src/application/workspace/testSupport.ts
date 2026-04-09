@@ -148,7 +148,9 @@ export function makeSyncService(overrides: Partial<SyncService> = {}): SyncServi
         previewZephyrImport: vi.fn(async (_state: RootState, request: ZephyrImportRequest) => makeImportPreview(request)),
         applyZephyrImport: vi.fn((): ZephyrImportApplyResult => ({
             created: 0,
+            createdTestIds: [],
             updated: 0,
+            updatedTestIds: [],
             skipped: 0,
             drafts: 0,
             unchanged: 0,

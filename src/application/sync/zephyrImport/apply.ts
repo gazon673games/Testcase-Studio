@@ -13,7 +13,15 @@ export function applyZephyrImportPreview(state: RootState, preview: ZephyrImport
     const localMatchIndex = buildLocalMatchIndex(currentTests)
     const conflictDraftIndex = buildConflictDraftIndex(currentTests)
     const tolerantJsonBeautify = getStoredJsonBeautifyTolerant()
-    const result: ZephyrImportApplyResult = { created: 0, updated: 0, skipped: 0, drafts: 0, unchanged: 0 }
+    const result: ZephyrImportApplyResult = {
+        created: 0,
+        createdTestIds: [],
+        updated: 0,
+        updatedTestIds: [],
+        skipped: 0,
+        drafts: 0,
+        unchanged: 0,
+    }
 
     for (const item of preview.items) {
         if (item.status === 'unchanged' && item.strategy === 'skip') {
@@ -48,6 +56,7 @@ export function applyZephyrImportPreview(state: RootState, preview: ZephyrImport
                 insertChild(state.root, targetFolder.id, imported)
                 upsertLocalMatch(localMatchIndex, imported)
                 result.created += 1
+                result.createdTestIds.push(imported.id)
                 continue
             }
 
@@ -56,12 +65,14 @@ export function applyZephyrImportPreview(state: RootState, preview: ZephyrImport
             if (parent && parent.id !== targetFolder.id) moveTreeNode(state.root, existing.id, targetFolder.id)
             upsertLocalMatch(localMatchIndex, localNode)
             result.updated += 1
+            result.updatedTestIds.push(localNode.id)
             continue
         }
 
         insertChild(state.root, targetFolder.id, imported)
         upsertLocalMatch(localMatchIndex, imported)
         result.created += 1
+        result.createdTestIds.push(imported.id)
     }
 
     return result

@@ -429,6 +429,50 @@
 .step-footer--regular {
     padding: 10px 10px 12px;
 }
+.step-nested-block {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    background: var(--bg-elevated);
+}
+.step-nested-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.step-nested-title {
+    color: var(--text-strong);
+    font-size: 13px;
+    font-weight: 700;
+}
+.step-nested-list {
+    display: grid;
+    gap: 8px;
+}
+.step-nested-item {
+    display: grid;
+    gap: 4px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-soft);
+}
+.step-nested-item-title {
+    color: var(--text-strong);
+    font-size: 12px;
+    font-weight: 700;
+}
+.step-nested-item-body {
+    color: var(--text-muted);
+    white-space: pre-wrap;
+    line-height: 1.45;
+    font-size: 12px;
+}
 .shared-ref-card {
     overflow: visible;
 }

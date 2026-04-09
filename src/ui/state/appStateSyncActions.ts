@@ -1,5 +1,6 @@
 import {
     applyZephyrImport as applyZephyrImportUseCase,
+    collectIncludedCaseCandidates,
     pushSelectedCase as pushSelectedCaseUseCase,
     previewZephyrImport as previewZephyrImportUseCase,
     previewZephyrPublish as previewZephyrPublishUseCase,
@@ -46,6 +47,8 @@ export function createAppStateSyncActions({
             status: result.status,
             testId: result.testId,
             externalId: result.externalId,
+            nextState: result.nextState,
+            includedCases: collectIncludedCaseCandidates(result.nextState, [result.testId]),
         }
     }
 
@@ -82,10 +85,14 @@ export function createAppStateSyncActions({
     }
 
     async function applyZephyrImport(preview: ZephyrImportPreview) {
-        const { nextState, result, clearedDirtyIds } = await applyZephyrImportUseCase(getCurrentState(), preview, sync)
+        const { nextState, result, clearedDirtyIds, changedTestIds } = await applyZephyrImportUseCase(getCurrentState(), preview, sync)
         await persistStateNow(nextState)
         clearDirty(clearedDirtyIds)
-        return result
+        return {
+            ...result,
+            nextState,
+            includedCases: collectIncludedCaseCandidates(nextState, changedTestIds),
+        }
     }
 
     async function previewZephyrPublish(): Promise<ZephyrPublishPreview> {

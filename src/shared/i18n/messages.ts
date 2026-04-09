@@ -1068,3 +1068,53 @@ Object.assign(messages.en, {
     'settings.jsonBeautifyTolerantHint':
         'Attempts a conservative repair for common JSON mistakes such as missing commas before formatting. If the block is still invalid, it stays unchanged.',
 })
+
+Object.assign(messages.ru, {
+    'steps.includedCase': 'Вложенный тест Zephyr',
+    'steps.includedCaseKey': 'Вложенный тест {key}',
+    'steps.includedCaseNamed': 'Вложенный тест {name} ({key})',
+    'steps.includedCount': 'шагов: {count}',
+})
+
+Object.assign(messages.en, {
+    'steps.includedCase': 'Included Zephyr test',
+    'steps.includedCaseKey': 'Included test {key}',
+    'steps.includedCaseNamed': 'Included test {name} ({key})',
+    'steps.includedCount': 'steps: {count}',
+})
+
+Object.assign(messages.ru, {
+    'includedCases.title': '\u0412\u043b\u043e\u0436\u0435\u043d\u043d\u044b\u0435 \u0442\u0435\u0441\u0442-\u043a\u0435\u0439\u0441\u044b Zephyr',
+    'includedCases.subtitle': '\u041d\u0430\u0439\u0434\u0435\u043d\u043e \u0432\u043b\u043e\u0436\u0435\u043d\u043d\u044b\u0445 \u0441\u0441\u044b\u043b\u043e\u043a: {count}',
+    'includedCases.hint':
+        '\u0414\u043b\u044f \u043a\u0430\u0436\u0434\u043e\u0433\u043e \u0432\u043b\u043e\u0436\u0435\u043d\u043d\u043e\u0433\u043e \u043a\u0435\u0439\u0441\u0430 \u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435: \u0432\u043f\u0438\u0441\u0430\u0442\u044c \u0435\u0433\u043e \u0448\u0430\u0433\u0438 \u0432 \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u043a\u0435\u0439\u0441 \u0438\u043b\u0438 \u0441\u043e\u0437\u0434\u0430\u0442\u044c \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u044b\u0439 \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u043a\u0435\u0439\u0441 \u0440\u044f\u0434\u043e\u043c.',
+    'includedCases.caseKey': '\u0412\u043b\u043e\u0436\u0435\u043d\u043d\u044b\u0439 \u043a\u0435\u0439\u0441 {key}',
+    'includedCases.caseNamed': '\u0412\u043b\u043e\u0436\u0435\u043d\u043d\u044b\u0439 \u043a\u0435\u0439\u0441 {name} ({key})',
+    'includedCases.hostCase': '\u0420\u043e\u0434\u0438\u0442\u0435\u043b\u044c\u0441\u043a\u0438\u0439 \u043a\u0435\u0439\u0441',
+    'includedCases.hostStep': '\u0428\u0430\u0433',
+    'includedCases.steps': '\u0428\u0430\u0433\u0438 \u0432\u043d\u0443\u0442\u0440\u0438',
+    'includedCases.action': '\u0427\u0442\u043e \u0441\u0434\u0435\u043b\u0430\u0442\u044c',
+    'includedCases.option.choose': '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435',
+    'includedCases.option.inline': '\u0412\u043f\u0438\u0441\u0430\u0442\u044c \u0448\u0430\u0433\u0438 \u0432 \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u043a\u0435\u0439\u0441',
+    'includedCases.option.createLocal': '\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u044b\u0439 \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u043a\u0435\u0439\u0441',
+    'includedCases.apply': '\u041f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c',
+    'includedCases.close': '\u041f\u043e\u0437\u0436\u0435',
+})
+
+Object.assign(messages.en, {
+    'includedCases.title': 'Included Zephyr test cases',
+    'includedCases.subtitle': 'Detected nested references: {count}',
+    'includedCases.hint':
+        'For each included case choose whether to inline its steps into the current case or create a separate local case next to the parent one.',
+    'includedCases.caseKey': 'Included case {key}',
+    'includedCases.caseNamed': 'Included case {name} ({key})',
+    'includedCases.hostCase': 'Parent case',
+    'includedCases.hostStep': 'Step',
+    'includedCases.steps': 'Nested steps',
+    'includedCases.action': 'Action',
+    'includedCases.option.choose': 'Choose an action',
+    'includedCases.option.inline': 'Inline steps into the current case',
+    'includedCases.option.createLocal': 'Create a separate local case',
+    'includedCases.apply': 'Apply choices',
+    'includedCases.close': 'Later',
+})
