@@ -2,21 +2,40 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  release-please:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+
   build:
     name: ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -47,8 +66,10 @@ jobs:
             builder_args: --linux AppImage tar.gz --arm64 --publish never
 
     steps:
-      - name: Checkout repository
+      - name: Checkout release tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -83,9 +104,12 @@ jobs:
             release/*.yml
 
   publish:
-    name: Publish GitHub Release
+    name: Upload release assets
     runs-on: ubuntu-latest
-    needs: build
+    needs:
+      - release-please
+      - build
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     timeout-minutes: 20
 
     steps:
@@ -94,35 +118,12 @@ jobs:
         with:
           path: release-artifacts
 
-      - name: Create or update release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          $tag = "${{ github.ref_name }}"
-          $title = "Testcase Studio $tag"
-          $notes = @(
-            "Testcase Studio $tag",
-            "",
-            "Desktop build release with packaged artifacts for:",
-            "- Windows installer and portable builds",
-            "- macOS dmg and zip builds",
-            "- Linux AppImage and tar.gz builds",
-            "",
-            "The release workflow uploads the compiled assets for x64 and arm64 where the target platform supports them."
-          ) -join "`n"
-          gh release view $tag --repo $env:GH_REPO 1>$null 2>$null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo $env:GH_REPO --title $title --notes $notes
-          }
-        shell: pwsh
-
-      - name: Upload release assets
+      - name: Upload assets to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
           Get-ChildItem -Path release-artifacts -Recurse -File | ForEach-Object {
-            gh release upload "${{ github.ref_name }}" "$($_.FullName)" --repo $env:GH_REPO --clobber
+            gh release upload "${{ needs.release-please.outputs.tag_name }}" "$($_.FullName)" --repo $env:GH_REPO --clobber
           }
         shell: pwsh

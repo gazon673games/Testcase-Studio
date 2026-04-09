@@ -3,7 +3,7 @@
   "productName": "Testcase Studio",
   "author": "gazon673games",
   "description": "Desktop app for editing manual test cases and syncing them with Zephyr Scale.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "main": "dist-electron/main.mjs",

@@ -3,6 +3,8 @@ export {}
 declare global {
     interface Window {
         api: {
+            getAppInfo(): Promise<import('../src/shared/appUpdates').AppInfo>
+            checkForUpdates(): Promise<import('../src/shared/appUpdates').AppUpdateCheckResult>
             loadState<T>(fallback: T): Promise<T>
             saveState<T>(state: T): Promise<void>
             loadSettings(): Promise<import('../src/core/settings').AtlassianSettings>

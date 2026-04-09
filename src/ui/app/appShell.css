@@ -22,6 +22,78 @@
     flex-wrap: wrap;
 }
 
+.app-update-modal__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 12000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-overlay-strong);
+}
+
+.app-update-modal {
+    width: min(520px, calc(100vw - 32px));
+    display: grid;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--bg-elevated);
+    box-shadow: var(--shadow-strong);
+    overflow: hidden;
+}
+
+.app-update-modal__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.app-update-modal__title {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-strong);
+}
+
+.app-update-modal__close {
+    margin-left: auto;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-soft);
+    color: var(--text);
+    cursor: pointer;
+}
+
+.app-update-modal__body {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+}
+
+.app-update-modal__text {
+    color: var(--text-strong);
+    line-height: 1.6;
+}
+
+.app-update-modal__hint {
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.app-update-modal__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.app-update-modal__button--secondary {
+    border-color: var(--border);
+    color: var(--text);
+}
+
 .workspace-pane {
     flex: 1;
     display: grid;

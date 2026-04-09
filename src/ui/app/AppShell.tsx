@@ -1,7 +1,9 @@
 import React from 'react'
 import type { IncludedCaseCandidate, IncludedCaseResolution } from '@app/workspace'
 import type { ZephyrImportPreview, ZephyrPublishPreview } from '@app/sync'
+import type { AppUpdateCheckResult } from '@shared/appUpdates'
 import { findNode, isFolder } from '@core/tree'
+import { apiClient } from '@ipc/client'
 import { SettingsModal } from '../settings'
 import { Toolbar } from '../toolbar'
 import { useToast } from '../uiKit'
@@ -34,10 +36,12 @@ export function AppShell() {
     const [syncCenterOpen, setSyncCenterOpen] = React.useState(false)
     const [includedCasesOpen, setIncludedCasesOpen] = React.useState(false)
     const [includedCasesItems, setIncludedCasesItems] = React.useState<IncludedCaseCandidate[]>([])
+    const [startupUpdate, setStartupUpdate] = React.useState<AppUpdateCheckResult | null>(null)
     const [previewAll, setPreviewAll] = useStoredToggle('test-editor.preview-all', false)
     const [compactWorkspace, setCompactWorkspace] = React.useState(() =>
         typeof window !== 'undefined' ? window.innerWidth < 980 : false
     )
+    const checkedStartupUpdateRef = React.useRef(false)
 
     const {
         handleSave,
@@ -75,6 +79,19 @@ export function AppShell() {
         setCompactWorkspace,
     })
 
+    React.useEffect(() => {
+        if (checkedStartupUpdateRef.current) return
+        checkedStartupUpdateRef.current = true
+        void apiClient.checkForUpdates()
+            .then((result) => {
+                if (!result.isPackaged || !result.updateAvailable) return
+                setStartupUpdate(result)
+            })
+            .catch(() => {
+                // Best-effort startup check only.
+            })
+    }, [])
+
     const shellViewState = buildAppShellViewState(app, t, services.defaults.rootLabel)
 
     const confirmDelete = React.useCallback((targetId?: string | null) => {
@@ -96,6 +113,12 @@ export function AppShell() {
         if (!confirmDelete(id)) return
         void app.deleteNodeById(id)
     }, [app, confirmDelete])
+
+    const openExternal = React.useCallback((url: string | null | undefined) => {
+        const next = String(url ?? '').trim()
+        if (!next) return
+        window.open(next, '_blank', 'noopener')
+    }, [])
 
     if (app.loadError) {
         return (
@@ -240,6 +263,63 @@ export function AppShell() {
                 }}
                 onApply={handleApplyIncludedCases}
             />
+            {startupUpdate ? (
+                <div className="app-update-modal__backdrop">
+                    <div className="app-update-modal" role="dialog" aria-modal="true" aria-labelledby="app-update-title">
+                        <div className="app-update-modal__header">
+                            <div className="app-update-modal__title" id="app-update-title">
+                                {t('app.updateAvailableTitle')}
+                            </div>
+                            <button
+                                type="button"
+                                className="app-update-modal__close"
+                                onClick={() => setStartupUpdate(null)}
+                                title={t('app.updateDismiss')}
+                            >
+                                x
+                            </button>
+                        </div>
+                        <div className="app-update-modal__body">
+                            <div className="app-update-modal__text">
+                                {t('app.updateAvailableMessage', {
+                                    current: startupUpdate.version,
+                                    latest: startupUpdate.latestVersion ?? startupUpdate.latestTag ?? '?',
+                                })}
+                            </div>
+                            {startupUpdate.downloadName ? (
+                                <div className="app-update-modal__hint">{startupUpdate.downloadName}</div>
+                            ) : null}
+                            <div className="app-update-modal__actions">
+                                {startupUpdate.downloadUrl ? (
+                                    <button
+                                        type="button"
+                                        className="overview-button"
+                                        onClick={() => openExternal(startupUpdate.downloadUrl)}
+                                    >
+                                        {t('app.updateDownload')}
+                                    </button>
+                                ) : null}
+                                {startupUpdate.releaseUrl ? (
+                                    <button
+                                        type="button"
+                                        className="overview-button app-update-modal__button--secondary"
+                                        onClick={() => openExternal(startupUpdate.releaseUrl)}
+                                    >
+                                        {t('app.updateOpenRelease')}
+                                    </button>
+                                ) : null}
+                                <button
+                                    type="button"
+                                    className="overview-button app-update-modal__button--secondary"
+                                    onClick={() => setStartupUpdate(null)}
+                                >
+                                    {t('app.updateDismiss')}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </div>
     )
 }

@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 const CHANNELS = {
+    APP_GET_INFO: 'APP_GET_INFO',
+    APP_CHECK_FOR_UPDATES: 'APP_CHECK_FOR_UPDATES',
     LOAD_STATE: 'LOAD_STATE',
     SAVE_STATE: 'SAVE_STATE',
     LOAD_SETTINGS: 'LOAD_SETTINGS',
@@ -18,6 +20,8 @@ const CHANNELS = {
 }
 
 contextBridge.exposeInMainWorld('api', {
+    getAppInfo: () => ipcRenderer.invoke(CHANNELS.APP_GET_INFO),
+    checkForUpdates: () => ipcRenderer.invoke(CHANNELS.APP_CHECK_FOR_UPDATES),
     loadState: (fallback) => ipcRenderer.invoke(CHANNELS.LOAD_STATE, fallback),
     saveState: (state) => ipcRenderer.invoke(CHANNELS.SAVE_STATE, state),
     loadSettings: () => ipcRenderer.invoke(CHANNELS.LOAD_SETTINGS),

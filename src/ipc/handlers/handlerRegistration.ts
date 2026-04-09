@@ -5,6 +5,7 @@ import { openWorkspaceAttachment, storeWorkspaceAttachments } from '../../../ele
 import { loadFromFs, saveToFs, writePublishLog, writeStateSnapshot } from '../../../electron/repo.js'
 import { CHANNELS } from '../channels.js'
 import { loadMainSettings, saveMainSettings } from './handlerSettings.js'
+import { checkForUpdatesInMain, getAppInfoInMain } from './handlerUpdates.js'
 import {
     fetchZephyrImportInMain,
     fetchZephyrPublishInMain,
@@ -15,6 +16,14 @@ import {
 } from './handlerSync.js'
 
 export function registerPersistenceHandlers(ipcMain: IpcMain) {
+    ipcMain.handle(CHANNELS.APP_GET_INFO, async () => {
+        return getAppInfoInMain()
+    })
+
+    ipcMain.handle(CHANNELS.APP_CHECK_FOR_UPDATES, async () => {
+        return await checkForUpdatesInMain()
+    })
+
     ipcMain.handle(CHANNELS.LOAD_STATE, async () => {
         return await loadFromFs()
     })

@@ -13,8 +13,11 @@ import type {
     ZephyrPublishPreview,
 } from '@app/sync'
 import type { ProviderTest } from '@providers/types'
+import type { AppInfo, AppUpdateCheckResult } from '@shared/appUpdates'
 
 export const apiClient = {
+    getAppInfo: (): Promise<AppInfo> => window.api.getAppInfo(),
+    checkForUpdates: (): Promise<AppUpdateCheckResult> => window.api.checkForUpdates(),
     loadState: <T>(fallback: T) => window.api.loadState<T>(fallback),
     saveState: <T>(state: T) => window.api.saveState<T>(state),
 
