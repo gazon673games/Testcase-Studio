@@ -1,5 +1,5 @@
-import fs from 'node:fs'
-import path from 'node:path'
+const fs = require('node:fs')
+const path = require('node:path')
 
 const projectRoot = fs.realpathSync.native(process.cwd())
 const localIconDir = path.join(projectRoot, '.local-assets', 'icons')
@@ -13,6 +13,7 @@ const winIcon = optionalIcon('app.ico')
 const macIcon = optionalIcon('app.icns')
 const linuxIcon = optionalIcon('app.png')
 
+/** @type {import('electron-builder').Configuration} */
 const config = {
     appId: 'com.gazon673games.testcase-studio',
     productName: 'Testcase Studio',
@@ -72,4 +73,4 @@ const config = {
     },
 }
 
-export default config
+module.exports = config
