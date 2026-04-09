@@ -27,8 +27,8 @@ import {
     type RepoIndex,
 } from './repoShared'
 
-async function readFolderMetaFile(folderPath: string): Promise<{ id?: string; name?: string } | null> {
-    return readJsonFile<{ id?: string; name?: string }>(joinInside(folderPath, FOLDER_META_FILE))
+async function readFolderMetaFile(folderPath: string): Promise<{ id?: string; name?: string; iconKey?: string; alias?: string } | null> {
+    return readJsonFile<{ id?: string; name?: string; iconKey?: string; alias?: string }>(joinInside(folderPath, FOLDER_META_FILE))
 }
 
 async function readSharedStepsFile(baseDir: string) {
@@ -71,6 +71,12 @@ async function readNodeFromDisk(
     const folder: Folder = {
         id: typeof folderMeta?.id === 'string' && folderMeta.id.trim() ? folderMeta.id : randomUUID(),
         name: typeof folderMeta?.name === 'string' && folderMeta.name.trim() ? folderMeta.name : fallbackFolderName,
+        ...(typeof folderMeta?.iconKey === 'string' && folderMeta.iconKey.trim()
+            ? { iconKey: folderMeta.iconKey.trim() }
+            : {}),
+        ...(typeof folderMeta?.alias === 'string' && folderMeta.alias.trim()
+            ? { alias: folderMeta.alias.trim() }
+            : {}),
         children: [],
     }
 

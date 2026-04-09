@@ -3,6 +3,7 @@ import { useUiPreferences } from '../preferences'
 
 type Props = {
     testName: string
+    testAlias: string
     summaryItems: string[]
     showSharedLibrary: boolean
     sharedStepsCount: number
@@ -10,10 +11,12 @@ type Props = {
     onToggleSharedLibrary(): void
     onToggleParseZephyrHtmlParts(value: boolean): void
     onChangeName(value: string): void
+    onChangeAlias(value: string): void
 }
 
 export function TestEditorHero({
     testName,
+    testAlias,
     summaryItems,
     showSharedLibrary,
     sharedStepsCount,
@@ -21,6 +24,7 @@ export function TestEditorHero({
     onToggleSharedLibrary,
     onToggleParseZephyrHtmlParts,
     onChangeName,
+    onChangeAlias,
 }: Props) {
     const { t } = useUiPreferences()
 
@@ -55,14 +59,25 @@ export function TestEditorHero({
                     </button>
                 </div>
             </div>
-            <div className="field editor-name-field">
-                <label className="label-sm">{t('editor.name')}</label>
-                <input
-                    value={testName}
-                    onChange={(event) => onChangeName(event.target.value)}
-                    className="input editor-name-input"
-                    placeholder={t('editor.namePlaceholder')}
-                />
+            <div className="editor-hero-fields">
+                <div className="field editor-name-field">
+                    <label className="label-sm">{t('editor.name')}</label>
+                    <input
+                        value={testName}
+                        onChange={(event) => onChangeName(event.target.value)}
+                        className="input editor-name-input"
+                        placeholder={t('editor.namePlaceholder')}
+                    />
+                </div>
+                <div className="field editor-name-field editor-alias-field">
+                    <label className="label-sm">{t('editor.alias')}</label>
+                    <input
+                        value={testAlias}
+                        onChange={(event) => onChangeAlias(event.target.value)}
+                        className="input"
+                        placeholder={t('editor.aliasPlaceholder')}
+                    />
+                </div>
             </div>
         </div>
     )

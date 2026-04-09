@@ -153,11 +153,14 @@ export function AppShell() {
         canPublish,
         canSyncAll,
     } = shellViewState
+    const selectedNode = app.selectedId ? findNode(app.state.root, app.selectedId) : app.state.root
+    const selectedFolder = selectedNode && isFolder(selectedNode) ? selectedNode : null
 
     const rightPane = (
         <AppShellRightPane
             editorRef={editorRef}
             selectedTest={selectedTest}
+            selectedFolder={selectedFolder}
             allTests={allTests}
             sharedSteps={app.state.sharedSteps}
             focusStepId={app.focusStepId}
@@ -178,6 +181,8 @@ export function AppShell() {
             onOpenPublish={() => setPublishOpen(true)}
             onAddFolder={app.addFolder}
             onAddTest={app.addTest}
+            onRenameFolder={(folderId, value) => void app.renameNode(folderId, value)}
+            onSetFolderAlias={(folderId, value) => void app.setNodeAlias(folderId, value)}
         />
     )
 
@@ -221,6 +226,8 @@ export function AppShell() {
                 onCreateTestAt={app.addTestAt}
                 onRename={app.renameNode}
                 onDelete={handleDeleteNodeById}
+                onSetNodeAlias={app.setNodeAlias}
+                onSetNodeIcon={app.setNodeIcon}
                 onOpenStep={app.openStep}
                 rightPane={rightPane}
                 syncCenter={

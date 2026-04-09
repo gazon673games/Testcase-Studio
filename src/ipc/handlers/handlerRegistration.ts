@@ -3,6 +3,7 @@ import type { RootState, TestCase, TestCaseLink } from '../../core/domain.js'
 import type { ZephyrImportRequest, ZephyrPublishPreview } from '../../application/sync/index.js'
 import { openWorkspaceAttachment, storeWorkspaceAttachments } from '../../../electron/attachmentStore.js'
 import { loadFromFs, saveToFs, writePublishLog, writeStateSnapshot } from '../../../electron/repo.js'
+import { deleteLocalTreeIcon, importLocalTreeIcon, listLocalTreeIcons } from '../../../electron/treeIcons.js'
 import { CHANNELS } from '../channels.js'
 import { loadMainSettings, saveMainSettings } from './handlerSettings.js'
 import { checkForUpdatesInMain, getAppInfoInMain } from './handlerUpdates.js'
@@ -22,6 +23,18 @@ export function registerPersistenceHandlers(ipcMain: IpcMain) {
 
     ipcMain.handle(CHANNELS.APP_CHECK_FOR_UPDATES, async () => {
         return await checkForUpdatesInMain()
+    })
+
+    ipcMain.handle(CHANNELS.APP_LIST_LOCAL_TREE_ICONS, async () => {
+        return await listLocalTreeIcons()
+    })
+
+    ipcMain.handle(CHANNELS.APP_IMPORT_LOCAL_TREE_ICON, async () => {
+        return await importLocalTreeIcon()
+    })
+
+    ipcMain.handle(CHANNELS.APP_DELETE_LOCAL_TREE_ICON, async (_event, payload: { iconKey: string }) => {
+        return await deleteLocalTreeIcon(payload.iconKey)
     })
 
     ipcMain.handle(CHANNELS.LOAD_STATE, async () => {

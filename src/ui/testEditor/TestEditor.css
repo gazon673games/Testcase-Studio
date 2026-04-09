@@ -88,6 +88,12 @@
     background: var(--bg-soft);
     box-sizing: border-box;
 }
+.editor-hero-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(260px, 1fr);
+    gap: 12px;
+    max-width: min(100%, 920px);
+}
 .editor-name-field .label-sm {
     margin-bottom: 6px;
 }
@@ -100,6 +106,9 @@
     margin: 0;
     padding: 12px 14px;
     border-radius: 10px;
+}
+.editor-alias-field .input {
+    min-height: 50px;
 }
 .editor-side-button {
     min-width: 108px;
@@ -823,6 +832,9 @@
         justify-content: flex-start;
     }
     .editor-links-grid {
+        grid-template-columns: 1fr;
+    }
+    .editor-hero-fields {
         grid-template-columns: 1fr;
     }
     .section-header {

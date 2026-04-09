@@ -11,13 +11,12 @@ type MarkdownEditorToolbarProps = {
 
 export function MarkdownEditorToolbar({
     visible,
-    preview,
     t,
     onWrap,
     onInsertPrefix,
     onTogglePreview,
 }: MarkdownEditorToolbarProps) {
-    if (!visible || preview) return null
+    if (!visible) return null
 
     return (
         <div className="md-toolbar" onMouseDown={(event) => event.preventDefault()}>

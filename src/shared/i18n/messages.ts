@@ -77,6 +77,7 @@ Object.assign(messages.ru, {
     'tree.folder': 'Папка',
     'tree.case': 'Тест',
     'tree.itemCount': 'Элементов: {count}',
+    'tree.testsCount': 'Тестов: {count}',
     'tree.stepCount': 'Шагов: {count}',
     'tree.noSteps': 'Шагов пока нет',
     'tree.untitledStep': 'Шаг без названия',
@@ -254,6 +255,7 @@ Object.assign(messages.en, {
     'tree.folder': 'Folder',
     'tree.case': 'Test',
     'tree.itemCount': 'Items: {count}',
+    'tree.testsCount': 'Tests: {count}',
     'tree.stepCount': 'Steps: {count}',
     'tree.noSteps': 'No steps yet',
     'tree.untitledStep': 'Untitled step',
@@ -1261,4 +1263,103 @@ Object.assign(messages.en, {
     'publish.createCheck.missing': 'Missing',
     'publish.createCheck.ready': 'OK',
     'publish.createCheck.stepsCount': 'Steps: {count}',
+})
+
+Object.assign(messages.ru, {
+    'tree.changeIcon': '\u0421\u043c\u0435\u043d\u0438\u0442\u044c \u0438\u043a\u043e\u043d\u043a\u0443',
+    'tree.clearIcon': '\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u0438\u043a\u043e\u043d\u043a\u0443',
+    'tree.iconPickerTitle': '\u0418\u043a\u043e\u043d\u043a\u0430 \u0442\u0435\u0441\u0442\u0430',
+    'tree.iconPickerForTest': '\u0422\u0435\u0441\u0442: {name}',
+    'tree.iconPickerHint':
+        '\u041b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0435 \u0438\u043a\u043e\u043d\u043a\u0438 \u0431\u0435\u0440\u0443\u0442\u0441\u044f \u0438\u0437 .local-assets/test-icons/ \u0438 \u043d\u0435 \u043f\u0443\u0448\u0430\u0442\u0441\u044f \u0432 Git.',
+    'tree.iconPickerEmpty':
+        '\u0412 .local-assets/test-icons/ \u043f\u043e\u043a\u0430 \u043d\u0435\u0442 \u043f\u043e\u0434\u0445\u043e\u0434\u044f\u0449\u0438\u0445 PNG, JPG, WEBP, GIF \u0438\u043b\u0438 SVG \u0438\u043a\u043e\u043d\u043e\u043a.',
+    'tree.iconPickerDefault': '\u0411\u0435\u0437 \u0438\u043a\u043e\u043d\u043a\u0438',
+    'tree.iconPickerApply': '\u041f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c',
+    'tree.iconPickerCancel': '\u041e\u0442\u043c\u0435\u043d\u0430',
+    'tree.iconPickerClose': '\u0417\u0430\u043a\u0440\u044b\u0442\u044c',
+})
+
+Object.assign(messages.en, {
+    'tree.changeIcon': 'Change icon',
+    'tree.clearIcon': 'Clear icon',
+    'tree.iconPickerTitle': 'Test icon',
+    'tree.iconPickerForTest': 'Test: {name}',
+    'tree.iconPickerHint': 'Local icons are loaded from .local-assets/test-icons/ and are not pushed to Git.',
+    'tree.iconPickerEmpty': 'No PNG, JPG, WEBP, GIF, or SVG icons were found in .local-assets/test-icons/.',
+    'tree.iconPickerDefault': 'No icon',
+    'tree.iconPickerApply': 'Apply',
+    'tree.iconPickerCancel': 'Cancel',
+    'tree.iconPickerClose': 'Close',
+})
+
+Object.assign(messages.ru, {
+    'tree.iconPickerTitle': 'Иконка элемента',
+    'tree.iconPickerForFolder': 'Папка: {name}',
+    'tree.iconPickerForTest': 'Тест: {name}',
+    'tree.iconPickerHint':
+        'Иконки хранятся локально в .local-assets/tree-icons/, не пушатся в Git и автоматически пережимаются в PNG нужного размера при импорте.',
+    'tree.iconPickerEmpty':
+        'Локальных иконок пока нет. Нажмите «Импортировать картинку», чтобы добавить первую.',
+    'tree.iconPickerImport': 'Импортировать картинку',
+    'tree.iconPickerImporting': 'Импортируем...',
+    'tree.iconPickerImportFailed': 'Не удалось импортировать картинку: {message}',
+})
+
+Object.assign(messages.en, {
+    'tree.iconPickerTitle': 'Item icon',
+    'tree.iconPickerForFolder': 'Folder: {name}',
+    'tree.iconPickerForTest': 'Test: {name}',
+    'tree.iconPickerHint':
+        'Icons are stored locally in .local-assets/tree-icons/, are never pushed to Git, and are automatically resized to PNG on import.',
+    'tree.iconPickerEmpty': 'There are no local icons yet. Click “Import image” to add the first one.',
+    'tree.iconPickerImport': 'Import image',
+    'tree.iconPickerImporting': 'Importing...',
+    'tree.iconPickerImportFailed': 'Failed to import the image: {message}',
+})
+
+Object.assign(messages.ru, {
+    'tree.iconPickerDelete': 'Удалить из локальных иконок',
+    'tree.iconPickerDeleteConfirm': 'Удалить иконку "{name}" из локальной папки?',
+    'tree.iconPickerDeleteFailed': 'Не удалось удалить иконку: {message}',
+})
+
+Object.assign(messages.en, {
+    'tree.iconPickerDelete': 'Delete from local icons',
+    'tree.iconPickerDeleteConfirm': 'Delete the "{name}" icon from local storage?',
+    'tree.iconPickerDeleteFailed': 'Failed to delete the icon: {message}',
+})
+
+Object.assign(messages.ru, {
+    'tree.showAliases': 'Показывать алиасы',
+    'tree.setAlias': 'Задать алиас',
+    'tree.clearAlias': 'Сбросить алиас',
+    'tree.aliasPrompt': 'Введите локальный алиас для "{name}"',
+})
+
+Object.assign(messages.en, {
+    'tree.showAliases': 'Show aliases',
+    'tree.setAlias': 'Set alias',
+    'tree.clearAlias': 'Clear alias',
+    'tree.aliasPrompt': 'Enter a local alias for "{name}"',
+})
+
+Object.assign(messages.ru, {
+    'editor.alias': '\u0410\u043b\u0438\u0430\u0441',
+    'editor.aliasPlaceholder': '\u041b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0430\u043b\u0438\u0430\u0441 \u0434\u043b\u044f \u0442\u0435\u0441\u0442\u0430...',
+    'overview.folderNamePlaceholder': '\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0438\u043c\u044f \u043f\u0430\u043f\u043a\u0438...',
+    'overview.folderAliasPlaceholder': '\u041b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0430\u043b\u0438\u0430\u0441 \u0434\u043b\u044f \u043f\u0430\u043f\u043a\u0438...',
+    'tree.aliasForFolder': '\u041f\u0430\u043f\u043a\u0430: {name}',
+    'tree.aliasForTest': '\u0422\u0435\u0441\u0442: {name}',
+    'tree.aliasPlaceholder': '\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0430\u043b\u0438\u0430\u0441...',
+})
+
+Object.assign(messages.en, {
+    'editor.alias': 'Alias',
+    'editor.aliasPlaceholder': 'Local alias for this test...',
+    'overview.folderNamePlaceholder': 'Enter folder name...',
+    'overview.folderAliasPlaceholder': 'Local alias for this folder...',
+    'tree.aliasForFolder': 'Folder: {name}',
+    'tree.aliasForTest': 'Test: {name}',
+    'tree.aliasPlaceholder': 'Enter a local alias...',
 })

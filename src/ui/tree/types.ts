@@ -4,7 +4,15 @@ import type { Folder, TestCase } from '@core/domain'
 export type ViewNode = Folder | TestCase
 
 export type ContextMenuState =
-    | { x: number; y: number; targetId: string; targetIsFolder: boolean; targetName: string }
+    | {
+          x: number
+          y: number
+          targetId: string
+          targetIsFolder: boolean
+          targetName: string
+          targetAlias?: string | null
+          targetIconKey?: string | null
+      }
     | null
 
 export type EditingState = { id: string; value: string } | null

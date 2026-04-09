@@ -13,6 +13,13 @@ type TreeMenuProps = {
     onNewTest(): void
     onRename(): void
     onDelete(): void
+    hasAlias?: boolean
+    onSetAlias?(): void
+    onClearAlias?(): void
+    canChangeIcon?: boolean
+    hasCustomIcon?: boolean
+    onChangeIcon?(): void
+    onClearIcon?(): void
 }
 
 export function TreeMenu({
@@ -26,6 +33,13 @@ export function TreeMenu({
     onNewTest,
     onRename,
     onDelete,
+    hasAlias = false,
+    onSetAlias,
+    onClearAlias,
+    canChangeIcon = false,
+    hasCustomIcon = false,
+    onChangeIcon,
+    onClearIcon,
 }: TreeMenuProps) {
     const firstItemRef = React.useRef<HTMLButtonElement | null>(null)
 
@@ -52,6 +66,18 @@ export function TreeMenu({
             )}
             {!isFolder && <TreeMenuItem ref={firstItemRef} label={t('tree.rename')} onClick={() => { onRename(); onClose() }} />}
             {isFolder && <TreeMenuItem label={t('tree.rename')} onClick={() => { onRename(); onClose() }} />}
+            {onSetAlias ? (
+                <TreeMenuItem label={t('tree.setAlias')} onClick={onSetAlias} />
+            ) : null}
+            {hasAlias && onClearAlias ? (
+                <TreeMenuItem label={t('tree.clearAlias')} onClick={() => { onClearAlias(); onClose() }} />
+            ) : null}
+            {canChangeIcon && onChangeIcon ? (
+                <TreeMenuItem label={t('tree.changeIcon')} onClick={() => { onChangeIcon(); onClose() }} />
+            ) : null}
+            {hasCustomIcon && onClearIcon ? (
+                <TreeMenuItem label={t('tree.clearIcon')} onClick={() => { onClearIcon(); onClose() }} />
+            ) : null}
             <TreeMenuItem label={t('tree.delete')} disabled={isRoot} danger onClick={() => { onDelete(); onClose() }} />
         </div>
     )

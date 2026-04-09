@@ -3,6 +3,9 @@ const { contextBridge, ipcRenderer } = require('electron') as typeof import('ele
 const CHANNELS = {
     APP_GET_INFO: 'APP_GET_INFO',
     APP_CHECK_FOR_UPDATES: 'APP_CHECK_FOR_UPDATES',
+    APP_LIST_LOCAL_TREE_ICONS: 'APP_LIST_LOCAL_TREE_ICONS',
+    APP_IMPORT_LOCAL_TREE_ICON: 'APP_IMPORT_LOCAL_TREE_ICON',
+    APP_DELETE_LOCAL_TREE_ICON: 'APP_DELETE_LOCAL_TREE_ICON',
     LOAD_STATE: 'LOAD_STATE',
     SAVE_STATE: 'SAVE_STATE',
     LOAD_SETTINGS: 'LOAD_SETTINGS',
@@ -23,6 +26,12 @@ contextBridge.exposeInMainWorld('api', {
     getAppInfo: () => ipcRenderer.invoke(CHANNELS.APP_GET_INFO) as Promise<import('../src/shared/appUpdates').AppInfo>,
     checkForUpdates: () =>
         ipcRenderer.invoke(CHANNELS.APP_CHECK_FOR_UPDATES) as Promise<import('../src/shared/appUpdates').AppUpdateCheckResult>,
+    listLocalTreeIcons: () =>
+        ipcRenderer.invoke(CHANNELS.APP_LIST_LOCAL_TREE_ICONS) as Promise<import('../src/shared/treeIcons').LocalTreeIconOption[]>,
+    importLocalTreeIcon: () =>
+        ipcRenderer.invoke(CHANNELS.APP_IMPORT_LOCAL_TREE_ICON) as Promise<import('../src/shared/treeIcons').LocalTreeIconOption | null>,
+    deleteLocalTreeIcon: (iconKey: string) =>
+        ipcRenderer.invoke(CHANNELS.APP_DELETE_LOCAL_TREE_ICON, { iconKey }) as Promise<boolean>,
     loadState: <T,>(fallback: T) => ipcRenderer.invoke(CHANNELS.LOAD_STATE, fallback) as Promise<T>,
     saveState: <T,>(state: T) => ipcRenderer.invoke(CHANNELS.SAVE_STATE, state) as Promise<void>,
     loadSettings: () => ipcRenderer.invoke(CHANNELS.LOAD_SETTINGS) as Promise<import('../src/core/settings').AtlassianSettings>,

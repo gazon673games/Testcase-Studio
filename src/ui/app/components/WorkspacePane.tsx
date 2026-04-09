@@ -14,6 +14,8 @@ type WorkspacePaneProps = {
     onCreateTestAt(parentId: string): void
     onRename(id: string, name: string): void
     onDelete(id: string): void
+    onSetNodeAlias(nodeId: string, alias: string | null): void
+    onSetNodeIcon(nodeId: string, iconKey: string | null): void
     onOpenStep(testId: string, stepId: string): void
     rightPane: React.ReactNode
     syncCenter: React.ReactNode
@@ -31,6 +33,8 @@ export function WorkspacePane({
     onCreateTestAt,
     onRename,
     onDelete,
+    onSetNodeAlias,
+    onSetNodeIcon,
     onOpenStep,
     rightPane,
     syncCenter,
@@ -84,6 +88,8 @@ export function WorkspacePane({
                     onCreateTestAt={onCreateTestAt}
                     onRename={onRename}
                     onDelete={onDelete}
+                    onSetNodeAlias={onSetNodeAlias}
+                    onSetNodeIcon={onSetNodeIcon}
                     onOpenStep={onOpenStep}
                 />
             </div>

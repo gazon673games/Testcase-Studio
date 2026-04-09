@@ -12,6 +12,8 @@ import {
     removeSelectedNode,
     renameWorkspaceNode,
     resolveIncludedCaseDecisions,
+    setNodeAlias as setNodeAliasCommand,
+    setNodeIcon as setNodeIconCommand,
     updateSharedStep as updateSharedStepCommand,
     updateTestCase,
     type IncludedCaseResolution,
@@ -77,7 +79,7 @@ export function createAppStateWorkspaceActions({
         if (!currentState) return
         const result = removeSelectedNode(currentState, selectedId)
         if (!result) return
-        stageLocalState(result.nextState)
+        await persistStateNow(result.nextState, result.dirtyIds)
         if (result.selectedId !== undefined) setSelectedId(result.selectedId)
         if (result.focusStepId !== undefined) setFocusStepId(result.focusStepId)
     }
@@ -95,7 +97,7 @@ export function createAppStateWorkspaceActions({
         if (!currentState) return
         const result = deleteNodeByIdCommand(currentState, id, selectedId)
         if (!result) return
-        stageLocalState(result.nextState)
+        await persistStateNow(result.nextState, result.dirtyIds)
         if (result.selectedId !== undefined) setSelectedId(result.selectedId)
         if (result.focusStepId !== undefined) setFocusStepId(result.focusStepId)
     }
@@ -120,6 +122,22 @@ export function createAppStateWorkspaceActions({
         const result = updateTestCase(currentState, testId, patch)
         if (!result) return
         stageLocalState(result.nextState, result.dirtyIds)
+    }
+
+    async function setNodeIcon(nodeId: ID, iconKey: string | null) {
+        const currentState = getCurrentState()
+        if (!currentState) return
+        const result = setNodeIconCommand(currentState, nodeId, iconKey)
+        if (!result) return
+        await persistStateNow(result.nextState, result.dirtyIds)
+    }
+
+    async function setNodeAlias(nodeId: ID, alias: string | null) {
+        const currentState = getCurrentState()
+        if (!currentState) return
+        const result = setNodeAliasCommand(currentState, nodeId, alias)
+        if (!result) return
+        await persistStateNow(result.nextState, result.dirtyIds)
     }
 
     async function addSharedStep(name = defaults.sharedStep, steps: Step[] = []) {
@@ -180,6 +198,8 @@ export function createAppStateWorkspaceActions({
         deleteNodeById,
         moveNode,
         updateTest,
+        setNodeAlias,
+        setNodeIcon,
         addSharedStep,
         addSharedStepFromStep,
         updateSharedStep,

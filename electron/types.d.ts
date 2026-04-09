@@ -5,6 +5,9 @@ declare global {
         api: {
             getAppInfo(): Promise<import('../src/shared/appUpdates').AppInfo>
             checkForUpdates(): Promise<import('../src/shared/appUpdates').AppUpdateCheckResult>
+            listLocalTreeIcons(): Promise<import('../src/shared/treeIcons').LocalTreeIconOption[]>
+            importLocalTreeIcon(): Promise<import('../src/shared/treeIcons').LocalTreeIconOption | null>
+            deleteLocalTreeIcon(iconKey: string): Promise<boolean>
             loadState<T>(fallback: T): Promise<T>
             saveState<T>(state: T): Promise<void>
             loadSettings(): Promise<import('../src/core/settings').AtlassianSettings>

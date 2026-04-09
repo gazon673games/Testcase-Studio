@@ -39,6 +39,10 @@ export async function checkForUpdatesInMain(): Promise<AppUpdateCheckResult> {
     const repo = parseGitHubRepositoryFullName(getRepositoryUrl())
     if (!repo) throw new Error('GitHub repository is not configured for update checks')
 
+    // We intentionally use a lightweight GitHub Releases check instead of electron-updater for now.
+    // If we later need in-app download/install or differential updates, revisit electron-updater
+    // together with latest*.yml and blockmap publishing.
+
     const response = await fetchWithContext(
         `https://api.github.com/repos/${repo}/releases/latest`,
         {

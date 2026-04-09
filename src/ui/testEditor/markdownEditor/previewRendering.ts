@@ -100,20 +100,51 @@ function pickSafeStyle(tag: string, style: string | null): string | null {
     if (!style || tag !== 'span') return null
     const declarations = style.split(';').map((item) => item.trim()).filter(Boolean)
     let colorValue: string | null = null
+    let fontWeightValue: string | null = null
+    let fontStyleValue: string | null = null
+    let textDecorationValue: string | null = null
 
     for (const declaration of declarations) {
         const [rawProp, ...rest] = declaration.split(':')
         if (!rawProp || !rest.length) continue
         const prop = rawProp.trim().toLowerCase()
         const value = rest.join(':').trim()
-        if (prop !== 'color') continue
 
         const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
         const rgb = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(\s*,\s*(0|0?\.\d+|1(\.0)?))?\s*\)$/i
-        if (hex.test(value) || rgb.test(value)) colorValue = value
+        if (prop === 'color') {
+            if (hex.test(value) || rgb.test(value)) colorValue = value
+            continue
+        }
+
+        if (prop === 'font-weight') {
+            const normalized = value.toLowerCase()
+            if (normalized === 'bold' || normalized === 'bolder') fontWeightValue = 'bold'
+            else if (/^[5-9]00$/.test(normalized)) fontWeightValue = normalized
+            continue
+        }
+
+        if (prop === 'font-style') {
+            const normalized = value.toLowerCase()
+            if (normalized === 'italic') fontStyleValue = 'italic'
+            continue
+        }
+
+        if (prop === 'text-decoration' || prop === 'text-decoration-line') {
+            const normalized = value.toLowerCase()
+            if (normalized.includes('underline')) textDecorationValue = 'underline'
+            continue
+        }
     }
 
-    return colorValue ? `color: ${colorValue}` : null
+    const safeDeclarations = [
+        colorValue ? `color: ${colorValue}` : null,
+        fontWeightValue ? `font-weight: ${fontWeightValue}` : null,
+        fontStyleValue ? `font-style: ${fontStyleValue}` : null,
+        textDecorationValue ? `text-decoration: ${textDecorationValue}` : null,
+    ].filter(Boolean)
+
+    return safeDeclarations.length ? safeDeclarations.join('; ') : null
 }
 
 export function sanitizeHtml(html: string): string {

@@ -79,8 +79,6 @@ jobs:
             release/*.zip
             release/*.AppImage
             release/*.tar.gz
-            release/*.blockmap
-            release/*.yml
 
   publish:
     name: Publish GitHub Release

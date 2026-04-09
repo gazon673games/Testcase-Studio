@@ -1,8 +1,11 @@
 import React from 'react'
+import type { Folder } from '@core/domain'
+import { getStoredFolderAlias } from '@shared/treeAliases'
 import { useUiPreferences } from '../../preferences'
 import type { SelectionSummary } from '../model/selectionSummary'
 
 type ScopeOverviewPanelProps = {
+    selectedFolder: Folder | null
     summary: SelectionSummary
     importDestinationLabel: string
     publishSelectionLabel: string
@@ -11,9 +14,12 @@ type ScopeOverviewPanelProps = {
     onOpenPublish(): void
     onAddFolder(): void
     onAddTest(): void
+    onRenameFolder(folderId: string, value: string): void
+    onSetFolderAlias(folderId: string, value: string | null): void
 }
 
 export function ScopeOverviewPanel({
+    selectedFolder,
     summary,
     importDestinationLabel,
     publishSelectionLabel,
@@ -22,8 +28,12 @@ export function ScopeOverviewPanel({
     onOpenPublish,
     onAddFolder,
     onAddTest,
+    onRenameFolder,
+    onSetFolderAlias,
 }: ScopeOverviewPanelProps) {
     const { t } = useUiPreferences()
+    const displayTitle = selectedFolder?.name ?? summary.title
+    const folderAlias = getStoredFolderAlias(selectedFolder) ?? ''
 
     return (
         <div className="scope-overview">
@@ -31,11 +41,33 @@ export function ScopeOverviewPanel({
                 <div className="overview-eyebrow">
                     {summary.kind === 'root' ? t('overview.zephyrWorkspace') : summary.kind === 'folder' ? t('tree.folder') : t('toolbar.editor')}
                 </div>
-                <div className="scope-overview__title">{summary.title}</div>
+                <div className="scope-overview__title">{displayTitle}</div>
                 <div className="scope-overview__subtitle">{summary.subtitle}</div>
                 <div className="scope-overview__path">
                     <code>{summary.pathLabel}</code>
                 </div>
+                {selectedFolder ? (
+                    <div className="scope-overview__fields">
+                        <label className="scope-overview__field">
+                            <span className="scope-overview__label">{t('editor.name')}</span>
+                            <input
+                                value={selectedFolder.name}
+                                onChange={(event) => onRenameFolder(selectedFolder.id, event.target.value)}
+                                className="scope-overview__input"
+                                placeholder={t('overview.folderNamePlaceholder')}
+                            />
+                        </label>
+                        <label className="scope-overview__field">
+                            <span className="scope-overview__label">{t('editor.alias')}</span>
+                            <input
+                                value={folderAlias}
+                                onChange={(event) => onSetFolderAlias(selectedFolder.id, event.target.value || null)}
+                                className="scope-overview__input"
+                                placeholder={t('overview.folderAliasPlaceholder')}
+                            />
+                        </label>
+                    </div>
+                ) : null}
             </div>
 
             <div className="scope-overview__stats">

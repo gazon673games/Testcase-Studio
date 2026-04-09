@@ -12,6 +12,8 @@ import {
     type TestCase,
 } from '@core/domain'
 import { deleteNode, findNode, findParentFolder, insertChild, isFolder, mapTests, moveNode as moveTreeNode } from '@core/tree'
+import { NODE_ALIAS_PARAM_KEY } from '@shared/treeAliases'
+import { NODE_ICON_PARAM_KEY } from '@shared/treeIcons'
 import { getSelectedNode } from './queries'
 
 type TestPatch = Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments' | 'links'>>
@@ -116,6 +118,64 @@ export function updateTestCase(state: RootState, testId: ID, patch: TestPatch): 
         nextState,
         dirtyIds: [testId],
     }
+}
+
+export function setNodeIcon(state: RootState, nodeId: ID, iconKey: string | null): WorkspaceMutationResult | null {
+    const nextState = structuredClone(state)
+    const node = findNode(nextState.root, nodeId)
+    if (!node) return null
+
+    const normalizedKey = String(iconKey ?? '').trim()
+
+    if (isFolder(node)) {
+        if (normalizedKey) node.iconKey = normalizedKey
+        else delete node.iconKey
+        return {
+            nextState,
+        }
+    }
+
+    node.meta = node.meta ?? { tags: [], params: {} }
+    node.meta.params = node.meta.params ?? {}
+    if (normalizedKey) node.meta.params[NODE_ICON_PARAM_KEY] = normalizedKey
+    else delete node.meta.params[NODE_ICON_PARAM_KEY]
+
+    node.updatedAt = nowISO()
+    return {
+        nextState,
+        dirtyIds: [nodeId],
+    }
+}
+
+export function setNodeAlias(state: RootState, nodeId: ID, alias: string | null): WorkspaceMutationResult | null {
+    const nextState = structuredClone(state)
+    const node = findNode(nextState.root, nodeId)
+    if (!node) return null
+
+    const normalizedAlias = String(alias ?? '').trim()
+
+    if (isFolder(node)) {
+        if (normalizedAlias) node.alias = normalizedAlias
+        else delete node.alias
+        return {
+            nextState,
+        }
+    }
+
+    node.meta = node.meta ?? { tags: [], params: {} }
+    node.meta.params = node.meta.params ?? {}
+    if (normalizedAlias) node.meta.params[NODE_ALIAS_PARAM_KEY] = normalizedAlias
+    else delete node.meta.params[NODE_ALIAS_PARAM_KEY]
+
+    node.updatedAt = nowISO()
+    return {
+        nextState,
+        dirtyIds: [nodeId],
+    }
+}
+
+export function setTestIcon(state: RootState, testId: ID, iconKey: string | null): WorkspaceMutationResult | null {
+    return setNodeIcon(state, testId, iconKey)
 }
 
 export function addSharedStep(state: RootState, name: string, steps: Step[] = []): WorkspaceMutationResult & { sharedId: string } {

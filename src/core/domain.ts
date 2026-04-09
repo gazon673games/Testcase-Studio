@@ -94,6 +94,8 @@ export interface TestCase {
 export interface Folder {
     id: ID
     name: string
+    iconKey?: string
+    alias?: string
     children: Array<Folder | TestCase>
 }
 
@@ -347,6 +349,8 @@ export function normalizeFolder(folder: Partial<Folder> | null | undefined, fall
     return {
         id: ensureId(source.id),
         name: typeof source.name === 'string' && source.name.trim() ? source.name : fallbackName,
+        iconKey: toOptionalString(source.iconKey),
+        alias: toOptionalString(source.alias),
         children: Array.isArray(source.children) ? source.children.map(normalizeNode) : [],
     }
 }

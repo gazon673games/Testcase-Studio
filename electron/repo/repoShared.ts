@@ -131,8 +131,18 @@ export async function readJsonFileStrict<T>(filePath: string): Promise<T> {
     }
 }
 
-export function serializeFolderMeta(folder: Pick<Folder, 'id' | 'name'>) {
-    return JSON.stringify({ id: folder.id, name: folder.name }, null, 2)
+export function serializeFolderMeta(folder: Pick<Folder, 'id' | 'name' | 'iconKey' | 'alias'>) {
+    const payload: Record<string, string> = {
+        id: folder.id,
+        name: folder.name,
+    }
+    if (typeof folder.iconKey === 'string' && folder.iconKey.trim()) {
+        payload.iconKey = folder.iconKey.trim()
+    }
+    if (typeof folder.alias === 'string' && folder.alias.trim()) {
+        payload.alias = folder.alias.trim()
+    }
+    return JSON.stringify(payload, null, 2)
 }
 
 export function serializeTestFile(test: TestCase) {

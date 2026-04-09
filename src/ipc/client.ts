@@ -14,10 +14,20 @@ import type {
 } from '@app/sync'
 import type { ProviderTest } from '@providers/types'
 import type { AppInfo, AppUpdateCheckResult } from '@shared/appUpdates'
+import type { LocalTreeIconOption } from '@shared/treeIcons'
+
+function requireApiMethod<K extends keyof Window['api']>(method: K): NonNullable<Window['api'][K]> {
+    const candidate = window.api?.[method]
+    if (typeof candidate === 'function') return candidate as NonNullable<Window['api'][K]>
+    throw new Error('Перезапустите приложение, чтобы загрузить обновлённый desktop bridge.')
+}
 
 export const apiClient = {
-    getAppInfo: (): Promise<AppInfo> => window.api.getAppInfo(),
-    checkForUpdates: (): Promise<AppUpdateCheckResult> => window.api.checkForUpdates(),
+    getAppInfo: (): Promise<AppInfo> => requireApiMethod('getAppInfo')(),
+    checkForUpdates: (): Promise<AppUpdateCheckResult> => requireApiMethod('checkForUpdates')(),
+    listLocalTreeIcons: (): Promise<LocalTreeIconOption[]> => requireApiMethod('listLocalTreeIcons')(),
+    importLocalTreeIcon: (): Promise<LocalTreeIconOption | null> => requireApiMethod('importLocalTreeIcon')(),
+    deleteLocalTreeIcon: (iconKey: string): Promise<boolean> => requireApiMethod('deleteLocalTreeIcon')(iconKey),
     loadState: <T>(fallback: T) => window.api.loadState<T>(fallback),
     saveState: <T>(state: T) => window.api.saveState<T>(state),
 

@@ -2,6 +2,7 @@ import * as React from 'react'
 import './TestEditor.css'
 import type { SharedStep, Step, TestCase } from '@core/domain'
 import { isZephyrHtmlPartsEnabled, setZephyrHtmlPartsEnabled } from '@core/zephyrHtmlParts'
+import { getStoredTestAlias, NODE_ALIAS_PARAM_KEY, normalizeNodeAlias } from '@shared/treeAliases'
 import type { MarkdownEditorApi } from './markdownEditor/MarkdownEditor'
 import './panels/MetaParamsPanel.css'
 import './panels/AttachmentsPanel.css'
@@ -18,6 +19,8 @@ import { useStoredToggle } from '../hooks/useStoredToggle'
 
 type Props = {
     test: TestCase
+    sessionDraft?: TestCase | null
+    onSessionDraftChange?(draft: TestCase): void
     onChange: (
         patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments' | 'links'>>
     ) => void
@@ -39,6 +42,8 @@ export type TestEditorHandle = { commit(): boolean }
 export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function TestEditor(
     {
         test,
+        sessionDraft,
+        onSessionDraftChange,
         onChange,
         focusStepId,
         allTests,
@@ -55,9 +60,10 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     ref
 ) {
     const { t } = useUiPreferences()
-    const [draftTest, setDraftTest] = React.useState(() => structuredClone(test))
+    const [draftTest, setDraftTest] = React.useState(() => structuredClone(sessionDraft ?? test))
     const latestDraftRef = React.useRef(draftTest)
     const latestSourceRef = React.useRef(test)
+    const previousTestIdRef = React.useRef(test.id)
 
     const [showDetails, setShowDetails] = useStoredToggle('test-editor.show-details', true)
     const [showMeta, setShowMeta] = useStoredToggle('test-editor.show-meta', false)
@@ -72,9 +78,10 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         setDraftTest((current) => {
             const next = { ...current, ...patch }
             latestDraftRef.current = next
+            onSessionDraftChange?.(next)
             return next
         })
-    }, [])
+    }, [onSessionDraftChange])
 
     const { zephyrLink, allureLink, upsertLink } = useTestEditorLinks({ test: draftTest, onChange: applyDraftPatch })
     const { resolveRefs, inspectRefs, insertIntoActiveEditor } = useTestEditorReferenceTools({
@@ -108,13 +115,32 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         t,
     })
     const parseZephyrHtmlParts = isZephyrHtmlPartsEnabled(draftTest.meta)
+    const testAlias = getStoredTestAlias(draftTest.meta) ?? ''
 
     React.useEffect(() => {
-        const nextDraft = structuredClone(test)
-        latestSourceRef.current = test
-        latestDraftRef.current = nextDraft
-        setDraftTest(nextDraft)
-    }, [test])
+        const previousSource = latestSourceRef.current
+        const nextSource = test
+        const switchedTest = previousTestIdRef.current !== nextSource.id
+        const hasLocalEdits = !areEditableTestFieldsEqual(previousSource, latestDraftRef.current)
+
+        latestSourceRef.current = nextSource
+
+        if (switchedTest) {
+            previousTestIdRef.current = nextSource.id
+            const nextDraft = structuredClone(sessionDraft ?? nextSource)
+            latestDraftRef.current = nextDraft
+            setDraftTest(nextDraft)
+            onSessionDraftChange?.(nextDraft)
+            return
+        }
+
+        if (!hasLocalEdits) {
+            const nextDraft = structuredClone(sessionDraft ?? nextSource)
+            latestDraftRef.current = nextDraft
+            setDraftTest(nextDraft)
+            onSessionDraftChange?.(nextDraft)
+        }
+    }, [onSessionDraftChange, sessionDraft, test])
 
     const commitDraft = React.useCallback(() => {
         const current = latestDraftRef.current
@@ -139,6 +165,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                 <div className="test-editor">
                     <TestEditorHero
                         testName={draftTest.name}
+                        testAlias={testAlias}
                         summaryItems={summaryItems}
                         showSharedLibrary={showSharedLibrary}
                         sharedStepsCount={sharedSteps.length}
@@ -146,6 +173,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                         onToggleSharedLibrary={() => setShowSharedLibrary((current) => !current)}
                         onToggleParseZephyrHtmlParts={(value) => applyDraftPatch({ meta: setZephyrHtmlPartsEnabled(draftTest.meta, value) })}
                         onChangeName={(value) => applyDraftPatch({ name: value })}
+                        onChangeAlias={(value) => applyDraftPatch({ meta: setTestAlias(draftTest.meta, value) })}
                     />
 
                     <StepsPanel
@@ -232,4 +260,18 @@ function areEditableTestFieldsEqual(left: TestCase, right: TestCase) {
         right.attachments ?? [],
         right.links ?? [],
     ])
+}
+
+function setTestAlias(meta: TestCase['meta'], alias: string) {
+    const normalizedAlias = normalizeNodeAlias(alias)
+    const nextMeta = {
+        ...(meta ?? { tags: [], params: {} }),
+        tags: [...(meta?.tags ?? [])],
+        params: { ...(meta?.params ?? {}) },
+    }
+
+    if (normalizedAlias) nextMeta.params[NODE_ALIAS_PARAM_KEY] = normalizedAlias
+    else delete nextMeta.params[NODE_ALIAS_PARAM_KEY]
+
+    return nextMeta
 }

@@ -3,6 +3,9 @@ const { contextBridge, ipcRenderer } = require('electron')
 const CHANNELS = {
     APP_GET_INFO: 'APP_GET_INFO',
     APP_CHECK_FOR_UPDATES: 'APP_CHECK_FOR_UPDATES',
+    APP_LIST_LOCAL_TREE_ICONS: 'APP_LIST_LOCAL_TREE_ICONS',
+    APP_IMPORT_LOCAL_TREE_ICON: 'APP_IMPORT_LOCAL_TREE_ICON',
+    APP_DELETE_LOCAL_TREE_ICON: 'APP_DELETE_LOCAL_TREE_ICON',
     LOAD_STATE: 'LOAD_STATE',
     SAVE_STATE: 'SAVE_STATE',
     LOAD_SETTINGS: 'LOAD_SETTINGS',
@@ -22,6 +25,9 @@ const CHANNELS = {
 contextBridge.exposeInMainWorld('api', {
     getAppInfo: () => ipcRenderer.invoke(CHANNELS.APP_GET_INFO),
     checkForUpdates: () => ipcRenderer.invoke(CHANNELS.APP_CHECK_FOR_UPDATES),
+    listLocalTreeIcons: () => ipcRenderer.invoke(CHANNELS.APP_LIST_LOCAL_TREE_ICONS),
+    importLocalTreeIcon: () => ipcRenderer.invoke(CHANNELS.APP_IMPORT_LOCAL_TREE_ICON),
+    deleteLocalTreeIcon: (iconKey) => ipcRenderer.invoke(CHANNELS.APP_DELETE_LOCAL_TREE_ICON, { iconKey }),
     loadState: (fallback) => ipcRenderer.invoke(CHANNELS.LOAD_STATE, fallback),
     saveState: (state) => ipcRenderer.invoke(CHANNELS.SAVE_STATE, state),
     loadSettings: () => ipcRenderer.invoke(CHANNELS.LOAD_SETTINGS),

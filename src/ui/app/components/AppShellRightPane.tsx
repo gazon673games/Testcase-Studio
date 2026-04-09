@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { SharedStep, Step, TestCase } from '@core/domain'
+import type { Folder, SharedStep, Step, TestCase } from '@core/domain'
 import type { SelectionSummary } from '../model/selectionSummary'
 import { ScopeOverviewPanel } from './ScopeOverviewPanel'
 
@@ -20,6 +20,7 @@ type PublishSelection = {
 type Props = {
     editorRef: React.MutableRefObject<TestEditorHandle | null>
     selectedTest: TestCase | null
+    selectedFolder: Folder | null
     allTests: TestCase[]
     sharedSteps: SharedStep[]
     focusStepId: string | null
@@ -43,11 +44,14 @@ type Props = {
     onOpenPublish(): void
     onAddFolder(): void
     onAddTest(): void
+    onRenameFolder(folderId: string, value: string): void
+    onSetFolderAlias(folderId: string, value: string | null): void
 }
 
 export function AppShellRightPane({
     editorRef,
     selectedTest,
+    selectedFolder,
     allTests,
     sharedSteps,
     focusStepId,
@@ -68,13 +72,28 @@ export function AppShellRightPane({
     onOpenPublish,
     onAddFolder,
     onAddTest,
+    onRenameFolder,
+    onSetFolderAlias,
 }: Props) {
+    const sessionDraftsRef = React.useRef(new Map<string, TestCase>())
+
+    React.useEffect(() => {
+        const existingIds = new Set(allTests.map((test) => test.id))
+        for (const id of [...sessionDraftsRef.current.keys()]) {
+            if (!existingIds.has(id)) sessionDraftsRef.current.delete(id)
+        }
+    }, [allTests])
+
     if (selectedTest) {
         return (
             <React.Suspense fallback={<div className="app-shell__editor-loading">{loadingEditorLabel}</div>}>
                 <TestEditor
                     ref={editorRef}
                     test={selectedTest}
+                    sessionDraft={sessionDraftsRef.current.get(selectedTest.id) ?? null}
+                    onSessionDraftChange={(draft) => {
+                        sessionDraftsRef.current.set(selectedTest.id, structuredClone(draft))
+                    }}
                     onChange={(patch) => onUpdateTest(selectedTest.id, patch)}
                     focusStepId={focusStepId}
                     allTests={allTests}
@@ -94,6 +113,7 @@ export function AppShellRightPane({
 
     return (
         <ScopeOverviewPanel
+            selectedFolder={selectedFolder}
             summary={selectionSummary}
             importDestinationLabel={importDestination.label}
             publishSelectionLabel={publishSelection.label}
@@ -102,6 +122,8 @@ export function AppShellRightPane({
             onOpenPublish={onOpenPublish}
             onAddFolder={onAddFolder}
             onAddTest={onAddTest}
+            onRenameFolder={onRenameFolder}
+            onSetFolderAlias={onSetFolderAlias}
         />
     )
 }

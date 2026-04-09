@@ -184,6 +184,41 @@
     font-size: 13px;
 }
 
+.scope-overview__fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(240px, 1fr);
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.scope-overview__field {
+    display: grid;
+    gap: 6px;
+}
+
+.scope-overview__label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.scope-overview__input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    box-sizing: border-box;
+    background: var(--bg-soft);
+    color: var(--text);
+    outline: none;
+}
+
+.scope-overview__input:focus {
+    border-color: var(--accent-border);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
 .scope-overview__stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -433,4 +468,10 @@
 .sync-center__button.is-disabled {
     opacity: 0.45;
     cursor: default;
+}
+
+@media (max-width: 760px) {
+    .scope-overview__fields {
+        grid-template-columns: 1fr;
+    }
 }

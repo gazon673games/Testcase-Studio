@@ -6,6 +6,8 @@ import {
     deleteNodeById,
     moveWorkspaceNode,
     renameWorkspaceNode,
+    setNodeAlias,
+    setNodeIcon,
 } from './commands'
 import { findNode, findParentFolder, isFolder } from '@core/tree'
 import { makeWorkspace } from './testSupport'
@@ -84,5 +86,49 @@ describe('workspace structure', () => {
         expect(result.moved).toBe(true)
         expect(result.selectedId).toBe(rootTest.id)
         expect(findParentFolder(result.nextState.root, rootTest.id)?.id).toBe(childFolder.id)
+    })
+
+    it('stores and clears a local icon for both tests and folders', () => {
+        const { state, rootTest, childFolder } = makeWorkspace()
+
+        const testAssigned = setNodeIcon(state, rootTest.id, 'rocket.png')
+        const testAssignedNode = findNode(testAssigned?.nextState.root ?? state.root, rootTest.id)
+        const testCleared = setNodeIcon(testAssigned?.nextState ?? state, rootTest.id, null)
+        const testClearedNode = findNode(testCleared?.nextState.root ?? state.root, rootTest.id)
+        const folderAssigned = setNodeIcon(state, childFolder.id, 'folder.png')
+        const folderAssignedNode = findNode(folderAssigned?.nextState.root ?? state.root, childFolder.id)
+        const folderCleared = setNodeIcon(folderAssigned?.nextState ?? state, childFolder.id, null)
+        const folderClearedNode = findNode(folderCleared?.nextState.root ?? state.root, childFolder.id)
+
+        expect(testAssigned?.dirtyIds).toEqual([rootTest.id])
+        expect(testAssignedNode && !isFolder(testAssignedNode) ? testAssignedNode.meta?.params?.['ui.icon'] : undefined).toBe('rocket.png')
+        expect(testCleared?.dirtyIds).toEqual([rootTest.id])
+        expect(testClearedNode && !isFolder(testClearedNode) ? testClearedNode.meta?.params?.['ui.icon'] : undefined).toBeUndefined()
+        expect(folderAssigned?.dirtyIds).toBeUndefined()
+        expect(folderAssignedNode && isFolder(folderAssignedNode) ? folderAssignedNode.iconKey : undefined).toBe('folder.png')
+        expect(folderCleared?.dirtyIds).toBeUndefined()
+        expect(folderClearedNode && isFolder(folderClearedNode) ? folderClearedNode.iconKey : undefined).toBeUndefined()
+    })
+
+    it('stores and clears a local alias for both tests and folders', () => {
+        const { state, rootTest, childFolder } = makeWorkspace()
+
+        const testAssigned = setNodeAlias(state, rootTest.id, 'Smoke payment')
+        const testAssignedNode = findNode(testAssigned?.nextState.root ?? state.root, rootTest.id)
+        const testCleared = setNodeAlias(testAssigned?.nextState ?? state, rootTest.id, null)
+        const testClearedNode = findNode(testCleared?.nextState.root ?? state.root, rootTest.id)
+        const folderAssigned = setNodeAlias(state, childFolder.id, 'Платежи')
+        const folderAssignedNode = findNode(folderAssigned?.nextState.root ?? state.root, childFolder.id)
+        const folderCleared = setNodeAlias(folderAssigned?.nextState ?? state, childFolder.id, null)
+        const folderClearedNode = findNode(folderCleared?.nextState.root ?? state.root, childFolder.id)
+
+        expect(testAssigned?.dirtyIds).toEqual([rootTest.id])
+        expect(testAssignedNode && !isFolder(testAssignedNode) ? testAssignedNode.meta?.params?.['ui.alias'] : undefined).toBe('Smoke payment')
+        expect(testCleared?.dirtyIds).toEqual([rootTest.id])
+        expect(testClearedNode && !isFolder(testClearedNode) ? testClearedNode.meta?.params?.['ui.alias'] : undefined).toBeUndefined()
+        expect(folderAssigned?.dirtyIds).toBeUndefined()
+        expect(folderAssignedNode && isFolder(folderAssignedNode) ? folderAssignedNode.alias : undefined).toBe('Платежи')
+        expect(folderCleared?.dirtyIds).toBeUndefined()
+        expect(folderClearedNode && isFolder(folderClearedNode) ? folderClearedNode.alias : undefined).toBeUndefined()
     })
 })

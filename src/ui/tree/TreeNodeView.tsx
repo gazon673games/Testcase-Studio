@@ -1,5 +1,7 @@
 import * as React from 'react'
-import { isFolder } from '@core/tree'
+import { isFolder, mapTests } from '@core/tree'
+import { getStoredFolderAlias, getStoredTestAlias } from '@shared/treeAliases'
+import type { LocalTreeIconOption } from '@shared/treeIcons'
 import type { EditingState, TreeKeyboardHandler, TreeTranslate, ViewNode } from './types'
 import { ChevronIcon, makeNodeKey, renderSyncStatusBadge } from './utils'
 import { TreeStepsList } from './TreeStepsList'
@@ -41,6 +43,7 @@ export type TreeNodeViewProps = {
     onCreateTestAt(parentId: string): void
     onRename(id: string, name: string): void
     onDelete(id: string): void
+    aliasMode: boolean
     expanded: Set<string>
     onToggleExpanded(id: string): void
     onContextOpen(event: React.MouseEvent, id: string, isFolder: boolean, name: string): void
@@ -54,6 +57,7 @@ export type TreeNodeViewProps = {
     syncStatusById: Map<string, 'dirty'>
     testHeadlineById: Map<string, string>
     stepLabelByKey: Map<string, string>
+    nodeIconById: Map<string, LocalTreeIconOption | null>
 }
 
 export function TreeNodeView(props: TreeNodeViewProps) {
@@ -68,6 +72,7 @@ export function TreeNodeView(props: TreeNodeViewProps) {
         registerRowRef,
         onSelect,
         onMove,
+        aliasMode,
         expanded,
         onToggleExpanded,
         editing,
@@ -79,6 +84,7 @@ export function TreeNodeView(props: TreeNodeViewProps) {
         syncStatusById,
         testHeadlineById,
         stepLabelByKey,
+        nodeIconById,
     } = props
 
     const id = node.id
@@ -92,11 +98,14 @@ export function TreeNodeView(props: TreeNodeViewProps) {
     const inputRef = React.useRef<HTMLInputElement | null>(null)
     const [hoverDrop, setHoverDrop] = React.useState(false)
     const hasChildren = isDir ? node.children.length > 0 : node.steps.length > 0
-    const itemCount = isDir ? node.children.length : node.steps.length
+    const storedAlias = isDir ? getStoredFolderAlias(node) : getStoredTestAlias(node.meta)
+    const displayName = aliasMode ? (storedAlias || node.name) : node.name
+    const itemCount = isDir ? mapTests(node).length : node.steps.length
     const itemLabel = isDir
-        ? t('tree.itemCount', { count: itemCount })
+        ? t('tree.testsCount', { count: itemCount })
         : t('tree.stepCount', { count: itemCount })
     const syncStatus = syncStatusById.get(id) ?? null
+    const customNodeIcon = nodeIconById.get(id) ?? null
     const item = {
         key,
         kind: isDir ? 'folder' as const : 'test' as const,
@@ -165,7 +174,7 @@ export function TreeNodeView(props: TreeNodeViewProps) {
                     focused ? 'is-focused' : '',
                 ].filter(Boolean).join(' ')}
                 style={{ ['--tree-offset' as string]: `${offset}px` }}
-                title={isDir ? t('tree.folderTitle') : t('tree.caseTitle')}
+                title={displayName}
             >
                 <button
                     type="button"
@@ -185,13 +194,13 @@ export function TreeNodeView(props: TreeNodeViewProps) {
                     title={isDir ? t('tree.folder') : t('tree.case')}
                     className={`tree-kind-icon ${isDir ? 'tree-kind-icon--folder' : 'tree-kind-icon--test'}`}
                 >
-                    {isDir ? <FolderKindIcon /> : <TestKindIcon />}
+                    {customNodeIcon ? <img className="tree-kind-icon__img" src={customNodeIcon.dataUrl} alt="" /> : isDir ? <FolderKindIcon /> : <TestKindIcon />}
                 </span>
 
                 {!isEditing ? (
                     <>
                             <div className="tree-text-wrap">
-                            <div className="tree-name">{node.name}</div>
+                            <div className="tree-name">{displayName}</div>
                             {!isDir && (
                                 <div className="tree-secondary">
                                     {testHeadlineById.get(id) ?? t('tree.noSteps')}
@@ -202,7 +211,7 @@ export function TreeNodeView(props: TreeNodeViewProps) {
                         <span className="tree-meta-pill">{itemLabel}</span>
                         <button
                             type="button"
-                            aria-label={t('tree.openActions', { name: node.name })}
+                            aria-label={t('tree.openActions', { name: displayName })}
                             aria-haspopup="menu"
                             onClick={(event) => props.onMenuButtonOpen(event, id, isDir, node.name)}
                             className="tree-row-menu-button"
@@ -248,6 +257,7 @@ export function TreeNodeView(props: TreeNodeViewProps) {
                                     onCreateTestAt={props.onCreateTestAt}
                                     onRename={props.onRename}
                                     onDelete={props.onDelete}
+                                    aliasMode={aliasMode}
                                     expanded={expanded}
                                     onToggleExpanded={props.onToggleExpanded}
                                     onContextOpen={props.onContextOpen}
@@ -261,6 +271,7 @@ export function TreeNodeView(props: TreeNodeViewProps) {
                                     syncStatusById={syncStatusById}
                                     testHeadlineById={testHeadlineById}
                                     stepLabelByKey={stepLabelByKey}
+                                    nodeIconById={nodeIconById}
                                 />
                             ))}
                         </div>
