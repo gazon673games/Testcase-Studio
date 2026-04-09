@@ -50,8 +50,8 @@ export function TreeMenu({
                     <TreeMenuItem label={t('tree.newCase')} onClick={() => { onNewTest(); onClose() }} />
                 </>
             )}
-            {!isFolder && <TreeMenuItem ref={firstItemRef} label={t('tree.rename')} disabled={isRoot} onClick={() => { onRename(); onClose() }} />}
-            {isFolder && <TreeMenuItem label={t('tree.rename')} disabled={isRoot} onClick={() => { onRename(); onClose() }} />}
+            {!isFolder && <TreeMenuItem ref={firstItemRef} label={t('tree.rename')} onClick={() => { onRename(); onClose() }} />}
+            {isFolder && <TreeMenuItem label={t('tree.rename')} onClick={() => { onRename(); onClose() }} />}
             <TreeMenuItem label={t('tree.delete')} disabled={isRoot} danger onClick={() => { onDelete(); onClose() }} />
         </div>
     )

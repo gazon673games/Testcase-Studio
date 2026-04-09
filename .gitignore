@@ -37,3 +37,6 @@ tests_repo/.publish-logs/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local app icon overrides
+.local-assets/

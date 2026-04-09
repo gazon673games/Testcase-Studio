@@ -1,6 +1,8 @@
 import * as React from 'react'
 import { beautifyZephyrJsonBlocksInStep, inspectZephyrJsonBeautifyStep } from '@core/zephyrHtmlParts'
+import { buildReferenceStepsFromTest, canReferenceTestStep } from '@core/referenceSteps'
 import { StepRow } from './StepRow'
+import { InsertStepsFromTestModal } from './InsertStepsFromTestModal'
 import type { StepsPanelProps } from './stepsPanelTypes'
 import { useStepsPanelController } from './useStepsPanelController'
 import { useUiPreferences } from '../../../preferences'
@@ -24,7 +26,14 @@ export default function StepsPanel({
     onInsertText,
 }: StepsPanelProps) {
     const { t, jsonBeautifyTolerant } = useUiPreferences()
+    const [insertFromTestOpen, setInsertFromTestOpen] = React.useState(false)
     const sharedById = React.useMemo(() => new Map(sharedSteps.map((item) => [item.id, item] as const)), [sharedSteps])
+    const sourceTests = React.useMemo(
+        () => owner.type === 'test'
+            ? allTests.filter((test) => test.id !== owner.id && test.steps.some(canReferenceTestStep))
+            : [],
+        [allTests, owner.id, owner.type]
+    )
 
     const {
         open,
@@ -56,6 +65,18 @@ export default function StepsPanel({
         previewMode,
     })
 
+    const handleInsertFromTest = React.useCallback((sourceTestId: string, stepIds: string[]) => {
+        const source = allTests.find((test) => test.id === sourceTestId)
+        if (!source) return
+
+        const inserted = buildReferenceStepsFromTest(source, stepIds)
+        if (!inserted.length) return
+
+        onChange([...steps, ...inserted])
+        setOpen(true)
+        setInsertFromTestOpen(false)
+    }, [allTests, onChange, steps])
+
     return (
         <>
             <div className="section-header" data-spoiler data-nopress>
@@ -78,6 +99,17 @@ export default function StepsPanel({
                     <button type="button" onClick={() => addStepAfter(Math.max(steps.length - 1, -1))} className="btn-small">
                         {t('steps.add')}
                     </button>
+                    {owner.type === 'test' && (
+                        <button
+                            type="button"
+                            onClick={() => setInsertFromTestOpen(true)}
+                            className="btn-small"
+                            disabled={sourceTests.length === 0}
+                            title={sourceTests.length === 0 ? t('steps.insertFromTestNoTests') : t('steps.addFromTest')}
+                        >
+                            {t('steps.addFromTest')}
+                        </button>
+                    )}
                     {onApply && (
                         <button type="button" onClick={onApply} className="btn-small">
                             {t('steps.apply')}
@@ -95,6 +127,16 @@ export default function StepsPanel({
                             <button type="button" className="btn-small" onClick={() => addStepAfter(-1)}>
                                 {t('steps.addFirst')}
                             </button>
+                            {owner.type === 'test' && (
+                                <button
+                                    type="button"
+                                    className="btn-small"
+                                    onClick={() => setInsertFromTestOpen(true)}
+                                    disabled={sourceTests.length === 0}
+                                >
+                                    {t('steps.addFromTest')}
+                                </button>
+                            )}
                         </div>
                     ) : (
                         steps.map((step, index) => {
@@ -170,6 +212,17 @@ export default function StepsPanel({
                         })
                     )}
                 </div>
+            )}
+
+            {owner.type === 'test' && (
+                <InsertStepsFromTestModal
+                    open={insertFromTestOpen}
+                    ownerTestId={owner.id}
+                    allTests={allTests}
+                    resolveRefs={resolveRefs}
+                    onClose={() => setInsertFromTestOpen(false)}
+                    onApply={handleInsertFromTest}
+                />
             )}
         </>
     )

@@ -47,6 +47,15 @@ describe('workspace structure', () => {
         expect(findNode(testRename?.nextState.root ?? state.root, rootTest.id)?.name).toBe('Root test v2')
     })
 
+    it('allows renaming the root folder without dirtying tests', () => {
+        const { state } = makeWorkspace()
+
+        const result = renameWorkspaceNode(state, state.root.id, 'Workspace Alpha')
+
+        expect(result?.dirtyIds).toBeUndefined()
+        expect(result?.nextState.root.name).toBe('Workspace Alpha')
+    })
+
     it('falls back to the root selection when the selected node is deleted', () => {
         const { state, folderTest } = makeWorkspace()
 

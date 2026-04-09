@@ -220,7 +220,7 @@ export function Tree(props: Props) {
                 return
             }
 
-            if (event.key === 'F2' && item.kind !== 'step' && item.id !== props.root.id) {
+            if (event.key === 'F2' && item.kind !== 'step') {
                 event.preventDefault()
                 setEditing({ id: item.id, value: item.name })
             }

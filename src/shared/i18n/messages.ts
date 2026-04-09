@@ -1166,3 +1166,43 @@ Object.assign(messages.en, {
     'app.updateOpenRelease': 'Open release',
     'app.updateDismiss': 'Later',
 })
+
+Object.assign(messages.ru, {
+    'steps.addFromTest': '\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0448\u0430\u0433\u0438 \u0438\u0437 \u0442\u0435\u0441\u0442\u0430',
+    'steps.insertFromTestTitle': '\u0412\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u0448\u0430\u0433\u0438 \u0438\u0437 \u0442\u0435\u0441\u0442\u0430',
+    'steps.insertFromTestSubtitle': '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0438\u0441\u0445\u043e\u0434\u043d\u044b\u0439 \u0442\u0435\u0441\u0442 \u0438 \u043e\u0442\u043c\u0435\u0442\u044c\u0442\u0435 \u0448\u0430\u0433\u0438, \u043a\u043e\u0442\u043e\u0440\u044b\u0435 \u043d\u0443\u0436\u043d\u043e \u0432\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0430\u043c\u0438.',
+    'steps.insertFromTestSearch': '\u041f\u043e\u0438\u0441\u043a \u0442\u0435\u0441\u0442\u0430',
+    'steps.insertFromTestSearchPlaceholder': '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0438\u043b\u0438 Zephyr ID',
+    'steps.insertFromTestStepsCount': '\u0448\u0430\u0433\u043e\u0432: {count}',
+    'steps.insertFromTestSource': '\u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a',
+    'steps.insertFromTestSteps': '\u0414\u043e\u0441\u0442\u0443\u043f\u043d\u043e \u0448\u0430\u0433\u043e\u0432',
+    'steps.insertFromTestSelected': '\u0412\u044b\u0431\u0440\u0430\u043d\u043e',
+    'steps.insertFromTestChooseHint': '\u041e\u0442\u043c\u0435\u0442\u044c\u0442\u0435 \u0448\u0430\u0433\u0438, \u043a\u043e\u0442\u043e\u0440\u044b\u0435 \u043d\u0443\u0436\u043d\u043e \u0432\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u0432 \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u0442\u0435\u0441\u0442 \u0447\u0435\u0440\u0435\u0437 ref-\u0441\u0441\u044b\u043b\u043a\u0438.',
+    'steps.insertFromTestSelectAll': '\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0432\u0441\u0435',
+    'steps.insertFromTestClear': '\u0421\u043d\u044f\u0442\u044c \u0432\u044b\u0431\u043e\u0440',
+    'steps.insertFromTestApply': '\u0412\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u0448\u0430\u0433\u0438',
+    'steps.insertFromTestSelectSource': '\u0421\u043b\u0435\u0432\u0430 \u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0442\u0435\u0441\u0442-\u0438\u0441\u0442\u043e\u0447\u043d\u0438\u043a.',
+    'steps.insertFromTestNoTests': '\u041d\u0435\u0442 \u0434\u0440\u0443\u0433\u0438\u0445 \u0442\u0435\u0441\u0442\u043e\u0432 \u0441 \u0448\u0430\u0433\u0430\u043c\u0438, \u043a\u043e\u0442\u043e\u0440\u044b\u0435 \u043c\u043e\u0436\u043d\u043e \u0432\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0430\u043c\u0438.',
+    'steps.insertFromTestNoMatches': '\u041f\u043e \u044d\u0442\u043e\u043c\u0443 \u043f\u043e\u0438\u0441\u043a\u0443 \u0442\u0435\u0441\u0442\u043e\u0432 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e.',
+    'steps.insertFromTestNoReferenceableSteps': '\u0412 \u044d\u0442\u043e\u043c \u0442\u0435\u0441\u0442\u0435 \u043d\u0435\u0442 \u0448\u0430\u0433\u043e\u0432 \u0441 \u0442\u0435\u043a\u0441\u0442\u043e\u043c, \u043a\u043e\u0442\u043e\u0440\u044b\u0439 \u043c\u043e\u0436\u043d\u043e \u0432\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u0447\u0435\u0440\u0435\u0437 ref.',
+})
+
+Object.assign(messages.en, {
+    'steps.addFromTest': 'Add steps from test',
+    'steps.insertFromTestTitle': 'Insert steps from test',
+    'steps.insertFromTestSubtitle': 'Choose a source test and mark the steps that should be inserted as refs.',
+    'steps.insertFromTestSearch': 'Find a test',
+    'steps.insertFromTestSearchPlaceholder': 'Name or Zephyr ID',
+    'steps.insertFromTestStepsCount': 'steps: {count}',
+    'steps.insertFromTestSource': 'Source',
+    'steps.insertFromTestSteps': 'Available steps',
+    'steps.insertFromTestSelected': 'Selected',
+    'steps.insertFromTestChooseHint': 'Pick the steps that should be inserted into the current test as ref-based steps.',
+    'steps.insertFromTestSelectAll': 'Select all',
+    'steps.insertFromTestClear': 'Clear',
+    'steps.insertFromTestApply': 'Insert steps',
+    'steps.insertFromTestSelectSource': 'Choose a source test on the left.',
+    'steps.insertFromTestNoTests': 'There are no other tests with referenceable steps.',
+    'steps.insertFromTestNoMatches': 'No tests match this search.',
+    'steps.insertFromTestNoReferenceableSteps': 'This test has no step text that can be inserted through refs.',
+})
