@@ -73,6 +73,13 @@ export function normalizeImageWikiRefs(src: string, resolveRefs?: (s: string) =>
     })
 }
 
+export function renderPreviewContent(source: string, resolveRefs?: (source: string) => string) {
+    const resolved = typeof resolveRefs === 'function' ? resolveRefs(source ?? '') : (source ?? '')
+    return looksLikeHtml(resolved)
+        ? sanitizeHtml(resolved)
+        : mdToHtml(normalizeImageWikiRefs(resolved, resolveRefs))
+}
+
 const ALLOW_TAGS = new Set([
     'strong', 'b', 'em', 'i', 'u', 'code', 'pre', 'br', 'p', 'div', 'span',
     'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'img', 'hr',

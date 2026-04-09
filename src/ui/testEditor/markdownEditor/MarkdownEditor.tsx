@@ -2,37 +2,19 @@ import * as React from 'react'
 import { AutocompleteBox } from './AutocompleteBox'
 import { MarkdownEditorToolbar } from './MarkdownEditorToolbar'
 import { MarkdownRefStrip } from './MarkdownRefStrip'
-import {
-    INTERNAL_RICH_CLIPBOARD_TYPE,
-    cacheSelectedRichClipboard,
-    readClipboardRichHtmlPayload,
-} from './richClipboard'
-import {
-    insertHtmlAtSelection,
-    plainTextToHtml,
-    readSelectionOffsets,
-    restoreSelectionOffsets,
-    type RichTextSelectionOffsets,
-} from './richTextDom'
+import { readClipboardRichHtmlPayload } from './richClipboard'
+import { readSelectionOffsets, restoreSelectionOffsets, type RichTextSelectionOffsets } from './richTextDom'
 import type { MarkdownEditorProps } from './types'
+import { useMarkdownEditorLayout } from './useMarkdownEditorLayout'
 import { useMarkdownAutocomplete } from './useMarkdownAutocomplete'
 import { useMarkdownEditorApi } from './useMarkdownEditorApi'
+import { useRichPreviewEditing } from './useRichPreviewEditing'
 import { useRichMarkdownAutocomplete } from './useRichMarkdownAutocomplete'
-import { escapeHtml, looksLikeHtml, mdToHtml, normalizeImageWikiRefs, sanitizeHtml } from './previewRendering'
+import { looksLikeHtml, renderPreviewContent, sanitizeHtml } from './previewRendering'
 import './MarkdownEditor.css'
 import { useUiPreferences } from '../../preferences'
 
 export type { MarkdownEditorApi } from './types'
-
-function renderPreviewContent(
-    source: string,
-    resolveRefs?: (source: string) => string
-) {
-    const resolved = typeof resolveRefs === 'function' ? resolveRefs(source ?? '') : (source ?? '')
-    return looksLikeHtml(resolved)
-        ? sanitizeHtml(resolved)
-        : mdToHtml(normalizeImageWikiRefs(resolved, resolveRefs))
-}
 
 export function MarkdownEditor(props: MarkdownEditorProps) {
     const { t } = useUiPreferences()
@@ -81,40 +63,16 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         taRef: textareaRef,
         apiRef,
     })
-
-    const syncEditorLayout = React.useCallback(() => {
-        const measureElement = previewMeasureRef.current
-        if (measureElement) measureElement.offsetHeight
-
-        if (isRichPreviewEditing && richEditorRef.current) {
-            const richElement = richEditorRef.current
-            richElement.style.height = 'auto'
-            const richHeight = richElement.scrollHeight
-            const previewHeight = measureElement?.scrollHeight ?? 0
-            const targetHeight = Math.max(richHeight, previewHeight)
-            richElement.style.height = `${targetHeight}px`
-            richElement.style.overflow = 'hidden'
-            return
-        }
-
-        if (!textareaRef.current) return
-
-        const nextTextarea = textareaRef.current
-        nextTextarea.style.height = 'auto'
-        if (previewRef.current) previewRef.current.style.height = 'auto'
-
-        const textHeight = nextTextarea.scrollHeight
-        const previewHeight = measureElement?.scrollHeight ?? 0
-        const targetHeight = preview ? Math.max(textHeight, previewHeight) : textHeight
-
-        nextTextarea.style.overflow = 'hidden'
-        nextTextarea.style.height = `${targetHeight}px`
-
-        if (previewRef.current) {
-            previewRef.current.style.height = `${targetHeight}px`
-            previewRef.current.style.overflow = 'hidden'
-        }
-    }, [isRichPreviewEditing, preview])
+    const { syncEditorLayout } = useMarkdownEditorLayout({
+        preview,
+        isRichPreviewEditing,
+        previewHtml,
+        value,
+        textareaRef,
+        previewRef,
+        previewMeasureRef,
+        richEditorRef,
+    })
 
     const syncRichEditorValue = React.useCallback(() => {
         const editorElement = richEditorRef.current
@@ -133,66 +91,6 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         onChange(sanitizedHtml)
         syncEditorLayout()
     }, [onChange, syncEditorLayout])
-
-    const execRichCommand = React.useCallback((command: string, commandValue?: string) => {
-        const editorElement = richEditorRef.current
-        if (!editorElement) return
-
-        editorElement.focus()
-        try {
-            document.execCommand(command, false, commandValue)
-        } catch {
-            return
-        }
-
-        syncRichEditorValue()
-    }, [syncRichEditorValue])
-
-    const doRichWrap = React.useCallback((before: string, after: string) => {
-        const editorElement = richEditorRef.current
-        if (!editorElement) return
-
-        if (before === '**' && after === '**') {
-            execRichCommand('bold')
-            return
-        }
-        if (before === '*' && after === '*') {
-            execRichCommand('italic')
-            return
-        }
-        if (before === '__' && after === '__') {
-            execRichCommand('underline')
-            return
-        }
-        if (before === '`' && after === '`') {
-            const selectedText = window.getSelection()?.toString() ?? ''
-            editorElement.focus()
-            if (insertHtmlAtSelection(editorElement, `<code>${escapeHtml(selectedText)}</code>`)) {
-                syncRichEditorValue()
-            }
-            return
-        }
-        if (before === '[' && after === '](url)') {
-            execRichCommand('createLink', 'url')
-            return
-        }
-        if (before === '![' && after === '](image.png)') {
-            editorElement.focus()
-            if (insertHtmlAtSelection(editorElement, '<img src="image.png" alt="" />')) {
-                syncRichEditorValue()
-            }
-        }
-    }, [execRichCommand, syncRichEditorValue])
-
-    const doRichInsertPrefix = React.useCallback((prefix: string) => {
-        if (prefix === '-') {
-            execRichCommand('insertUnorderedList')
-            return
-        }
-        if (prefix === '1.') {
-            execRichCommand('insertOrderedList')
-        }
-    }, [execRichCommand])
 
     const {
         open: plainAutocompleteOpen,
@@ -235,6 +133,28 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         syncEditorValue: syncRichEditorValue,
     })
 
+    const {
+        wrapRichSelection,
+        insertRichPrefix,
+        richEditorHandlers,
+    } = useRichPreviewEditing({
+        value,
+        previewHtml,
+        isRichPreviewEditing,
+        isActive,
+        syncRichEditorValue,
+        onChange,
+        onActivateApi,
+        setIsActive,
+        syncEditorLayout,
+        closePlainAutocomplete,
+        closeRichAutocomplete,
+        refreshRichAutocomplete,
+        richEditorRef,
+        richHtmlRef,
+        richSelectionRef,
+    })
+
     React.useEffect(() => {
         if (!preview || editInPreview) return
         textareaRef.current?.blur()
@@ -247,92 +167,6 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     }, [closeRichAutocomplete, isRichPreviewEditing])
 
     const refs = React.useMemo(() => (inspectRefs ? inspectRefs(value) : []), [inspectRefs, value])
-
-    React.useLayoutEffect(() => {
-        syncEditorLayout()
-        const frame = requestAnimationFrame(() => syncEditorLayout())
-        return () => cancelAnimationFrame(frame)
-    }, [isRichPreviewEditing, preview, previewHtml, syncEditorLayout, value])
-
-    React.useLayoutEffect(() => {
-        if (!isRichPreviewEditing || !richEditorRef.current) return
-
-        const editorElement = richEditorRef.current
-        const selection = document.activeElement === editorElement
-            ? (readSelectionOffsets(editorElement) ?? richSelectionRef.current)
-            : null
-
-        if (previewHtml === richHtmlRef.current) return
-
-        if (editorElement.innerHTML !== previewHtml) {
-            editorElement.innerHTML = previewHtml
-        }
-
-        richHtmlRef.current = previewHtml
-        restoreSelectionOffsets(editorElement, selection)
-        syncEditorLayout()
-    }, [isRichPreviewEditing, previewHtml, syncEditorLayout])
-
-    React.useEffect(() => {
-        if (!isRichPreviewEditing || !isActive) return
-
-        const frame = requestAnimationFrame(() => {
-            const editorElement = richEditorRef.current
-            if (!editorElement) return
-
-            editorElement.focus()
-            if (!editorElement.textContent?.trim()) return
-
-            if (!richSelectionRef.current) {
-                const end = editorElement.innerText.length
-                restoreSelectionOffsets(editorElement, { start: end, end })
-                richSelectionRef.current = { start: end, end }
-            }
-
-            syncEditorLayout()
-        })
-
-        return () => cancelAnimationFrame(frame)
-    }, [isActive, isRichPreviewEditing, syncEditorLayout, value])
-
-    React.useEffect(() => {
-        if (isRichPreviewEditing) return
-        richHtmlRef.current = ''
-        richSelectionRef.current = null
-    }, [isRichPreviewEditing])
-
-    React.useEffect(() => {
-        if (!isRichPreviewEditing) return
-
-        const onSelectionChange = () => {
-            const editorElement = richEditorRef.current
-            if (!editorElement) return
-            const offsets = readSelectionOffsets(editorElement)
-            if (offsets) richSelectionRef.current = offsets
-        }
-
-        document.addEventListener('selectionchange', onSelectionChange)
-        return () => document.removeEventListener('selectionchange', onSelectionChange)
-    }, [isRichPreviewEditing])
-
-    React.useEffect(() => {
-        const handleResize = () => syncEditorLayout()
-        window.addEventListener('resize', handleResize)
-        return () => window.removeEventListener('resize', handleResize)
-    }, [syncEditorLayout])
-
-    React.useEffect(() => {
-        if (typeof ResizeObserver === 'undefined') return
-
-        const observer = new ResizeObserver(() => syncEditorLayout())
-        const nodes = [previewMeasureRef.current, previewRef.current, richEditorRef.current].filter(Boolean)
-
-        for (const node of nodes) {
-            observer.observe(node as Element)
-        }
-
-        return () => observer.disconnect()
-    }, [preview, syncEditorLayout])
 
     function handleTextareaChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
         onChange(event.target.value)
@@ -371,8 +205,8 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                 visible={!hideToolbar && isActive}
                 preview={preview}
                 t={t}
-                onWrap={isRichPreviewEditing ? doRichWrap : doWrap}
-                onInsertPrefix={isRichPreviewEditing ? doRichInsertPrefix : doInsertPrefix}
+                onWrap={isRichPreviewEditing ? wrapRichSelection : doWrap}
+                onInsertPrefix={isRichPreviewEditing ? insertRichPrefix : doInsertPrefix}
                 onTogglePreview={onTogglePreview}
             />
 
@@ -424,74 +258,14 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                         suppressContentEditableWarning
                         spellCheck={false}
                         data-placeholder={placeholder ?? ''}
-                        onFocus={() => {
-                            setIsActive(true)
-                            onActivateApi?.(null)
-                            closePlainAutocomplete()
-                            if (!richEditorRef.current) return
-                            richSelectionRef.current = readSelectionOffsets(richEditorRef.current) ?? richSelectionRef.current
-                            refreshRichAutocomplete()
-                        }}
-                        onBlur={() => {
-                            setIsActive(false)
-                            onActivateApi?.(null)
-                            closePlainAutocomplete()
-                            closeRichAutocomplete()
-
-                            const editorElement = richEditorRef.current
-                            if (!editorElement) return
-
-                            const sanitizedHtml = sanitizeHtml(editorElement.innerHTML)
-                            if (sanitizedHtml !== value) onChange(sanitizedHtml)
-                            if (editorElement.innerHTML !== sanitizedHtml) editorElement.innerHTML = sanitizedHtml
-                            richHtmlRef.current = sanitizedHtml
-                            richSelectionRef.current = null
-                        }}
-                        onInput={() => {
-                            syncRichEditorValue()
-                            refreshRichAutocomplete()
-                        }}
-                        onPaste={(event) => {
-                            const editorElement = richEditorRef.current
-                            if (!editorElement) return
-
-                            const richPayload = readClipboardRichHtmlPayload(event.clipboardData)
-                            const plainText = event.clipboardData.getData('text/plain')
-                            const htmlPayload = richPayload?.html ?? plainTextToHtml(plainText)
-                            if (!htmlPayload) return
-
-                            event.preventDefault()
-                            editorElement.focus()
-                            if (insertHtmlAtSelection(editorElement, htmlPayload)) {
-                                syncRichEditorValue()
-                            }
-                        }}
-                        onCopy={(event) => {
-                            const editorElement = richEditorRef.current
-                            if (!editorElement) return
-
-                            const payload = cacheSelectedRichClipboard(editorElement)
-                            if (!payload) return
-
-                            event.preventDefault()
-                            event.clipboardData.setData(INTERNAL_RICH_CLIPBOARD_TYPE, payload.html)
-                            event.clipboardData.setData('text/html', payload.html)
-                            event.clipboardData.setData('text/plain', payload.text)
-                        }}
-                        onCut={() => {
-                            if (richEditorRef.current) {
-                                cacheSelectedRichClipboard(richEditorRef.current)
-                            }
-                        }}
-                        onMouseUp={() => {
-                            if (!richEditorRef.current) return
-                            richSelectionRef.current = readSelectionOffsets(richEditorRef.current)
-                            refreshRichAutocomplete()
-                        }}
-                        onKeyUp={() => {
-                            syncEditorLayout()
-                            refreshRichAutocomplete()
-                        }}
+                        onFocus={richEditorHandlers.onFocus}
+                        onBlur={richEditorHandlers.onBlur}
+                        onInput={richEditorHandlers.onInput}
+                        onPaste={richEditorHandlers.onPaste}
+                        onCopy={richEditorHandlers.onCopy}
+                        onCut={richEditorHandlers.onCut}
+                        onMouseUp={richEditorHandlers.onMouseUp}
+                        onKeyUp={richEditorHandlers.onKeyUp}
                         onKeyDown={handleRichAutocompleteKeyDown}
                     />
                 ) : preview ? (

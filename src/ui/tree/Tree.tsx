@@ -2,9 +2,6 @@ import * as React from 'react'
 import type { Folder, SharedStep } from '@core/domain'
 import { buildRefCatalog, renderRefsInText } from '@core/refs'
 import { isFolder, mapTests } from '@core/tree'
-import { apiClient } from '@ipc/client'
-import { getStoredFolderAlias, getStoredTestAlias } from '@shared/treeAliases'
-import { getStoredFolderIconKey, getStoredTestIconKey, type LocalTreeIconOption } from '@shared/treeIcons'
 import { useUiPreferences } from '../preferences'
 import './Tree.css'
 import { TreeAliasModal } from './TreeAliasModal'
@@ -12,6 +9,8 @@ import { TreeIconPickerModal } from './TreeIconPickerModal'
 import { TreeMenu } from './TreeMenu'
 import { TreeNodeView } from './TreeNodeView'
 import type { ContextMenuState, EditingState, VisibleItem } from './types'
+import { collectAncestorFolderIds } from './treeMetadata'
+import { useTreeCustomization } from './useTreeCustomization'
 import { buildTreeViewState, makeNodeKey, toPreviewishPlainText } from './utils'
 
 type Props = {
@@ -35,11 +34,6 @@ export function Tree(props: Props) {
     const [expanded, setExpanded] = React.useState<Set<string>>(() => new Set([props.root.id]))
     const [menu, setMenu] = React.useState<ContextMenuState>(null)
     const [editing, setEditing] = React.useState<EditingState>(null)
-    const [showAliases, setShowAliases] = React.useState(() => {
-        if (typeof window === 'undefined') return false
-        return window.localStorage.getItem('workspace.treeShowAliases') === 'true'
-    })
-    const [localTreeIcons, setLocalTreeIcons] = React.useState<LocalTreeIconOption[]>([])
     const [aliasEditorTarget, setAliasEditorTarget] = React.useState<{
         id: string
         name: string
@@ -56,65 +50,23 @@ export function Tree(props: Props) {
     const selectedKey = makeNodeKey(props.selectedId ?? props.root.id)
     const [focusedKey, setFocusedKey] = React.useState(selectedKey)
     const allTests = React.useMemo(() => mapTests(props.root), [props.root])
+    const {
+        showAliases,
+        setShowAliases,
+        localTreeIcons,
+        folderAliasById,
+        testAliasById,
+        nodeIconKeyById,
+        nodeIconById,
+        importLocalTreeIcon,
+        deleteLocalTreeIcon,
+        reloadLocalTreeIcons,
+    } = useTreeCustomization(props.root, allTests)
     const refCatalog = React.useMemo(() => buildRefCatalog(allTests, props.sharedSteps), [allTests, props.sharedSteps])
     const resolveDisplayText = React.useCallback(
         (value: string | undefined) => toPreviewishPlainText(renderRefsInText(String(value ?? ''), refCatalog, { mode: 'plain' })),
         [refCatalog]
     )
-    const iconByKey = React.useMemo(() => new Map(localTreeIcons.map((icon) => [icon.key, icon] as const)), [localTreeIcons])
-    const folderIconKeyById = React.useMemo(() => collectFolderIconKeys(props.root), [props.root])
-    const folderAliasById = React.useMemo(() => collectFolderAliases(props.root), [props.root])
-    const testIconKeyById = React.useMemo(() => {
-        const next = new Map<string, string | null>()
-        for (const test of allTests) next.set(test.id, getStoredTestIconKey(test.meta))
-        return next
-    }, [allTests])
-    const testAliasById = React.useMemo(() => {
-        const next = new Map<string, string | null>()
-        for (const test of allTests) next.set(test.id, getStoredTestAlias(test.meta))
-        return next
-    }, [allTests])
-    const nodeIconKeyById = React.useMemo(() => {
-        const next = new Map(folderIconKeyById)
-        for (const [id, iconKey] of testIconKeyById) next.set(id, iconKey)
-        return next
-    }, [folderIconKeyById, testIconKeyById])
-    const nodeIconById = React.useMemo(() => {
-        const next = new Map<string, LocalTreeIconOption | null>()
-        for (const [id, iconKey] of nodeIconKeyById) {
-            next.set(id, iconKey ? (iconByKey.get(iconKey) ?? null) : null)
-        }
-        return next
-    }, [iconByKey, nodeIconKeyById])
-
-    const loadLocalTreeIcons = React.useCallback(async () => {
-        try {
-            setLocalTreeIcons(await apiClient.listLocalTreeIcons())
-        } catch {
-            setLocalTreeIcons([])
-        }
-    }, [])
-
-    const importLocalTreeIcon = React.useCallback(async () => {
-        const imported = await apiClient.importLocalTreeIcon()
-        await loadLocalTreeIcons()
-        return imported
-    }, [loadLocalTreeIcons])
-
-    const deleteLocalTreeIcon = React.useCallback(async (iconKey: string) => {
-        const deleted = await apiClient.deleteLocalTreeIcon(iconKey)
-        await loadLocalTreeIcons()
-        return deleted
-    }, [loadLocalTreeIcons])
-
-    React.useEffect(() => {
-        void loadLocalTreeIcons()
-    }, [loadLocalTreeIcons])
-
-    React.useEffect(() => {
-        if (typeof window === 'undefined') return
-        window.localStorage.setItem('workspace.treeShowAliases', String(showAliases))
-    }, [showAliases])
 
     React.useEffect(() => {
         setExpanded((current) => {
@@ -395,7 +347,7 @@ export function Tree(props: Props) {
                     canChangeIcon
                     hasCustomIcon={Boolean(menu.targetIconKey)}
                     onChangeIcon={() => {
-                        void loadLocalTreeIcons()
+                        void reloadLocalTreeIcons()
                         setIconPickerTarget({
                             id: menu.targetId,
                             name: menu.targetName,
@@ -435,57 +387,4 @@ export function Tree(props: Props) {
             />
         </div>
     )
-}
-
-function collectFolderIconKeys(root: Folder) {
-    const icons = new Map<string, string | null>()
-
-    const visit = (folder: Folder) => {
-        icons.set(folder.id, getStoredFolderIconKey(folder))
-        for (const child of folder.children) {
-            if (isFolder(child)) visit(child)
-        }
-    }
-
-    visit(root)
-    return icons
-}
-
-function collectFolderAliases(root: Folder) {
-    const aliases = new Map<string, string | null>()
-
-    const visit = (folder: Folder) => {
-        aliases.set(folder.id, getStoredFolderAlias(folder))
-        for (const child of folder.children) {
-            if (isFolder(child)) visit(child)
-        }
-    }
-
-    visit(root)
-    return aliases
-}
-
-function collectAncestorFolderIds(root: Folder, targetId: string): string[] {
-    const trail: string[] = []
-
-    const walk = (folder: Folder, ancestors: string[]): boolean => {
-        if (folder.id === targetId) {
-            trail.push(...ancestors)
-            return true
-        }
-
-        for (const child of folder.children) {
-            if (child.id === targetId) {
-                trail.push(...ancestors, folder.id)
-                return true
-            }
-            if (!isFolder(child)) continue
-            if (walk(child, [...ancestors, folder.id])) return true
-        }
-
-        return false
-    }
-
-    walk(root, [])
-    return trail
 }
