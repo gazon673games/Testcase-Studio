@@ -25,7 +25,7 @@
 .workspace-pane {
     flex: 1;
     display: grid;
-    grid-template-columns: minmax(260px, 320px) 1fr;
+    grid-template-columns: var(--workspace-tree-width, 320px) 8px 1fr;
     min-height: 0;
 }
 
@@ -38,6 +38,7 @@
     border-right: 1px solid var(--border);
     overflow: auto;
     background: var(--bg-soft);
+    min-width: 0;
 }
 
 .workspace-pane.is-compact .workspace-pane__tree {
@@ -45,10 +46,32 @@
     border-bottom: 1px solid var(--border);
 }
 
+.workspace-pane__resizer {
+    position: relative;
+    cursor: col-resize;
+    background: transparent;
+}
+
+.workspace-pane__resizer::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: 0 auto;
+    width: 2px;
+    background: var(--border);
+    opacity: 0.9;
+}
+
+.workspace-pane__resizer:hover::before,
+.workspace-pane.is-resizing .workspace-pane__resizer::before {
+    background: var(--accent-border);
+}
+
 .workspace-pane__content {
     position: relative;
     overflow: hidden;
     background: var(--bg);
+    min-width: 0;
 }
 
 .workspace-pane__scroll {

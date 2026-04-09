@@ -1,7 +1,7 @@
 import * as React from 'react'
 import type { Folder, SharedStep } from '@core/domain'
 import { buildRefCatalog, renderRefsInText } from '@core/refs'
-import { mapTests } from '@core/tree'
+import { isFolder, mapTests } from '@core/tree'
 import { useUiPreferences } from '../preferences'
 import './Tree.css'
 import { TreeMenu } from './TreeMenu'
@@ -56,6 +56,23 @@ export function Tree(props: Props) {
     React.useEffect(() => {
         setFocusedKey(selectedKey)
     }, [selectedKey])
+
+    React.useEffect(() => {
+        const targetId = props.selectedId
+        if (!targetId) return
+        const ancestors = collectAncestorFolderIds(props.root, targetId)
+        if (!ancestors.length) return
+        setExpanded((current) => {
+            const next = new Set(current)
+            let changed = false
+            for (const id of ancestors) {
+                if (next.has(id)) continue
+                next.add(id)
+                changed = true
+            }
+            return changed ? next : current
+        })
+    }, [props.root, props.selectedId])
 
     React.useEffect(() => {
         if (!visibleItems.length) return
@@ -271,4 +288,29 @@ export function Tree(props: Props) {
             )}
         </div>
     )
+}
+
+function collectAncestorFolderIds(root: Folder, targetId: string): string[] {
+    const trail: string[] = []
+
+    const walk = (folder: Folder, ancestors: string[]): boolean => {
+        if (folder.id === targetId) {
+            trail.push(...ancestors)
+            return true
+        }
+
+        for (const child of folder.children) {
+            if (child.id === targetId) {
+                trail.push(...ancestors, folder.id)
+                return true
+            }
+            if (!isFolder(child)) continue
+            if (walk(child, [...ancestors, folder.id])) return true
+        }
+
+        return false
+    }
+
+    walk(root, [])
+    return trail
 }

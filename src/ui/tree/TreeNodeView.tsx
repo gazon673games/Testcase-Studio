@@ -4,6 +4,28 @@ import type { EditingState, TreeKeyboardHandler, TreeTranslate, ViewNode } from 
 import { ChevronIcon, makeNodeKey, renderSyncStatusBadge } from './utils'
 import { TreeStepsList } from './TreeStepsList'
 
+function FolderKindIcon() {
+    return (
+        <svg viewBox="0 0 16 16" aria-hidden="true" className="tree-kind-icon__svg">
+            <path
+                fill="currentColor"
+                d="M1.5 4.75A1.75 1.75 0 0 1 3.25 3h2.28c.4 0 .78.15 1.06.43l.78.82h5.38A1.75 1.75 0 0 1 14.5 6v5.75a1.75 1.75 0 0 1-1.75 1.75h-9.5A1.75 1.75 0 0 1 1.5 11.75z"
+            />
+        </svg>
+    )
+}
+
+function TestKindIcon() {
+    return (
+        <svg viewBox="0 0 16 16" aria-hidden="true" className="tree-kind-icon__svg">
+            <path
+                fill="currentColor"
+                d="M4 1.5h5.75L13 4.75v8.5A1.25 1.25 0 0 1 11.75 14.5h-7.5A1.25 1.25 0 0 1 3 13.25v-10A1.25 1.25 0 0 1 4.25 2zm5.5.9V5h2.6zM5.25 7a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5zm0 2.75a.75.75 0 0 0 0 1.5h4a.75.75 0 0 0 0-1.5z"
+            />
+        </svg>
+    )
+}
+
 export type TreeNodeViewProps = {
     node: ViewNode
     parentKey?: string
@@ -159,10 +181,11 @@ export function TreeNodeView(props: TreeNodeViewProps) {
                 </button>
 
                 <span
-                    aria-hidden
-                    className={`tree-kind-badge ${isDir ? 'tree-kind-badge--folder' : 'tree-kind-badge--test'}`}
+                    aria-hidden="true"
+                    title={isDir ? t('tree.folder') : t('tree.case')}
+                    className={`tree-kind-icon ${isDir ? 'tree-kind-icon--folder' : 'tree-kind-icon--test'}`}
                 >
-                    {isDir ? t('tree.folder') : t('tree.case')}
+                    {isDir ? <FolderKindIcon /> : <TestKindIcon />}
                 </span>
 
                 {!isEditing ? (

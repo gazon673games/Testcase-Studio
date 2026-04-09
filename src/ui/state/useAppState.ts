@@ -156,6 +156,7 @@ export function useAppState(services: AppServices) {
         selectedId,
         defaults: services.defaults,
         stageLocalState,
+        persistStateNow,
         setSelectedId,
         setFocusStepId,
     })

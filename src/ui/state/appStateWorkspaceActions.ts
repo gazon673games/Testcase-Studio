@@ -24,6 +24,7 @@ type AppStateWorkspaceActionsOptions = {
     selectedId: ID | null
     defaults: AppServices['defaults']
     stageLocalState: (next: RootState, dirtyIds?: string[]) => void
+    persistStateNow: (next: RootState, dirtyIds?: string[]) => Promise<void>
     setSelectedId: (id: ID | null) => void
     setFocusStepId: (stepId: string | null) => void
 }
@@ -33,6 +34,7 @@ export function createAppStateWorkspaceActions({
     selectedId,
     defaults,
     stageLocalState,
+    persistStateNow,
     setSelectedId,
     setFocusStepId,
 }: AppStateWorkspaceActionsOptions) {
@@ -40,7 +42,7 @@ export function createAppStateWorkspaceActions({
         const currentState = getCurrentState()
         if (!currentState) return
         const result = addFolderAtCommand(currentState, parentId, defaults.newFolder)
-        stageLocalState(result.nextState)
+        await persistStateNow(result.nextState)
         if (result.selectedId) setSelectedId(result.selectedId)
     }
 
@@ -48,7 +50,7 @@ export function createAppStateWorkspaceActions({
         const currentState = getCurrentState()
         if (!currentState) return
         const result = addTestAtCommand(currentState, parentId, defaults.newCase, defaults.firstStep)
-        stageLocalState(result.nextState, result.dirtyIds)
+        await persistStateNow(result.nextState, result.dirtyIds)
         if (result.selectedId) setSelectedId(result.selectedId)
         if (result.focusStepId) setFocusStepId(result.focusStepId)
     }
@@ -57,7 +59,7 @@ export function createAppStateWorkspaceActions({
         const currentState = getCurrentState()
         if (!currentState) return
         const result = addFolderFromSelection(currentState, selectedId, defaults.newFolder)
-        stageLocalState(result.nextState)
+        await persistStateNow(result.nextState)
         if (result.selectedId) setSelectedId(result.selectedId)
     }
 
@@ -65,7 +67,7 @@ export function createAppStateWorkspaceActions({
         const currentState = getCurrentState()
         if (!currentState) return
         const result = addTestFromSelection(currentState, selectedId, defaults.newCase, defaults.firstStep)
-        stageLocalState(result.nextState, result.dirtyIds)
+        await persistStateNow(result.nextState, result.dirtyIds)
         if (result.selectedId) setSelectedId(result.selectedId)
         if (result.focusStepId) setFocusStepId(result.focusStepId)
     }
@@ -103,7 +105,7 @@ export function createAppStateWorkspaceActions({
         if (!currentState) return false
         const result = moveWorkspaceNode(currentState, nodeId, targetFolderId)
         if (result.moved) {
-            stageLocalState(result.nextState)
+            await persistStateNow(result.nextState)
             if (result.selectedId) setSelectedId(result.selectedId)
         }
         return result.moved

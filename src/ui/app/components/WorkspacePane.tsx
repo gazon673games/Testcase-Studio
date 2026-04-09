@@ -35,8 +35,43 @@ export function WorkspacePane({
     rightPane,
     syncCenter,
 }: WorkspacePaneProps) {
+    const [treeWidth, setTreeWidth] = React.useState<number>(() => {
+        if (typeof window === 'undefined') return 320
+        const stored = Number(window.localStorage.getItem('workspace.treeWidth') ?? '')
+        return Number.isFinite(stored) && stored >= 220 ? stored : 320
+    })
+    const [resizing, setResizing] = React.useState(false)
+
+    React.useEffect(() => {
+        if (typeof window === 'undefined') return
+        window.localStorage.setItem('workspace.treeWidth', String(treeWidth))
+    }, [treeWidth])
+
+    React.useEffect(() => {
+        if (!resizing || compactWorkspace) return
+
+        const onPointerMove = (event: PointerEvent) => {
+            const nextWidth = Math.min(640, Math.max(220, event.clientX))
+            setTreeWidth(nextWidth)
+        }
+        const stop = () => setResizing(false)
+
+        window.addEventListener('pointermove', onPointerMove)
+        window.addEventListener('pointerup', stop)
+        window.addEventListener('pointercancel', stop)
+
+        return () => {
+            window.removeEventListener('pointermove', onPointerMove)
+            window.removeEventListener('pointerup', stop)
+            window.removeEventListener('pointercancel', stop)
+        }
+    }, [compactWorkspace, resizing])
+
     return (
-        <div className={`workspace-pane${compactWorkspace ? ' is-compact' : ''}`}>
+        <div
+            className={`workspace-pane${compactWorkspace ? ' is-compact' : ''}${resizing ? ' is-resizing' : ''}`}
+            style={compactWorkspace ? undefined : ({ ['--workspace-tree-width' as string]: `${treeWidth}px` })}
+        >
             <div className="workspace-pane__tree">
                 <Tree
                     root={root}
@@ -52,6 +87,18 @@ export function WorkspacePane({
                     onOpenStep={onOpenStep}
                 />
             </div>
+            {!compactWorkspace && (
+                <div
+                    className="workspace-pane__resizer"
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Resize workspace tree"
+                    onPointerDown={(event) => {
+                        event.preventDefault()
+                        setResizing(true)
+                    }}
+                />
+            )}
             <div className="workspace-pane__content">
                 <div className="workspace-pane__scroll">{rightPane}</div>
                 {syncCenter}

@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { UiKit } from '../uiKit'
-import { UiPreferencesProvider, useUiPreferences } from '../preferences'
+import { UiPreferencesProvider } from '../preferences'
+import { getStoredLocale, translate } from '@shared/i18n'
 import { AppErrorBoundary } from './components/AppErrorBoundary'
 import { AppShell } from './AppShell'
 
@@ -13,10 +14,12 @@ export function App() {
 }
 
 function AppWithBoundary() {
-    const { t } = useUiPreferences()
+    const locale = React.useMemo(() => getStoredLocale(), [])
+    const title = React.useMemo(() => translate('app.unexpectedError', undefined, locale), [locale])
+    const actionLabel = React.useMemo(() => translate('app.reload', undefined, locale), [locale])
 
     return (
-        <AppErrorBoundary title={t('app.unexpectedError')} actionLabel={t('app.reload')}>
+        <AppErrorBoundary title={title} actionLabel={actionLabel}>
             <UiKit>
                 <AppShell />
             </UiKit>

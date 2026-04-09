@@ -92,24 +92,28 @@
     cursor: default;
 }
 
-.tree-kind-badge {
-    min-height: 22px;
+.tree-kind-icon {
+    width: 24px;
+    height: 24px;
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0 8px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
+    border-radius: 8px;
+    border: 1px solid var(--border-soft);
 }
 
-.tree-kind-badge--folder {
+.tree-kind-icon__svg {
+    width: 14px;
+    height: 14px;
+}
+
+.tree-kind-icon--folder {
     background: var(--accent-bg);
     color: var(--accent-text);
 }
 
-.tree-kind-badge--test {
+.tree-kind-icon--test {
     background: var(--bg-muted);
     color: var(--text-muted);
 }
