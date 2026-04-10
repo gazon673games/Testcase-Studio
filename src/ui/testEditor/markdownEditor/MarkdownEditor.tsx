@@ -53,6 +53,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         () => (isRichPreviewEditing ? sanitizeHtml(value) : renderPreviewContent(value, resolveRefs)),
         [isRichPreviewEditing, resolveRefs, value]
     )
+    const liveLayout = isActive || isRichPreviewEditing
 
     const {
         editorApi,
@@ -70,6 +71,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         isRichPreviewEditing,
         previewHtml,
         value,
+        liveLayout,
         textareaRef,
         previewRef,
         previewMeasureRef,
@@ -170,7 +172,10 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         closeRichAutocomplete()
     }, [closeRichAutocomplete, isRichPreviewEditing])
 
-    const refs = React.useMemo(() => (inspectRefs ? inspectRefs(value) : []), [inspectRefs, value])
+    const refs = React.useMemo(
+        () => (inspectRefs && value.includes('[[') ? inspectRefs(value) : []),
+        [inspectRefs, value]
+    )
 
     function handleTextareaChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
         onChange(event.target.value)

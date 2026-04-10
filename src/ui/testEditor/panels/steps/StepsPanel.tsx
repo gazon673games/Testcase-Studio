@@ -1,11 +1,32 @@
 import * as React from 'react'
 import { beautifyZephyrJsonBlocksInStep, inspectZephyrJsonBeautifyStep } from '@core/zephyrHtmlParts'
 import { buildReferenceStepsFromTest, canReferenceTestStep } from '@core/referenceSteps'
+import type { Step } from '@core/domain'
+import { LazyStepRow } from './LazyStepRow'
 import { StepRow } from './StepRow'
 import { InsertStepsFromTestModal } from './InsertStepsFromTestModal'
 import type { StepsPanelProps } from './stepsPanelTypes'
 import { useStepsPanelController } from './useStepsPanelController'
 import { useUiPreferences } from '../../../preferences'
+
+const LAZY_STEP_ROWS_THRESHOLD = 10
+const EAGER_STEP_ROWS_COUNT = 3
+
+function stepMayContainJson(step: Step) {
+    const candidateText = [
+        step.action,
+        step.text,
+        step.data,
+        step.expected,
+        ...(step.presentation?.parts?.action?.map((part) => part.text) ?? []),
+        ...(step.presentation?.parts?.data?.map((part) => part.text) ?? []),
+        ...(step.presentation?.parts?.expected?.map((part) => part.text) ?? []),
+    ]
+        .filter(Boolean)
+        .join('\n')
+
+    return candidateText.includes('{') || candidateText.includes('[')
+}
 
 export default function StepsPanel({
     owner,
@@ -34,6 +55,7 @@ export default function StepsPanel({
             : [],
         [allTests, owner.id, owner.type]
     )
+    const useLazyStepRows = steps.length >= LAZY_STEP_ROWS_THRESHOLD
 
     const {
         open,
@@ -140,14 +162,16 @@ export default function StepsPanel({
                         </div>
                     ) : (
                         steps.map((step, index) => {
-                            const beautifiedStep = beautifyZephyrJsonBlocksInStep(step, { tolerant: jsonBeautifyTolerant })
-                            const beautifyDiagnostics = inspectZephyrJsonBeautifyStep(step, { tolerant: jsonBeautifyTolerant })
+                            const eagerRow = !useLazyStepRows || index < EAGER_STEP_ROWS_COUNT || step.id === focusStepId
+                            const canBeautifyJson = stepMayContainJson(step)
                             const handleBeautifyJson = () => {
+                                const beautifiedStep = beautifyZephyrJsonBlocksInStep(step, { tolerant: jsonBeautifyTolerant })
                                 if (beautifiedStep !== step) {
                                     updateStep(index, beautifiedStep)
                                     return
                                 }
 
+                                const beautifyDiagnostics = inspectZephyrJsonBeautifyStep(step, { tolerant: jsonBeautifyTolerant })
                                 if (beautifyDiagnostics.failures.length) {
                                     console.warn('[Testcase Studio] JSON beautify failed', {
                                         stepId: step.id,
@@ -167,47 +191,55 @@ export default function StepsPanel({
                             }
 
                             return (
-                                <StepRow
+                                <LazyStepRow
                                     key={step.id}
-                                    ref={(element) => {
+                                    step={step}
+                                    index={index}
+                                    eager={eagerRow}
+                                    isNarrow={isNarrow}
+                                    preview={previewEnabled}
+                                    onMeasureRef={(element) => {
                                         stepRefs.current[step.id] = element
                                     }}
-                                    owner={owner}
-                                    index={index}
-                                    step={step}
-                                    preview={previewEnabled}
-                                    isNarrow={isNarrow}
-                                    allTests={allTests}
-                                    sharedSteps={sharedSteps}
-                                    sharedById={sharedById}
-                                    resolveRefs={resolveRefs}
-                                    inspectRefs={inspectRefs}
-                                    onOpenRef={onOpenRef}
-                                    onActivateEditorApi={onActivateEditorApi}
-                                    onClone={() => cloneStep(index)}
-                                    onAddNext={() => addStepAfter(index)}
-                                    onRemove={() => removeStep(index)}
-                                    canBeautifyJson={beautifiedStep !== step || beautifyDiagnostics.candidateCount > 0}
-                                    onBeautifyJson={handleBeautifyJson}
-                                    onEditTop={(patch) => updateStep(index, patch)}
-                                    onAddPart={addPart}
-                                    onEditPart={editPart}
-                                    onRemovePart={removePart}
-                                    onHandleDragStart={(event) => handleDragStart(index, event)}
-                                    onHandleDragEnd={handleDragEnd}
-                                    onCardDragOver={handleCardDragOver}
-                                    onCardDragEnter={() => handleCardDragEnter(index)}
-                                    onCardDragLeave={() => handleCardDragLeave(index)}
-                                    onCardDrop={() => handleCardDrop(index)}
-                                    isDragging={draggingIndex === index}
-                                    isDropTarget={hoverIndex === index}
-                                    getStepAttachments={() => (Array.isArray(step.attachments) ? step.attachments : [])}
-                                    setStepAttachments={(nextAttachments) => updateStep(index, { attachments: nextAttachments })}
-                                    onUploadStepFiles={onUploadStepFiles}
-                                    onCreateSharedFromStep={onCreateSharedFromStep}
-                                    onOpenShared={onOpenShared}
-                                    onInsertText={onInsertText}
-                                />
+                                >
+                                    <StepRow
+                                        owner={owner}
+                                        index={index}
+                                        step={step}
+                                        preview={previewEnabled}
+                                        isNarrow={isNarrow}
+                                        allTests={allTests}
+                                        sharedSteps={sharedSteps}
+                                        sharedById={sharedById}
+                                        resolveRefs={resolveRefs}
+                                        inspectRefs={inspectRefs}
+                                        onOpenRef={onOpenRef}
+                                        onActivateEditorApi={onActivateEditorApi}
+                                        onClone={() => cloneStep(index)}
+                                        onAddNext={() => addStepAfter(index)}
+                                        onRemove={() => removeStep(index)}
+                                        canBeautifyJson={canBeautifyJson}
+                                        onBeautifyJson={handleBeautifyJson}
+                                        onEditTop={(patch) => updateStep(index, patch)}
+                                        onAddPart={addPart}
+                                        onEditPart={editPart}
+                                        onRemovePart={removePart}
+                                        onHandleDragStart={(event) => handleDragStart(index, event)}
+                                        onHandleDragEnd={handleDragEnd}
+                                        onCardDragOver={handleCardDragOver}
+                                        onCardDragEnter={() => handleCardDragEnter(index)}
+                                        onCardDragLeave={() => handleCardDragLeave(index)}
+                                        onCardDrop={() => handleCardDrop(index)}
+                                        isDragging={draggingIndex === index}
+                                        isDropTarget={hoverIndex === index}
+                                        getStepAttachments={() => (Array.isArray(step.attachments) ? step.attachments : [])}
+                                        setStepAttachments={(nextAttachments) => updateStep(index, { attachments: nextAttachments })}
+                                        onUploadStepFiles={onUploadStepFiles}
+                                        onCreateSharedFromStep={onCreateSharedFromStep}
+                                        onOpenShared={onOpenShared}
+                                        onInsertText={onInsertText}
+                                    />
+                                </LazyStepRow>
                             )
                         })
                     )}

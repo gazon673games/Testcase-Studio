@@ -12,6 +12,7 @@ type UseMarkdownEditorLayoutArgs = LayoutRefs & {
     isRichPreviewEditing: boolean
     previewHtml: string
     value: string
+    liveLayout: boolean
 }
 
 export function useMarkdownEditorLayout({
@@ -19,6 +20,7 @@ export function useMarkdownEditorLayout({
     isRichPreviewEditing,
     previewHtml,
     value,
+    liveLayout,
     textareaRef,
     previewRef,
     previewMeasureRef,
@@ -65,12 +67,14 @@ export function useMarkdownEditorLayout({
     }, [isRichPreviewEditing, preview, previewHtml, syncEditorLayout, value])
 
     React.useEffect(() => {
+        if (!liveLayout) return
         const handleResize = () => syncEditorLayout()
         window.addEventListener('resize', handleResize)
         return () => window.removeEventListener('resize', handleResize)
-    }, [syncEditorLayout])
+    }, [liveLayout, syncEditorLayout])
 
     React.useEffect(() => {
+        if (!liveLayout) return
         if (typeof ResizeObserver === 'undefined') return
 
         const observer = new ResizeObserver(() => syncEditorLayout())
@@ -81,7 +85,7 @@ export function useMarkdownEditorLayout({
         }
 
         return () => observer.disconnect()
-    }, [preview, previewMeasureRef, previewRef, richEditorRef, syncEditorLayout])
+    }, [liveLayout, preview, previewMeasureRef, previewRef, richEditorRef, syncEditorLayout])
 
     return { syncEditorLayout }
 }

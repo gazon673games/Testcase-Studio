@@ -29,6 +29,29 @@
     box-shadow: var(--shadow-soft);
 }
 
+.step-card--placeholder {
+    overflow: hidden;
+}
+
+.step-chip-placeholder {
+    border-color: var(--border);
+    background: var(--bg-muted);
+    color: var(--text-dim);
+}
+
+.step-placeholder-body {
+    min-height: 220px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.02)),
+        repeating-linear-gradient(
+            180deg,
+            transparent 0,
+            transparent 18px,
+            rgba(128, 128, 128, 0.08) 18px,
+            rgba(128, 128, 128, 0.08) 19px
+        );
+}
+
 .step-header {
     display: flex;
     align-items: center;

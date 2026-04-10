@@ -156,7 +156,7 @@ export function useRichPreviewEditing({
     }, [isRichPreviewEditing, richHtmlRef, richSelectionRef])
 
     React.useEffect(() => {
-        if (!isRichPreviewEditing) return
+        if (!isRichPreviewEditing || !isActive) return
 
         const onSelectionChange = () => {
             const editorElement = richEditorRef.current
@@ -167,7 +167,7 @@ export function useRichPreviewEditing({
 
         document.addEventListener('selectionchange', onSelectionChange)
         return () => document.removeEventListener('selectionchange', onSelectionChange)
-    }, [isRichPreviewEditing, richEditorRef, richSelectionRef])
+    }, [isActive, isRichPreviewEditing, richEditorRef, richSelectionRef])
 
     const richEditorHandlers = React.useMemo(() => ({
         onFocus: () => {
