@@ -8,6 +8,7 @@ import type { MarkdownEditorProps } from './types'
 import { useMarkdownEditorLayout } from './useMarkdownEditorLayout'
 import { useMarkdownAutocomplete } from './useMarkdownAutocomplete'
 import { useMarkdownEditorApi } from './useMarkdownEditorApi'
+import { useMarkdownReferenceData } from './MarkdownReferenceDataContext'
 import { useRichPreviewEditing } from './useRichPreviewEditing'
 import { useRichMarkdownAutocomplete } from './useRichMarkdownAutocomplete'
 import { looksLikeHtml, renderPreviewContent, sanitizeHtml } from './previewRendering'
@@ -45,6 +46,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
     const richSelectionRef = React.useRef<RichTextSelectionOffsets | null>(null)
 
     const [isActive, setIsActive] = React.useState(false)
+    const sharedReferenceData = useMarkdownReferenceData()
 
     const isRichPreviewEditing = preview && editInPreview && looksLikeHtml(value)
     const previewHtml = React.useMemo(
@@ -110,6 +112,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         sharedSteps,
         t,
         taRef: textareaRef,
+        sharedReferenceData,
         applyNativeEdit,
     })
 
@@ -130,6 +133,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
         t,
         editorRef: richEditorRef,
         selectionRef: richSelectionRef,
+        sharedReferenceData,
         syncEditorValue: syncRichEditorValue,
     })
 

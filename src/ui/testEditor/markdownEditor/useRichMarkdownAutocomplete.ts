@@ -10,6 +10,7 @@ import {
     type AutoStage,
 } from './autocomplete'
 import { buildAutocompleteIndex, type AutocompleteIndex } from './autocompleteIndex'
+import type { SharedMarkdownReferenceData } from './MarkdownReferenceDataContext'
 import type { RefShared, RefTest } from './types'
 import {
     readContentEditableCaret,
@@ -27,6 +28,7 @@ type UseRichMarkdownAutocompleteOptions = {
     t: Translate
     editorRef: React.MutableRefObject<HTMLElement | null>
     selectionRef: React.MutableRefObject<RichTextSelectionOffsets | null>
+    sharedReferenceData?: SharedMarkdownReferenceData | null
     syncEditorValue(): void
 }
 
@@ -89,12 +91,28 @@ function resolveAutocompleteState(
     }
 }
 
+function createAutocompleteIndexGetter(
+    sharedReferenceData: SharedMarkdownReferenceData | null | undefined,
+    allTests: RefTest[],
+    sharedSteps: RefShared[],
+    resolveDisplayText: (source: string | undefined) => string
+) {
+    if (sharedReferenceData) return () => sharedReferenceData.getAutocompleteIndex()
+
+    let localIndex: AutocompleteIndex | null = null
+    return () => {
+        if (!localIndex) localIndex = buildAutocompleteIndex(allTests, sharedSteps, resolveDisplayText)
+        return localIndex
+    }
+}
+
 export function useRichMarkdownAutocomplete({
     allTests,
     sharedSteps,
     t,
     editorRef,
     selectionRef,
+    sharedReferenceData,
     syncEditorValue,
 }: UseRichMarkdownAutocompleteOptions) {
     const [open, setOpen] = React.useState(false)
@@ -106,8 +124,8 @@ export function useRichMarkdownAutocomplete({
     const [range, setRange] = React.useState<{ from: number; to: number } | null>(null)
 
     const suggestionCatalog = React.useMemo(
-        () => buildRefCatalog(allTests as never[], sharedSteps as never[]),
-        [allTests, sharedSteps]
+        () => sharedReferenceData?.refCatalog ?? buildRefCatalog(allTests as never[], sharedSteps as never[]),
+        [allTests, sharedReferenceData, sharedSteps]
     )
 
     const resolveDisplayText = React.useCallback(
@@ -116,9 +134,9 @@ export function useRichMarkdownAutocomplete({
         [suggestionCatalog]
     )
 
-    const autocompleteIndex = React.useMemo(
-        () => buildAutocompleteIndex(allTests, sharedSteps, resolveDisplayText),
-        [allTests, resolveDisplayText, sharedSteps]
+    const getAutocompleteIndex = React.useMemo(
+        () => createAutocompleteIndexGetter(sharedReferenceData, allTests, sharedSteps, resolveDisplayText),
+        [allTests, resolveDisplayText, sharedReferenceData, sharedSteps]
     )
 
     const closeAutocomplete = React.useCallback(() => {
@@ -139,7 +157,7 @@ export function useRichMarkdownAutocomplete({
         const resolved = resolveAutocompleteState(
             readContentEditablePlainText(element),
             caretState.caret,
-            autocompleteIndex,
+            getAutocompleteIndex(),
             t
         )
 
@@ -165,7 +183,7 @@ export function useRichMarkdownAutocomplete({
         setIndex(0)
         setHorizontalScroll(0)
         setOpen(true)
-    }, [autocompleteIndex, closeAutocomplete, editorRef, t])
+    }, [closeAutocomplete, editorRef, getAutocompleteIndex, t])
 
     const applySuggestion = React.useCallback((item: AutoItem) => {
         const element = editorRef.current

@@ -10,6 +10,7 @@ import StepsPanel from './panels/steps/StepsPanel'
 import { TestEditorHero } from './TestEditorHero'
 import { TestEditorSecondaryPanels } from './TestEditorSecondaryPanels'
 import { TestEditorSharedDrawer } from './TestEditorSharedDrawer'
+import { MarkdownReferenceDataProvider, useSharedMarkdownReferenceData } from './markdownEditor/MarkdownReferenceDataContext'
 import { useTestEditorLinks } from './useTestEditorLinks'
 import { useTestEditorReferenceTools } from './useTestEditorReferenceTools'
 import { useTestEditorSharedLibrary } from './useTestEditorSharedLibrary'
@@ -71,6 +72,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     const [showLinks, setShowLinks] = useStoredToggle('test-editor.show-links', false)
     const [showSharedLibrary, setShowSharedLibrary] = useStoredToggle('test-editor.show-shared-library.v2', false)
     const [activeEditorApi, setActiveEditorApi] = React.useState<MarkdownEditorApi | null>(null)
+    const markdownReferenceData = useSharedMarkdownReferenceData(allTests, sharedSteps)
 
     const applyDraftPatch = React.useCallback((
         patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'details' | 'attachments' | 'links' | 'integration'>>
@@ -85,8 +87,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
 
     const { zephyrLink, allureLink, upsertLink } = useTestEditorLinks({ test: draftTest, onChange: applyDraftPatch })
     const { resolveRefs, inspectRefs, insertIntoActiveEditor } = useTestEditorReferenceTools({
-        allTests,
-        sharedSteps,
+        refCatalog: markdownReferenceData.refCatalog,
         activeEditorApi,
     })
     const {
@@ -161,87 +162,89 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     React.useImperativeHandle(ref, () => ({ commit: commitDraft }), [commitDraft])
 
     return (
-        <div className={`test-editor-shell ${showSharedLibrary ? 'with-drawer' : ''}`}>
-            <div className="test-editor-main">
-                <div className="test-editor">
-                    <TestEditorHero
-                        testName={draftTest.name}
-                        testAlias={testAlias}
-                        summaryItems={summaryItems}
-                        showSharedLibrary={showSharedLibrary}
-                        sharedStepsCount={sharedSteps.length}
-                        parseZephyrHtmlParts={parseZephyrHtmlParts}
-                        onToggleSharedLibrary={() => setShowSharedLibrary((current) => !current)}
-                        onToggleParseZephyrHtmlParts={(value) => applyDraftPatch({ integration: setZephyrHtmlPartsEnabled(structuredClone(draftTest), value).integration })}
-                        onChangeName={(value) => applyDraftPatch({ name: value })}
-                        onChangeAlias={(value) => applyDraftPatch({ details: setTestAlias(draftTest.details, value) })}
-                    />
+        <MarkdownReferenceDataProvider value={markdownReferenceData}>
+            <div className={`test-editor-shell ${showSharedLibrary ? 'with-drawer' : ''}`}>
+                <div className="test-editor-main">
+                    <div className="test-editor">
+                        <TestEditorHero
+                            testName={draftTest.name}
+                            testAlias={testAlias}
+                            summaryItems={summaryItems}
+                            showSharedLibrary={showSharedLibrary}
+                            sharedStepsCount={sharedSteps.length}
+                            parseZephyrHtmlParts={parseZephyrHtmlParts}
+                            onToggleSharedLibrary={() => setShowSharedLibrary((current) => !current)}
+                            onToggleParseZephyrHtmlParts={(value) => applyDraftPatch({ integration: setZephyrHtmlPartsEnabled(structuredClone(draftTest), value).integration })}
+                            onChangeName={(value) => applyDraftPatch({ name: value })}
+                            onChangeAlias={(value) => applyDraftPatch({ details: setTestAlias(draftTest.details, value) })}
+                        />
 
-                    <StepsPanel
-                        owner={{ type: 'test', id: draftTest.id }}
-                        steps={draftTest.steps}
-                        onChange={(next) => applyDraftPatch({ steps: next })}
-                        allTests={allTests}
-                        sharedSteps={sharedSteps}
-                        resolveRefs={resolveRefs}
-                        inspectRefs={inspectRefs}
-                        onOpenRef={openResolvedRef}
-                        focusStepId={focusStepId}
-                        previewMode={previewMode}
-                        onApply={() => {}}
-                        onActivateEditorApi={setActiveEditorApi}
-                        onCreateSharedFromStep={handleCreateSharedFromStep}
-                        onOpenShared={handleOpenShared}
-                        onInsertText={insertIntoActiveEditor}
-                    />
-                    <TestEditorSecondaryPanels
-                        test={draftTest}
-                        allTests={allTests}
-                        sharedSteps={sharedSteps}
-                        previewMode={previewMode}
-                        showDetails={showDetails}
-                        showMeta={showMeta}
-                        showAttachments={showAttachments}
-                        showLinks={showLinks}
-                        externalLinksCount={externalLinksCount}
-                        zephyrLink={zephyrLink}
-                        allureLink={allureLink}
-                        resolveRefs={resolveRefs}
-                        inspectRefs={inspectRefs}
-                        onOpenRef={openResolvedRef}
-                        onChange={applyDraftPatch}
-                        onActivateEditorApi={setActiveEditorApi}
-                        onToggleDetails={() => setShowDetails((current) => !current)}
-                        onToggleMeta={() => setShowMeta((current) => !current)}
-                        onToggleAttachments={() => setShowAttachments((current) => !current)}
-                        onToggleLinks={() => setShowLinks((current) => !current)}
-                        onChangeZephyrLink={(value) => upsertLink('zephyr', value)}
-                        onChangeAllureLink={(value) => upsertLink('allure', value)}
-                    />
+                        <StepsPanel
+                            owner={{ type: 'test', id: draftTest.id }}
+                            steps={draftTest.steps}
+                            onChange={(next) => applyDraftPatch({ steps: next })}
+                            allTests={allTests}
+                            sharedSteps={sharedSteps}
+                            resolveRefs={resolveRefs}
+                            inspectRefs={inspectRefs}
+                            onOpenRef={openResolvedRef}
+                            focusStepId={focusStepId}
+                            previewMode={previewMode}
+                            onApply={() => {}}
+                            onActivateEditorApi={setActiveEditorApi}
+                            onCreateSharedFromStep={handleCreateSharedFromStep}
+                            onOpenShared={handleOpenShared}
+                            onInsertText={insertIntoActiveEditor}
+                        />
+                        <TestEditorSecondaryPanels
+                            test={draftTest}
+                            allTests={allTests}
+                            sharedSteps={sharedSteps}
+                            previewMode={previewMode}
+                            showDetails={showDetails}
+                            showMeta={showMeta}
+                            showAttachments={showAttachments}
+                            showLinks={showLinks}
+                            externalLinksCount={externalLinksCount}
+                            zephyrLink={zephyrLink}
+                            allureLink={allureLink}
+                            resolveRefs={resolveRefs}
+                            inspectRefs={inspectRefs}
+                            onOpenRef={openResolvedRef}
+                            onChange={applyDraftPatch}
+                            onActivateEditorApi={setActiveEditorApi}
+                            onToggleDetails={() => setShowDetails((current) => !current)}
+                            onToggleMeta={() => setShowMeta((current) => !current)}
+                            onToggleAttachments={() => setShowAttachments((current) => !current)}
+                            onToggleLinks={() => setShowLinks((current) => !current)}
+                            onChangeZephyrLink={(value) => upsertLink('zephyr', value)}
+                            onChangeAllureLink={(value) => upsertLink('allure', value)}
+                        />
+                    </div>
                 </div>
-            </div>
 
-            <TestEditorSharedDrawer
-                open={showSharedLibrary}
-                sharedSteps={sharedSteps}
-                selectedSharedId={selectedSharedId}
-                focusStepId={focusSharedStepId}
-                allTests={allTests}
-                resolveRefs={resolveRefs}
-                inspectRefs={inspectRefs}
-                onOpenRef={openResolvedRef}
-                onActivateEditorApi={setActiveEditorApi}
-                onClose={() => setShowSharedLibrary(false)}
-                onSelectShared={handleSelectShared}
-                onAddShared={handleAddShared}
-                onUpdateShared={onUpdateSharedStep}
-                onDeleteShared={handleDeleteShared}
-                onInsertShared={onInsertSharedReference}
-                onOpenUsage={openUsage}
-                onOpenShared={handleOpenShared}
-                onInsertText={insertIntoActiveEditor}
-            />
-        </div>
+                <TestEditorSharedDrawer
+                    open={showSharedLibrary}
+                    sharedSteps={sharedSteps}
+                    selectedSharedId={selectedSharedId}
+                    focusStepId={focusSharedStepId}
+                    allTests={allTests}
+                    resolveRefs={resolveRefs}
+                    inspectRefs={inspectRefs}
+                    onOpenRef={openResolvedRef}
+                    onActivateEditorApi={setActiveEditorApi}
+                    onClose={() => setShowSharedLibrary(false)}
+                    onSelectShared={handleSelectShared}
+                    onAddShared={handleAddShared}
+                    onUpdateShared={onUpdateSharedStep}
+                    onDeleteShared={handleDeleteShared}
+                    onInsertShared={onInsertSharedReference}
+                    onOpenUsage={openUsage}
+                    onOpenShared={handleOpenShared}
+                    onInsertText={insertIntoActiveEditor}
+                />
+            </div>
+        </MarkdownReferenceDataProvider>
     )
 })
 
