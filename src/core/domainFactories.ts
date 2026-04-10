@@ -13,9 +13,9 @@ export function mkStep(action = '', data = '', expected = ''): Step {
         data,
         expected,
         text: action || '',
-        raw: { action, data, expected },
+        snapshot: { action, data, expected },
         subSteps: [],
-        internal: { parts: { action: [], data: [], expected: [] } },
+        presentation: { parts: { action: [], data: [], expected: [] } },
         attachments: [],
     })
 }
@@ -29,7 +29,7 @@ export function mkTest(name: string, description?: string): TestCase {
         attachments: [],
         links: [],
         updatedAt: nowISO(),
-        meta: { tags: [], params: {} },
+        details: { tags: [], attributes: {}, params: {} },
         exportCfg: { enabled: true },
     })
 }

@@ -19,7 +19,7 @@ describe('zephyr import local match index', () => {
         byLink.links = [{ provider: 'zephyr', externalId: 'PROJ-T101' }]
 
         const byMetaKey = mkTest('By meta key')
-        byMetaKey.meta = { ...(byMetaKey.meta ?? { tags: [], params: {} }), params: { key: 'PROJ-T202' }, tags: [] }
+        byMetaKey.meta = { ...(byMetaKey.meta ?? { tags: [], params: {} }), external: { key: 'PROJ-T202' }, tags: [] }
 
         const byImportKey = mkTest('By import key')
         byImportKey.meta = {
@@ -29,7 +29,7 @@ describe('zephyr import local match index', () => {
         }
 
         const byDigits = mkTest('By digits')
-        byDigits.meta = { ...(byDigits.meta ?? { tags: [], params: {} }), params: { keyNumber: '404' }, tags: [] }
+        byDigits.meta = { ...(byDigits.meta ?? { tags: [], params: {} }), external: { keyNumber: '404' }, tags: [] }
 
         const index = buildLocalMatchIndex([byLink, byMetaKey, byImportKey, byDigits])
 
@@ -195,7 +195,7 @@ describe('zephyr import local match index', () => {
             extras: {},
         })
 
-        expect(imported.steps[0]?.raw?.testCaseKey).toBe('PROJ-T901')
+        expect(imported.steps[0]?.source?.includedCaseRef).toBe('PROJ-T901')
         expect(imported.steps[0]?.internal?.meta?.zephyrIncludedTestKey).toBe('PROJ-T901')
         expect(imported.steps[0]?.internal?.meta?.zephyrIncludedTestName).toBe('Included case')
         expect(imported.steps[0]?.subSteps).toEqual([

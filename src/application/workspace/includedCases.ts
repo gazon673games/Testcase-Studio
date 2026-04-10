@@ -31,7 +31,7 @@ export function collectIncludedCaseCandidates(state: RootState, testIds?: string
         for (let index = 0; index < test.steps.length; index += 1) {
             const step = test.steps[index]
             const snapshot = getIncludedTestSnapshot(step)
-            const includedTestKey = String(step.raw?.testCaseKey ?? step.internal?.meta?.zephyrIncludedTestKey ?? '').trim()
+            const includedTestKey = String(step.source?.includedCaseRef ?? step.internal?.meta?.zephyrIncludedTestKey ?? '').trim()
             if (!snapshot || !includedTestKey) continue
 
             candidates.push({
@@ -171,7 +171,8 @@ function buildExistingByZephyrId(state: RootState) {
     for (const test of mapTests(state.root)) {
         const zephyrId = String(
             test.links.find((link) => link.provider === 'zephyr')?.externalId
-            ?? test.meta?.params?.key
+            ?? test.meta?.external?.key
+            ?? (test.meta as any)?.params?.key
             ?? ''
         ).trim()
         if (!zephyrId || map.has(zephyrId)) continue
@@ -187,12 +188,14 @@ function stripIncludedMarkers(step: Step): Step {
     delete nextMeta.zephyrIncludedTestSnapshot
     delete nextMeta.zephyrIncludedLocalTestId
 
+    const nextSource = {
+        ...(step.source ?? {}),
+        includedCaseRef: undefined,
+    }
+
     return {
         ...step,
-        raw: {
-            ...(step.raw ?? {}),
-            testCaseKey: undefined,
-        },
+        source: nextSource.sourceStepId ? nextSource : undefined,
         internal: {
             ...(step.internal ?? {}),
             meta: Object.keys(nextMeta).length ? nextMeta : undefined,

@@ -313,7 +313,7 @@ function EditableStepCard({
     const { t } = useUiPreferences()
     const { owner, index, step, preview, isNarrow } = props
     const attachments = props.getStepAttachments()
-    const includedTestKey = String(step.raw?.testCaseKey ?? step.internal?.meta?.zephyrIncludedTestKey ?? '').trim()
+    const includedTestKey = String(step.source?.includedCaseRef ?? step.internal?.meta?.zephyrIncludedTestKey ?? '').trim()
     const includedTestName = String(step.internal?.meta?.zephyrIncludedTestName ?? '').trim()
     const blockCount =
         countBlocksForKind(step, 'action') +

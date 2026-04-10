@@ -12,7 +12,7 @@ describe('workspace included Zephyr cases', () => {
         host.steps = [
             {
                 ...host.steps[0],
-                raw: { ...(host.steps[0]?.raw ?? {}), testCaseKey: 'PROD-T9701' },
+                source: { ...(host.steps[0]?.source ?? {}), includedCaseRef: 'PROD-T9701' },
                 internal: {
                     ...(host.steps[0]?.internal ?? {}),
                     meta: {
@@ -51,7 +51,7 @@ describe('workspace included Zephyr cases', () => {
         host.steps = [
             {
                 ...host.steps[0],
-                raw: { ...(host.steps[0]?.raw ?? {}), testCaseKey: 'PROD-T9701' },
+                source: { ...(host.steps[0]?.source ?? {}), includedCaseRef: 'PROD-T9701' },
                 action: 'Included placeholder',
                 text: 'Included placeholder',
                 internal: {
@@ -81,7 +81,7 @@ describe('workspace included Zephyr cases', () => {
         if (!updated || isFolder(updated)) throw new Error('Expected updated test')
 
         expect(updated.steps.map((step) => step.action)).toEqual(['Nested step 1', 'Nested step 2'])
-        expect(updated.steps.every((step) => !step.raw?.testCaseKey)).toBe(true)
+        expect(updated.steps.every((step) => !step.source?.includedCaseRef)).toBe(true)
     })
 
     it('can create a sibling local case from an included testcase snapshot', () => {
@@ -92,7 +92,7 @@ describe('workspace included Zephyr cases', () => {
         host.steps = [
             {
                 ...host.steps[0],
-                raw: { ...(host.steps[0]?.raw ?? {}), testCaseKey: 'PROD-T9701' },
+                source: { ...(host.steps[0]?.source ?? {}), includedCaseRef: 'PROD-T9701' },
                 internal: {
                     ...(host.steps[0]?.internal ?? {}),
                     meta: {

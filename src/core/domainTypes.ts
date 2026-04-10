@@ -8,20 +8,20 @@ export interface Attachment {
     pathOrDataUrl: string
 }
 
-export interface PartItem {
+export interface StepBlock {
     id: ID
     text: string
     export?: boolean
 }
 
-export interface StepInternal {
+export interface StepPresentation {
     note?: string
     url?: string
     meta?: Record<string, unknown>
     parts?: {
-        action?: PartItem[]
-        data?: PartItem[]
-        expected?: PartItem[]
+        action?: StepBlock[]
+        data?: StepBlock[]
+        expected?: StepBlock[]
     }
 }
 
@@ -31,12 +31,15 @@ export interface SubStep {
     text?: string
 }
 
-export interface StepRaw {
+export interface ImportedStepSource {
+    sourceStepId?: string
+    includedCaseRef?: string
+}
+
+export interface StepSnapshot {
     action?: string
     data?: string
     expected?: string
-    providerStepId?: string
-    testCaseKey?: string
 }
 
 export interface Step {
@@ -45,15 +48,44 @@ export interface Step {
     data?: string
     expected?: string
     text?: string
-    raw?: StepRaw
+    snapshot?: StepSnapshot
+    source?: ImportedStepSource
     subSteps?: SubStep[]
-    internal?: StepInternal
+    presentation?: StepPresentation
     usesShared?: SharedStepID
     attachments?: Attachment[]
+    raw?: StepSnapshot
+    internal?: StepPresentation
 }
 
-export interface TestMeta {
-    params?: Record<string, string>
+export interface PublicationDetails {
+    type?: string
+    automation?: string
+    assignedTo?: string
+}
+
+export interface ExternalParameterCatalog {
+    variables?: unknown[]
+    entries?: unknown[]
+}
+
+export interface ExternalSystemDetails {
+    key?: string
+    keyNumber?: string
+    projectKey?: string
+    latestVersion?: boolean
+    lastTestResultStatus?: string
+    updatedBy?: string
+    createdBy?: string
+    createdOn?: string
+    updatedOn?: string
+    issueLinks?: string[]
+    customFields?: Record<string, unknown>
+    parameters?: ExternalParameterCatalog
+}
+
+export interface TestDetails {
+    attributes?: Record<string, string>
     tags: string[]
     objective?: string
     preconditions?: string
@@ -63,9 +95,9 @@ export interface TestMeta {
     owner?: string
     folder?: string
     estimated?: string
-    testType?: string
-    automation?: string
-    assignedTo?: string
+    publication?: PublicationDetails
+    external?: ExternalSystemDetails
+    params?: Record<string, string>
 }
 
 export interface TestCaseLink {
@@ -85,8 +117,9 @@ export interface TestCase {
     attachments: Attachment[]
     links: TestCaseLink[]
     updatedAt: string
-    meta?: TestMeta
+    details?: TestDetails
     exportCfg?: ExportConfig
+    meta?: TestDetails
 }
 
 export interface Folder {
@@ -108,3 +141,12 @@ export interface RootState {
     root: Folder
     sharedSteps: SharedStep[]
 }
+
+export type PartItem = StepBlock
+export type StepInternal = StepPresentation
+export type StepSource = ImportedStepSource
+export type StepRaw = StepSnapshot
+export type TestPublication = PublicationDetails
+export type TestExternalParameters = ExternalParameterCatalog
+export type TestExternalMeta = ExternalSystemDetails
+export type TestMeta = TestDetails

@@ -1,10 +1,10 @@
 import type {
     Attachment,
-    PartItem,
+    StepBlock,
     RootState,
     Step,
     TestCase,
-    TestMeta,
+    TestDetails,
 } from './domain'
 import { buildRefCatalog, formatResolvedRefBrokenReason, inspectWikiRefs, renderRefsInText, type RefCatalog, type ResolvedWikiRef } from './refs'
 import { materializeSharedSteps } from './shared'
@@ -23,7 +23,8 @@ export type ExportTest = {
     description?: string
     steps: ExportStep[]
     attachments: Attachment[]
-    meta?: TestMeta
+    details?: TestDetails
+    meta?: TestDetails
 }
 
 export class ExportIntegrityError extends Error {
@@ -56,7 +57,7 @@ function pickColumn(
     kind: 'action' | 'data' | 'expected',
     resolveText: (value: string | undefined) => string | undefined
 ) {
-    const parts: PartItem[] | undefined = step.internal?.parts?.[kind]
+    const parts: StepBlock[] | undefined = step.presentation?.parts?.[kind] ?? step.internal?.parts?.[kind]
     if (parts?.length) {
         const exportableParts = parts.filter((part) => part.export !== false)
         const topLevel = kind === 'action' ? step.action ?? step.text ?? '' : ((step as any)[kind] ?? '')
@@ -76,7 +77,12 @@ function pickColumn(
 function collectStepAttachments(step: Step): Attachment[] {
     const next = new Map<string, Attachment>()
     const modern = Array.isArray(step.attachments) ? step.attachments : []
-    const legacy = Array.isArray((step.internal as any)?.meta?.attachments) ? (step.internal as any).meta.attachments : []
+    const legacy =
+        Array.isArray((step.presentation as any)?.meta?.attachments)
+            ? (step.presentation as any).meta.attachments
+            : Array.isArray((step.internal as any)?.meta?.attachments)
+                ? (step.internal as any).meta.attachments
+                : []
 
     for (const attachment of [...legacy, ...modern]) {
         if (attachment?.id) next.set(attachment.id, attachment)
@@ -94,21 +100,29 @@ function exportOneStep(step: Step, resolveText: (value: string | undefined) => s
     }
 }
 
-function resolveMeta(meta: TestMeta | undefined, resolveText: (value: string | undefined) => string | undefined) {
-    if (!meta) return undefined
+function resolveDetails(details: TestDetails | undefined, resolveText: (value: string | undefined) => string | undefined) {
+    if (!details) return undefined
 
     return {
-        ...meta,
-        objective: resolveText(meta.objective),
-        preconditions: resolveText(meta.preconditions),
-        params: meta.params
+        ...details,
+        objective: resolveText(details.objective),
+        preconditions: resolveText(details.preconditions),
+        attributes: details.attributes
             ? Object.fromEntries(
-                  Object.entries(meta.params).map(([key, value]) => [
+                  Object.entries(details.attributes).map(([key, value]) => [
                       key,
                       typeof value === 'string' ? resolveText(value) ?? '' : value,
                   ])
               )
-            : meta.params,
+            : details.attributes,
+        params: details.attributes
+            ? Object.fromEntries(
+                  Object.entries(details.attributes).map(([key, value]) => [
+                      key,
+                      typeof value === 'string' ? resolveText(value) ?? '' : value,
+                  ])
+              )
+            : details.attributes,
     }
 }
 
@@ -117,13 +131,16 @@ export function buildExport(test: TestCase, state?: RootState): ExportTest {
     const catalog = state ? buildRefCatalog(mapTests(state.root), state.sharedSteps) : undefined
     const resolveText = createTextResolver(catalog)
 
+    const details = resolveDetails(test.meta ?? test.details, resolveText)
+
     return {
         id: test.id,
         name: test.name,
         description: resolveText(test.description),
         steps: steps.map((step) => exportOneStep(step, resolveText)),
         attachments: test.attachments,
-        meta: resolveMeta(test.meta, resolveText),
+        details,
+        meta: details,
     }
 }
 

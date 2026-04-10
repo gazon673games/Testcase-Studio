@@ -1,11 +1,10 @@
 import * as React from 'react'
-import type { ZephyrPublishPreview, ZephyrPublishPreviewItem, ZephyrPublishResult } from '@app/sync'
+import type { ZephyrPublishPreview } from '@app/sync'
 import {
     PreviewAlert,
     PreviewBadge,
     PreviewButton,
     PreviewCard,
-    PreviewDiffCard,
     PreviewDialog,
     PreviewDialogSplit,
     PreviewEmptyState,
@@ -16,11 +15,8 @@ import {
     PreviewToolbarGroup,
 } from '../previewDialog'
 import { useUiPreferences } from '../preferences'
-
-type PublishOutcome = ZephyrPublishResult & {
-    snapshotPath: string
-    logPath: string
-}
+import { PublishItemCard } from './PublishItemCard'
+import { type PublishOutcome, useZephyrPublishDialogState } from './useZephyrPublishDialogState'
 
 type Props = {
     open: boolean
@@ -30,90 +26,55 @@ type Props = {
     onApply(preview: ZephyrPublishPreview): Promise<PublishOutcome>
 }
 
-type PublishStatusFilter = 'all' | ZephyrPublishPreviewItem['status']
-
 export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, onApply }: Props) {
     const { t } = useUiPreferences()
     const loadButtonRef = React.useRef<HTMLButtonElement | null>(null)
     const itemRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
-    const [loading, setLoading] = React.useState(false)
-    const [applying, setApplying] = React.useState(false)
-    const [error, setError] = React.useState<string | null>(null)
-    const [preview, setPreview] = React.useState<ZephyrPublishPreview | null>(null)
-    const [publishMap, setPublishMap] = React.useState<Record<string, boolean>>({})
-    const [confirmText, setConfirmText] = React.useState('')
-    const [statusFilter, setStatusFilter] = React.useState<PublishStatusFilter>('all')
-    const [showSkipped, setShowSkipped] = React.useState(false)
-    const [selectedOnly, setSelectedOnly] = React.useState(false)
+    const {
+        loading,
+        applying,
+        error,
+        preview,
+        publishMap,
+        confirmText,
+        statusFilter,
+        showSkipped,
+        selectedOnly,
+        blockedItems,
+        visibleItems,
+        selectedCount,
+        hiddenCount,
+        hiddenSkippedCount,
+        firstBlockedId,
+        confirmReady,
+        requiresConfirmation,
+        canApply,
+        disabledReason,
+        setPublishMap,
+        setConfirmText,
+        setStatusFilter,
+        setShowSkipped,
+        setSelectedOnly,
+        handlePreview,
+        handleApply,
+        handleStatusFilterChange,
+        handleShowSkippedChange,
+    } = useZephyrPublishDialogState({
+        open,
+        selectionLabel,
+        onClose,
+        onPreview: async () => {
+            itemRefs.current = {}
+            return onPreview()
+        },
+        onApply,
+        t,
+    })
 
     React.useEffect(() => {
         if (!open) return
         itemRefs.current = {}
-        setError(null)
-        setPreview(null)
-        setPublishMap({})
-        setConfirmText('')
-        setStatusFilter('all')
-        setShowSkipped(false)
-        setSelectedOnly(false)
     }, [open, selectionLabel])
-
-    React.useEffect(() => {
-        if (!open || preview || loading || applying) return
-        void handlePreview()
-    }, [open, preview, loading, applying])
-
-    async function handlePreview() {
-        setLoading(true)
-        setError(null)
-        try {
-            const nextPreview = await onPreview()
-            itemRefs.current = {}
-            setPreview(nextPreview)
-            setPublishMap(Object.fromEntries(nextPreview.items.map((item) => [item.id, item.publish])))
-            setStatusFilter('all')
-            setShowSkipped(false)
-            setSelectedOnly(false)
-        } catch (err) {
-            setPreview(null)
-            setPublishMap({})
-            setError(err instanceof Error ? err.message : t('publish.previewError'))
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    async function handleApply() {
-        if (!preview) return
-        setApplying(true)
-        setError(null)
-        try {
-            await onApply({
-                ...preview,
-                items: preview.items.map((item) => ({
-                    ...item,
-                    publish: publishMap[item.id] ?? item.publish,
-                })),
-            })
-            onClose()
-        } catch (err) {
-            setError(err instanceof Error ? err.message : t('publish.applyError'))
-        } finally {
-            setApplying(false)
-        }
-    }
-
-    function handleStatusFilterChange(nextFilter: PublishStatusFilter) {
-        if (nextFilter === 'skip') setShowSkipped(true)
-        setStatusFilter(nextFilter)
-    }
-
-    function handleShowSkippedChange(checked: boolean) {
-        setShowSkipped(checked)
-        if (!checked && statusFilter === 'skip') {
-            setStatusFilter('all')
-        }
-    }
 
     function scrollToItem(itemId?: string) {
         if (!itemId) return
@@ -121,38 +82,6 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
         node?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         node?.focus?.()
     }
-
-    const items = preview?.items ?? []
-    const blockedItems = React.useMemo(
-        () => items.filter((item) => item.status === 'blocked'),
-        [items]
-    )
-    const visibleItems = React.useMemo(
-        () =>
-            items.filter((item) => {
-                if (statusFilter !== 'all' && item.status !== statusFilter) return false
-                if (!showSkipped && statusFilter !== 'skip' && item.status === 'skip') return false
-                if (selectedOnly && !(publishMap[item.id] ?? item.publish)) return false
-                return true
-            }),
-        [items, publishMap, selectedOnly, showSkipped, statusFilter]
-    )
-    const selectedCount = items.filter((item) => publishMap[item.id] ?? item.publish).length
-    const hiddenCount = items.length - visibleItems.length
-    const hiddenSkippedCount = items.filter(
-        (item) => item.status === 'skip' && (statusFilter !== 'skip' || !showSkipped)
-    ).length
-    const firstBlockedId = blockedItems[0]?.id
-    const confirmReady = confirmText.trim().toUpperCase() === 'PUBLISH'
-    const requiresConfirmation = selectedCount > 1
-    const canApply = !!preview && !loading && !applying && selectedCount > 0 && (!requiresConfirmation || confirmReady)
-    const disabledReason = !preview
-        ? t('publish.previewLoadingHint')
-        : selectedCount === 0
-            ? t('publish.noSelected')
-            : requiresConfirmation && !confirmReady
-                ? t('publish.confirmationMissing')
-                : null
 
     return (
         <PreviewDialog
@@ -407,83 +336,5 @@ export function ZephyrPublishModal({ open, selectionLabel, onClose, onPreview, o
                 )}
             />
         </PreviewDialog>
-    )
-}
-
-function PublishItemCard({
-    item,
-    publish,
-    onToggle,
-    containerRef,
-}: {
-    item: ZephyrPublishPreviewItem
-    publish: boolean
-    onToggle(value: boolean): void
-    containerRef?: (node: HTMLDivElement | null) => void
-}) {
-    const { t } = useUiPreferences()
-    const tone =
-        item.status === 'create'
-            ? 'ok'
-            : item.status === 'update'
-                ? 'info'
-                : item.status === 'blocked'
-                    ? 'warn'
-                    : 'muted'
-
-    return (
-        <div ref={containerRef} tabIndex={-1}>
-            <PreviewCard>
-                <div className="preview-dialog__summary-row">
-                    <div className="preview-dialog__summary-copy">
-                        <div className="preview-dialog__card-title">{item.testName}</div>
-                        <div className="preview-dialog__subtitle">
-                            <span>{item.externalId ?? t('publish.newCase')}</span>
-                            {item.projectKey ? ` / ${item.projectKey}` : ''}
-                            {item.folder ? ` / ${item.folder}` : ''}
-                        </div>
-                    </div>
-                    <PreviewBadge tone={tone}>{t(`publish.status.${item.status}`)}</PreviewBadge>
-                </div>
-
-                <PreviewHint>{item.reason}</PreviewHint>
-
-                <label className="preview-dialog__checkbox-label">
-                    <input
-                        type="checkbox"
-                        checked={publish}
-                        disabled={item.status === 'blocked' || item.status === 'skip'}
-                        onChange={(event) => onToggle(event.target.checked)}
-                    />
-                    {t('publish.include')}
-                </label>
-
-                {item.attachmentWarnings.length > 0 ? (
-                    <PreviewAlert tone="warning">
-                        {item.attachmentWarnings.map((warning) => (
-                            <div key={warning}>{warning}</div>
-                        ))}
-                    </PreviewAlert>
-                ) : null}
-
-                {item.diffs.length > 0 ? (
-                    <div className="preview-dialog__list">
-                        {item.diffs.map((diff) => (
-                            <PreviewDiffCard
-                                key={`${item.id}:${diff.field}`}
-                                title={diff.label}
-                                leftLabel={t('preview.remote')}
-                                rightLabel={t('preview.localPublish')}
-                                leftText={diff.remote}
-                                rightText={diff.local}
-                                stepRows={diff.stepRows}
-                                leftSide="remote"
-                                rightSide="local"
-                            />
-                        ))}
-                    </div>
-                ) : null}
-            </PreviewCard>
-        </div>
     )
 }

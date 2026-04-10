@@ -1,0 +1,68 @@
+.md-preview {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    box-sizing: border-box;
+}
+
+.code-inline {
+    background: var(--bg-muted);
+    padding: 0 3px;
+    border-radius: 4px;
+}
+
+.md-input-wrap { position: relative; }
+
+.md-toolbar {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin: 6px 0;
+}
+
+.divider {
+    width: 1px;
+    background: var(--border-soft);
+    margin: 0 2px;
+    height: 16px;
+}
+
+.autocomplete {
+    position: fixed;
+    z-index: 9999;
+    width: min(380px, calc(100vw - 24px));
+    max-height: 260px;
+    overflow: auto;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-soft);
+}
+
+.autocomplete-empty { padding: 8px; color: var(--text-dim); }
+
+.autocomplete-item {
+    padding: 6px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    user-select: none;
+}
+
+.autocomplete-item.active { background: var(--accent-bg); }
+
+.md-preview.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    opacity: 1;
+}

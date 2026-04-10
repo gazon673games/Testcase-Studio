@@ -1,0 +1,78 @@
+:root[data-theme='dark'] .test-editor,
+:root[data-theme='dark'] .editor-drawer,
+:root[data-theme='dark'] .meta-card,
+:root[data-theme='dark'] .step-card,
+:root[data-theme='dark'] .shared-library-sidebar,
+:root[data-theme='dark'] .shared-library-main,
+:root[data-theme='dark'] .shared-library-usage-card,
+:root[data-theme='dark'] .shared-library-item,
+:root[data-theme='dark'] .shared-library-filter,
+:root[data-theme='dark'] .shared-library-summary-chip,
+:root[data-theme='dark'] .shared-library-usage-item,
+:root[data-theme='dark'] .shared-ref-card,
+:root[data-theme='dark'] .part-row {
+    background: var(--bg-elevated);
+    color: var(--text);
+    border-color: var(--border);
+    box-shadow: none;
+}
+
+:root[data-theme='dark'] .editor-hero,
+:root[data-theme='dark'] .section-header,
+:root[data-theme='dark'] .step-header,
+:root[data-theme='dark'] .step-footer,
+:root[data-theme='dark'] .shared-ref-preview-item,
+:root[data-theme='dark'] .add-part-btn,
+:root[data-theme='dark'] .btn-small,
+:root[data-theme='dark'] .btn-icon,
+:root[data-theme='dark'] .field .input,
+:root[data-theme='dark'] .input,
+:root[data-theme='dark'] select.input,
+:root[data-theme='dark'] .shared-library-item.active,
+:root[data-theme='dark'] .shared-library-filter.active,
+:root[data-theme='dark'] .shared-library-summary-chip.ok,
+:root[data-theme='dark'] .shared-library-summary-chip.warning,
+:root[data-theme='dark'] .step-chip,
+:root[data-theme='dark'] .cell-chip,
+:root[data-theme='dark'] .step-num-badge {
+    background: var(--bg-soft);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+:root[data-theme='dark'] .editor-hero-copy,
+:root[data-theme='dark'] .label-sm,
+:root[data-theme='dark'] .muted,
+:root[data-theme='dark'] .cell-title,
+:root[data-theme='dark'] .shared-library-stat-label,
+:root[data-theme='dark'] .shared-library-item-meta,
+:root[data-theme='dark'] .shared-library-result-copy,
+:root[data-theme='dark'] .shared-library-usage-kind,
+:root[data-theme='dark'] .shared-library-usage-source,
+:root[data-theme='dark'] .shared-ref-copy,
+:root[data-theme='dark'] .step-meta {
+    color: var(--text-muted);
+}
+
+:root[data-theme='dark'] .editor-summary-chip,
+:root[data-theme='dark'] .step-chip-preview,
+:root[data-theme='dark'] .shared-library-filter.active,
+:root[data-theme='dark'] .shared-ref-preview-item,
+:root[data-theme='dark'] .step-num-badge,
+:root[data-theme='dark'] .btn-small.active {
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    border-color: var(--accent-border);
+}
+
+:root[data-theme='dark'] .step-chip-broken,
+:root[data-theme='dark'] .shared-library-summary-chip.warning,
+:root[data-theme='dark'] .shared-ref-copy.broken {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+    border-color: var(--danger-border);
+}
+
+:root[data-theme='dark'] .step-card.drop-target {
+    outline-color: var(--accent-border);
+}

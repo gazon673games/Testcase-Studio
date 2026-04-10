@@ -21,15 +21,16 @@ export function buildZephyrPublishPayload(
     state: RootState,
     context: ZephyrPublishPayloadContext = createZephyrPublishPayloadContext(state)
 ): ProviderTest {
+    const details = test.meta ?? test.details
     const exportPayload = buildExport(test, state)
     const render = (value: string | undefined) => renderZephyrText(value, context.refCatalog)
     const externalId = resolveZephyrExternalId(test) ?? ''
     const projectKey = resolveProjectKey(test)
-    const folder = safeString(test.meta?.params?.folder)
-    const objective = render(test.meta?.objective)
-    const preconditions = render(test.meta?.preconditions)
-    const labels = (test.meta?.tags ?? []).map((item) => String(item).trim()).filter(Boolean)
-    const customFields = buildPublishCustomFields(test.meta)
+    const folder = safeString(details?.folder ?? details?.attributes?.folder ?? (details as any)?.params?.folder)
+    const objective = render(details?.objective)
+    const preconditions = render(details?.preconditions)
+    const labels = (details?.tags ?? []).map((item) => String(item).trim()).filter(Boolean)
+    const customFields = buildPublishCustomFields(details)
     const steps = exportPayload.steps.map((step) => ({
         action: render(step.action),
         data: render(step.data),
@@ -37,7 +38,7 @@ export function buildZephyrPublishPayload(
         text: render(step.action),
         attachments: (step.attachments ?? []).map(copyAttachment),
     }))
-    const parametersInfo = buildPublishParameters(test.meta, steps)
+    const parametersInfo = buildPublishParameters(details, steps)
     const parameters = parametersInfo.value
 
     return {
@@ -75,7 +76,8 @@ function normalizeZephyrHtmlText(value: string): string {
 }
 
 function resolveProjectKey(test: TestCase): string | undefined {
-    const explicit = safeString(test.meta?.params?.projectKey)
+    const details = test.meta ?? test.details
+    const explicit = safeString(details?.external?.projectKey ?? details?.attributes?.projectKey ?? (details as any)?.params?.projectKey)
     if (explicit) return explicit
     const linked = resolveZephyrExternalId(test)
     const match = linked?.match(/^([A-Z][A-Z0-9_]+)-\d+$/)
@@ -83,17 +85,23 @@ function resolveProjectKey(test: TestCase): string | undefined {
 }
 
 function buildPublishCustomFields(meta: TestMeta | undefined): Record<string, unknown> | undefined {
-    const params = meta?.params ?? {}
+    const params = {
+        ...(meta?.params ?? {}),
+        ...(meta?.attributes ?? {}),
+    }
     const entries = Object.entries(params)
         .filter(([key]) => key.startsWith('customFields.'))
         .map(([key, value]) => [key.slice('customFields.'.length), parseStoredParamValue(value)] as const)
         .filter(([key]) => Boolean(key.trim()))
 
-    const next = Object.fromEntries(entries) as Record<string, unknown>
+    const next = {
+        ...Object.fromEntries(entries),
+        ...(meta?.external?.customFields ?? {}),
+    } as Record<string, unknown>
     const fallbackFields: Array<[string, unknown]> = [
-        ['Automation', meta?.automation],
-        ['Test Type', meta?.testType],
-        ['Assigned to', meta?.assignedTo],
+        ['Automation', meta?.publication?.automation ?? (meta as any)?.automation],
+        ['Test Type', meta?.publication?.type ?? (meta as any)?.testType],
+        ['Assigned to', meta?.publication?.assignedTo ?? (meta as any)?.assignedTo],
     ]
 
     for (const [key, value] of fallbackFields) {
@@ -114,7 +122,22 @@ function buildPublishParameters(
     value?: { variables?: unknown[]; entries?: unknown[] }
     mode: 'none' | 'explicit'
 } {
-    const params = meta?.params ?? {}
+    const explicitVariables = normalizeParameterVariableList(meta?.external?.parameters?.variables ?? [])
+    const explicitEntries = Array.isArray(meta?.external?.parameters?.entries) ? [...(meta?.external?.parameters?.entries ?? [])] : []
+    if (explicitVariables.length || explicitEntries.length) {
+        return {
+            value: {
+                ...(explicitVariables.length ? { variables: explicitVariables } : {}),
+                ...(explicitEntries.length ? { entries: explicitEntries } : {}),
+            },
+            mode: 'explicit',
+        }
+    }
+
+    const params = {
+        ...(meta?.params ?? {}),
+        ...(meta?.attributes ?? {}),
+    }
     const hasVariables = Object.prototype.hasOwnProperty.call(params, 'parameters.variables')
     const hasEntries = Object.prototype.hasOwnProperty.call(params, 'parameters.entries')
     if (!hasVariables && !hasEntries) return { mode: 'none' }

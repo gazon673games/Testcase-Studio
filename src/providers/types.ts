@@ -1,4 +1,3 @@
-// providers/types.ts
 import type { Attachment, Step } from '@core/domain'
 
 export type ProviderStep = Pick<Step, 'action' | 'data' | 'expected' | 'text'> & {
@@ -6,6 +5,35 @@ export type ProviderStep = Pick<Step, 'action' | 'data' | 'expected' | 'text'> &
     testCaseKey?: string
     includedTest?: ProviderTest
     attachments?: Attachment[]
+}
+
+export interface ProviderTestParameters {
+    variables?: unknown[]
+    entries?: unknown[]
+}
+
+export interface ProviderTestExtras {
+    key?: string
+    keyNumber?: string | number
+    status?: string
+    priority?: string
+    component?: string
+    projectKey?: string
+    folder?: string
+    latestVersion?: boolean
+    lastTestResultStatus?: string
+    owner?: string
+    updatedBy?: string
+    createdBy?: string
+    createdOn?: string
+    updatedOn?: string
+    issueLinks?: unknown[]
+    objective?: string
+    preconditions?: string
+    customFields?: Record<string, unknown>
+    parameters?: ProviderTestParameters
+    __parametersMode?: unknown
+    [key: string]: unknown
 }
 
 export interface ProviderTestRef {
@@ -24,7 +52,7 @@ export interface ProviderTest {
     steps: ProviderStep[]
     attachments: Attachment[]
     updatedAt?: string
-    extras?: Record<string, unknown> // ← NEW
+    extras?: ProviderTestExtras
 }
 
 export interface PullOptions { includeAttachments?: boolean }

@@ -26,12 +26,13 @@ export function materializeImportedTest(
     options?: { tolerantJsonBeautify?: boolean }
 ): TestCase {
     const patch = fromProviderPayload(remote, existing?.steps ?? [], {
-        parseHtmlParts: isZephyrHtmlPartsEnabled(existing?.meta),
+        parseHtmlParts: isZephyrHtmlPartsEnabled(existing?.meta ?? existing?.details),
         tolerantJsonBeautify: options?.tolerantJsonBeautify ?? getStoredJsonBeautifyTolerant(),
     })
     const base = existing ? normalizeTestCase(existing) : mkTest(patch.name, patch.description)
     const previousImportedKeys = getImportMetaKeys(existing) ?? []
-    const nextImportedKeys = getManagedMetaKeys({ ...base, meta: patch.meta } as TestCase)
+    const nextImportedKeys = getManagedMetaKeys({ ...base, details: patch.details ?? patch.meta, meta: patch.details ?? patch.meta } as TestCase)
+    const patchDetails = patch.details ?? patch.meta
 
     const next: TestCase = normalizeTestCase({
         ...base,
@@ -42,12 +43,12 @@ export function materializeImportedTest(
         attachments: patch.attachments,
         links: upsertZephyrLink(existing?.links ?? base.links, remote.id),
         updatedAt: patch.updatedAt ?? nowISO(),
-        meta: buildImportedMeta(existing?.meta, patch.meta, previousImportedKeys, nextImportedKeys, remote.updatedAt),
+        details: buildImportedMeta(existing?.meta ?? existing?.details, patchDetails, previousImportedKeys, nextImportedKeys, remote.updatedAt),
         exportCfg: existing?.exportCfg ?? base.exportCfg,
     })
 
     const signature = buildImportManagedSignature(next, nextImportedKeys)
-    applyImportMarkers(next.meta, {
+    applyImportMarkers(next.details ?? next.meta, {
         signature,
         metaKeys: nextImportedKeys,
         remoteKey: remote.id,
@@ -116,10 +117,11 @@ function removeLocalMatch(index: LocalMatchIndex, testId: string) {
 function collectMatchKeys(test: TestCase) {
     const zephyrLink = test.links.find((link) => link.provider === 'zephyr')
     const linkValue = normalizeZephyrRef(zephyrLink?.externalId)
-    const metaKey = normalizeZephyrRef(test.meta?.params?.key)
-    const importKey = normalizeZephyrRef(test.meta?.params?.[IMPORT_REMOTE_KEY_KEY])
+    const details = test.meta ?? test.details
+    const metaKey = normalizeZephyrRef(details?.external?.key ?? details?.attributes?.key ?? (details as any)?.params?.key)
+    const importKey = normalizeZephyrRef(details?.attributes?.[IMPORT_REMOTE_KEY_KEY] ?? details?.params?.[IMPORT_REMOTE_KEY_KEY])
     const linkDigits = extractTrailingDigits(linkValue)
-    const metaDigits = extractTrailingDigits(test.meta?.params?.keyNumber ?? metaKey)
+    const metaDigits = extractTrailingDigits(details?.external?.keyNumber ?? details?.attributes?.keyNumber ?? (details as any)?.params?.keyNumber ?? metaKey)
 
     return {
         refs: [...new Set([linkValue, metaKey, importKey].filter(Boolean))],

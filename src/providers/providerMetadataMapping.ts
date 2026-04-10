@@ -1,57 +1,80 @@
 import type { TestMeta } from '@core/domain'
-import type { ProviderTest } from '@providers/types'
+import type { ProviderTest, ProviderTestExtras } from '@providers/types'
 
-function putParam(target: Record<string, string>, key: string, value: unknown) {
-    if (value === undefined || value === null) return
-
-    if (Array.isArray(value) || typeof value === 'object') {
-        target[key] = JSON.stringify(value)
-        return
-    }
-
-    target[key] = String(value)
+function toOptionalString(value: unknown): string | undefined {
+    if (typeof value !== 'string') return value == null ? undefined : String(value)
+    const normalized = value.trim()
+    return normalized ? normalized : undefined
 }
 
-export function buildMetaFromProviderTest(src: ProviderTest): TestMeta {
-    const params: Record<string, string> = {}
-    const extras = src.extras ?? {}
+function normalizeIssueLinks(value: unknown): string[] | undefined {
+    if (!Array.isArray(value)) return undefined
+    const items = value
+        .map((item) => toOptionalString(item))
+        .filter((item): item is string => Boolean(item))
+    return items.length ? items : undefined
+}
 
-    putParam(params, 'key', (extras as any).key)
-    putParam(params, 'keyNumber', (extras as any).keyNumber)
-    putParam(params, 'status', (extras as any).status)
-    putParam(params, 'priority', (extras as any).priority)
-    putParam(params, 'component', (extras as any).component)
-    putParam(params, 'projectKey', (extras as any).projectKey)
-    putParam(params, 'folder', (extras as any).folder)
-    putParam(params, 'latestVersion', (extras as any).latestVersion)
-    putParam(params, 'lastTestResultStatus', (extras as any).lastTestResultStatus)
-    putParam(params, 'owner', (extras as any).owner)
-    putParam(params, 'updatedBy', (extras as any).updatedBy)
-    putParam(params, 'createdBy', (extras as any).createdBy)
-    putParam(params, 'createdOn', (extras as any).createdOn)
-    putParam(params, 'updatedOn', (extras as any).updatedOn)
-    putParam(params, 'issueLinks', (extras as any).issueLinks)
+function normalizeCustomFields(providerMetadata: ProviderTestExtras): Record<string, unknown> | undefined {
+    const fields = providerMetadata.customFields
+    if (!fields || typeof fields !== 'object') return undefined
+    const next = Object.fromEntries(Object.entries(fields))
+    return Object.keys(next).length ? next : undefined
+}
 
-    const customFields = (extras as any).customFields as Record<string, unknown> | undefined
-    if (customFields && typeof customFields === 'object') {
-        for (const [key, value] of Object.entries(customFields)) {
-            putParam(params, `customFields.${key}`, value)
-        }
+function normalizeParameters(providerMetadata: ProviderTestExtras) {
+    const parameters = providerMetadata.parameters
+    if (!parameters || typeof parameters !== 'object') return undefined
+
+    const variables = Array.isArray(parameters.variables) ? [...parameters.variables] : undefined
+    const entries = Array.isArray(parameters.entries) ? [...parameters.entries] : undefined
+    if (!variables?.length && !entries?.length) return undefined
+
+    return {
+        ...(variables?.length ? { variables } : {}),
+        ...(entries?.length ? { entries } : {}),
     }
+}
 
-    const parameters = (extras as any).parameters as { variables?: unknown[]; entries?: unknown[] } | undefined
-    if (parameters && typeof parameters === 'object') {
-        if ('variables' in parameters) putParam(params, 'parameters.variables', parameters.variables ?? [])
-        if ('entries' in parameters) putParam(params, 'parameters.entries', parameters.entries ?? [])
-    }
+function compactObject<T extends Record<string, unknown>>(value: T): T | undefined {
+    return Object.values(value).some((item) => item !== undefined) ? value : undefined
+}
 
-    const objective = (extras as any).objective
-    const preconditions = (extras as any).preconditions
+export function buildTestDetailsFromProviderTest(src: ProviderTest): TestMeta {
+    const providerMetadata = src.extras ?? {}
+    const customFields = normalizeCustomFields(providerMetadata)
 
     return {
         tags: [],
-        params,
-        objective: objective == null ? undefined : String(objective),
-        preconditions: preconditions == null ? undefined : String(preconditions),
+        attributes: {},
+        params: {},
+        objective: toOptionalString(providerMetadata.objective),
+        preconditions: toOptionalString(providerMetadata.preconditions),
+        status: toOptionalString(providerMetadata.status),
+        priority: toOptionalString(providerMetadata.priority),
+        component: toOptionalString(providerMetadata.component),
+        owner: toOptionalString(providerMetadata.owner),
+        folder: toOptionalString(providerMetadata.folder),
+        publication: compactObject({
+            type: toOptionalString(customFields?.['Test Type']),
+            automation: toOptionalString(customFields?.Automation),
+            assignedTo: toOptionalString(customFields?.['Assigned to']),
+        }),
+        external: compactObject({
+            key: toOptionalString(providerMetadata.key),
+            keyNumber: toOptionalString(providerMetadata.keyNumber),
+            projectKey: toOptionalString(providerMetadata.projectKey),
+            latestVersion: typeof providerMetadata.latestVersion === 'boolean' ? providerMetadata.latestVersion : undefined,
+            lastTestResultStatus: toOptionalString(providerMetadata.lastTestResultStatus),
+            updatedBy: toOptionalString(providerMetadata.updatedBy),
+            createdBy: toOptionalString(providerMetadata.createdBy),
+            createdOn: toOptionalString(providerMetadata.createdOn),
+            updatedOn: toOptionalString(providerMetadata.updatedOn),
+            issueLinks: normalizeIssueLinks(providerMetadata.issueLinks),
+            customFields,
+            parameters: normalizeParameters(providerMetadata),
+        }),
     }
 }
+
+export const buildMetaFromProviderTest = buildTestDetailsFromProviderTest

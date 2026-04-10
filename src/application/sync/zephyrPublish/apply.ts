@@ -8,18 +8,29 @@ export function applyPublishSuccess(test: TestCase, externalId: string, payload:
         { provider: 'zephyr', externalId },
     ]
 
-    test.meta = test.meta ?? { tags: [], params: {} }
-    test.meta.params = test.meta.params ?? {}
-    test.meta.params.key = externalId
+    const details = (test.details ?? test.meta ?? { tags: [], attributes: {}, params: {} })
+    details.attributes = details.attributes ?? details.params ?? {}
+    details.params = details.attributes
+    details.external = {
+        ...(details.external ?? {}),
+        key: externalId,
+    }
+    test.details = details
+    test.meta = details
 
     const projectKey = safeString(payload.extras?.projectKey)
-    if (projectKey) test.meta.params.projectKey = projectKey
+    if (projectKey) {
+        details.external = {
+            ...(details.external ?? {}),
+            projectKey,
+        }
+    }
 
     const folder = safeString(payload.extras?.folder)
-    if (folder) test.meta.params.folder = folder
+    if (folder) details.folder = folder
 
-    test.meta.params[PUBLISH_SIGNATURE_KEY] = buildPublishSignature(payload)
-    test.meta.params[PUBLISH_REMOTE_KEY] = externalId
-    test.meta.params[PUBLISH_AT_KEY] = nowISO()
+    details.attributes[PUBLISH_SIGNATURE_KEY] = buildPublishSignature(payload)
+    details.attributes[PUBLISH_REMOTE_KEY] = externalId
+    details.attributes[PUBLISH_AT_KEY] = nowISO()
     test.updatedAt = nowISO()
 }

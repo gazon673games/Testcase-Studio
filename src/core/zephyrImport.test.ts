@@ -7,7 +7,8 @@ describe('buildImportManagedSignature', () => {
         const test = mkTest('Imported case')
         const step = mkStep('Action', 'Data', 'Expected')
         step.id = 'step-1'
-        step.raw = { action: 'Action', data: 'Data', expected: 'Expected', providerStepId: 'provider-1' }
+        step.raw = { action: 'Action', data: 'Data', expected: 'Expected' }
+        step.source = { sourceStepId: 'provider-1' }
         test.steps = [step]
 
         const base = buildImportManagedSignature(normalizeTestCase(test), [])

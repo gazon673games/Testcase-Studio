@@ -79,11 +79,12 @@ describe('buildZephyrPublishPreview', () => {
         test.id = 'test-publish'
         test.meta = {
             ...(test.meta ?? { tags: [], params: {} }),
-            automation: 'Automated',
-            testType: 'Regression',
-            assignedTo: 'user-1',
-            params: {
-                ...(test.meta?.params ?? {}),
+            publication: {
+                automation: 'Automated',
+                type: 'Regression',
+                assignedTo: 'user-1',
+            },
+            external: {
                 projectKey: 'PROJ',
             },
         }
