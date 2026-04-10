@@ -42,14 +42,12 @@ export function importProviderSteps(
             expected: snapshot.expected,
             text: safeStr(providerStep.text ?? providerStep.action),
             snapshot,
-            raw: snapshot,
             source: {
                 ...(sourceStepId ? { sourceStepId } : {}),
                 ...(includedCaseRef ? { includedCaseRef } : {}),
             },
             subSteps: nestedSubSteps.length ? nestedSubSteps : (includedCaseRef ? [] : preservedStep?.subSteps ?? []),
             presentation,
-            internal: presentation,
             usesShared: preservedStep?.usesShared,
             attachments: (providerStep.attachments?.length ? providerStep.attachments : preservedStep?.attachments ?? []).map(cloneAttachment),
         }

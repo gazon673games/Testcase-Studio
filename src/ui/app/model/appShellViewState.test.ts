@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { mkFolder, mkTest, type RootState } from '@core/domain'
+import { setZephyrTestIntegration } from '@providers/zephyr/zephyrModel'
 import { buildAppShellViewState } from './appShellViewState'
 
 function makeAppState(selectedId: string) {
     const test = mkTest('Local test')
     test.id = 'test-1'
     test.links = []
-    test.meta = { ...(test.meta ?? { tags: [], params: {} }), params: { projectKey: 'PROJ' }, tags: [] }
+    setZephyrTestIntegration(test, { remote: { projectKey: 'PROJ' } })
 
     const root = mkFolder('Root', [test])
     root.id = 'root'

@@ -14,7 +14,7 @@ describe('buildExport', () => {
         target.id = 'test-target'
         const targetStep = mkStep('![[id:test-source#step-source.action]]', 'payload', '')
         targetStep.id = 'step-target'
-        targetStep.internal!.parts!.action = [
+        targetStep.presentation!.parts!.action = [
             { id: 'block-visible', text: 'Manual continuation' },
             { id: 'block-hidden', text: 'Should stay hidden', export: false },
         ]
@@ -38,7 +38,7 @@ describe('buildExport', () => {
         source.id = 'test-source'
         const sourceStep = mkStep('Visible head', '', '')
         sourceStep.id = 'step-source'
-        sourceStep.internal!.parts!.action = [
+        sourceStep.presentation!.parts!.action = [
             { id: 'source-visible', text: 'Visible tail' },
             { id: 'source-hidden', text: 'Hidden tail', export: false },
         ]

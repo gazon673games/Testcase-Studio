@@ -1,6 +1,6 @@
 import type { ProviderTest, ITestProvider, PushOptions } from '@providers/types'
 import { fromProviderPayload, toProviderPayload } from '@providers/mappers'
-import type { ProviderKind, RootState, TestCase, TestCaseLink } from '@core/domain'
+import { normalizeTestCase, type ProviderKind, type RootState, type TestCase, type TestCaseLink } from '@core/domain'
 import { buildExport } from '@core/export'
 import { isZephyrHtmlPartsEnabled, preserveZephyrHtmlPartsFlag } from '@core/zephyrHtmlParts'
 import { getStoredJsonBeautifyTolerant } from '@shared/uiPreferences'
@@ -17,6 +17,7 @@ import {
 import {
     applyPublishSuccess,
     buildZephyrPublishPreview,
+    resolveZephyrExternalId,
     type ZephyrPublishPreview,
     type ZephyrPublishResult,
 } from './zephyrPublish'
@@ -80,7 +81,7 @@ export class SyncEngine implements SyncService {
         const zephyr = this.providerBy('zephyr')
         const remoteIds = [...new Set(
             tests
-                .map((test) => test.links.find((link) => link.provider === 'zephyr')?.externalId ?? test.meta?.params?.key ?? '')
+                .map((test) => resolveZephyrExternalId(test) ?? '')
                 .map((item) => String(item).trim())
                 .filter(Boolean)
         )]
@@ -183,15 +184,23 @@ export class SyncEngine implements SyncService {
                 }
 
                 const patch = fromProviderPayload(remote, test.steps, {
-                    parseHtmlParts: isZephyrHtmlPartsEnabled(test.meta),
+                    parseHtmlParts: isZephyrHtmlPartsEnabled(test),
                     tolerantJsonBeautify: getStoredJsonBeautifyTolerant(),
                 })
-                test.name = patch.name
-                test.description = patch.description
-                test.steps = patch.steps
-                test.attachments = patch.attachments
-                test.meta = preserveZephyrHtmlPartsFlag(test.meta, patch.meta)
-                test.updatedAt = patch.updatedAt ?? new Date().toISOString()
+                const nextTest = preserveZephyrHtmlPartsFlag(
+                    test,
+                    normalizeTestCase({
+                        ...test,
+                        name: patch.name,
+                        description: patch.description,
+                        steps: patch.steps,
+                        attachments: patch.attachments,
+                        details: patch.details,
+                        integration: patch.integration,
+                        updatedAt: patch.updatedAt ?? new Date().toISOString(),
+                    })
+                )
+                Object.assign(test, nextTest)
             }
         }
     }

@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { makeStepRef } from '@core/refs'
 import type { Attachment, PartItem, Step } from '@core/domain'
+import { getZephyrStepIntegration } from '@providers/zephyr/zephyrModel'
 import type { MarkdownEditorApi } from '../../markdownEditor/MarkdownEditor'
 import { MarkdownEditor } from '../../markdownEditor/MarkdownEditor'
 import StepAttachmentsPanel from './StepAttachmentsPanel'
@@ -44,7 +45,7 @@ function getStepFieldValue(step: Step, kind: StepFieldKind) {
 }
 
 function countBlocksForKind(step: Step, kind: StepFieldKind) {
-    const parts = step.internal?.parts?.[kind] ?? []
+    const parts = step.presentation?.parts?.[kind] ?? []
     const topLevelValue = getStepFieldValue(step, kind).trim()
     return parts.length + (topLevelValue ? 1 : 0)
 }
@@ -158,7 +159,7 @@ function PartItemRow({
 function StepCell({ kind, label, index, step, preview, props, onInsertLink }: StepCellProps) {
     const { t } = useUiPreferences()
     const topValue = getStepFieldValue(step, kind)
-    const parts = step.internal?.parts?.[kind] ?? []
+    const parts = step.presentation?.parts?.[kind] ?? []
     const blockCount = parts.length + (topValue.trim() ? 1 : 0)
 
     const setTop = (nextValue: string) => props.onEditTop({ [kind]: nextValue, ...(kind === 'action' ? { text: nextValue } : {}) })
@@ -313,8 +314,9 @@ function EditableStepCard({
     const { t } = useUiPreferences()
     const { owner, index, step, preview, isNarrow } = props
     const attachments = props.getStepAttachments()
-    const includedTestKey = String(step.source?.includedCaseRef ?? step.internal?.meta?.zephyrIncludedTestKey ?? '').trim()
-    const includedTestName = String(step.internal?.meta?.zephyrIncludedTestName ?? '').trim()
+    const zephyrStep = getZephyrStepIntegration(step)
+    const includedTestKey = String(step.source?.includedCaseRef ?? zephyrStep?.includedTest?.key ?? '').trim()
+    const includedTestName = String(zephyrStep?.includedTest?.name ?? '').trim()
     const blockCount =
         countBlocksForKind(step, 'action') +
         countBlocksForKind(step, 'data') +

@@ -1,28 +1,30 @@
 import type { Step, TestCase } from '@core/domain'
 import type { ExportStep, ExportTest } from '@core/export'
 import type { ProviderTest } from '@providers/types'
-import { buildTestDetailsFromProviderTest } from './providerMetadataMapping'
+import { projectProviderTestMetadata } from './providerMetadataMapping'
 import { copyAttachment, mapDomainStepsToProvider, mapProviderStepsToDomain, type ProviderStepImportOptions } from './providerStepMapping'
+import { setZephyrTestIntegration } from '@providers/zephyr/zephyrModel'
 
 export function fromProviderPayload(
     src: ProviderTest,
     previousSteps: Step[] = [],
     options?: ProviderStepImportOptions
-): Pick<TestCase, 'name' | 'description' | 'steps' | 'attachments' | 'updatedAt' | 'details' | 'meta'> {
-    const details = buildTestDetailsFromProviderTest(src)
+): Pick<TestCase, 'name' | 'description' | 'steps' | 'attachments' | 'updatedAt' | 'details' | 'integration'> {
+    const projection = projectProviderTestMetadata(src)
+    const integrationHolder = setZephyrTestIntegration({} as TestCase, projection.integration)
     return {
         name: src.name ?? '',
         description: src.description ?? '',
         steps: mapProviderStepsToDomain(src.steps ?? [], previousSteps, options),
         attachments: (src.attachments ?? []).map(copyAttachment),
         updatedAt: src.updatedAt ?? new Date().toISOString(),
-        details,
-        meta: details,
+        details: projection.details,
+        integration: integrationHolder.integration,
     }
 }
 
 export function toProviderPayload(
-    test: Pick<TestCase, 'id' | 'name' | 'description' | 'steps' | 'attachments' | 'details' | 'meta'> | ExportTest
+    test: Pick<TestCase, 'id' | 'name' | 'description' | 'steps' | 'attachments' | 'details' | 'integration'> | ExportTest
 ): ProviderTest {
     const id = (test as any).id
     const stepsArray: Array<Step | ExportStep> = (test as any).steps ?? []

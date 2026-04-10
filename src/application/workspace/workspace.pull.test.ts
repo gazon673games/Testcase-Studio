@@ -50,7 +50,7 @@ describe('workspace pull selected case', () => {
         if (!selected || isFolder(selected)) throw new Error('Expected a test node in the workspace state')
 
         selected.links = [{ provider: 'zephyr', externalId: 'PROJ-T88' }]
-        selected.meta = setZephyrHtmlPartsEnabled(selected.meta, true)
+        setZephyrHtmlPartsEnabled(selected, true)
 
         const sync = makeSyncService({
             pullByLink: vi.fn(async () =>
@@ -58,10 +58,10 @@ describe('workspace pull selected case', () => {
                     id: 'PROJ-T88',
                     name: 'Remote case',
                     steps: [{
-                        action: '<strong>Проверить</strong><br /><br />Выполнить запрос<br /><br /><span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>',
+                        action: '<strong>РџСЂРѕРІРµСЂРёС‚СЊ</strong><br /><br />Р’С‹РїРѕР»РЅРёС‚СЊ Р·Р°РїСЂРѕСЃ<br /><br /><span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>',
                         data: '',
                         expected: '',
-                        text: '<strong>Проверить</strong><br /><br />Выполнить запрос<br /><br /><span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>',
+                        text: '<strong>РџСЂРѕРІРµСЂРёС‚СЊ</strong><br /><br />Р’С‹РїРѕР»РЅРёС‚СЊ Р·Р°РїСЂРѕСЃ<br /><br /><span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>',
                     }],
                 })
             ),
@@ -73,13 +73,14 @@ describe('workspace pull selected case', () => {
         const updated = findNode(result.nextState.root, folderTest.id)
         if (!updated || isFolder(updated)) throw new Error('Expected updated test node')
 
-        expect(isZephyrHtmlPartsEnabled(updated.meta)).toBe(true)
-        expect(updated.steps[0]?.action).toBe('<strong>Проверить</strong>')
-        expect(updated.steps[0]?.internal?.parts?.action?.map((part) => part.text)).toEqual([
-            'Выполнить запрос',
+        expect(isZephyrHtmlPartsEnabled(updated)).toBe(true)
+        expect(updated.steps[0]?.action).toBe('<strong>РџСЂРѕРІРµСЂРёС‚СЊ</strong>')
+        expect(updated.steps[0]?.presentation?.parts?.action?.map((part) => part.text)).toEqual([
+            'Р’С‹РїРѕР»РЅРёС‚СЊ Р·Р°РїСЂРѕСЃ',
             '<span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>',
         ])
     })
+
     it('uses the tolerant json beautify setting during pull when html-part parsing is enabled', async () => {
         const storage = new Map<string, string>()
         const originalWindow = (globalThis as { window?: Window }).window
@@ -102,7 +103,7 @@ describe('workspace pull selected case', () => {
             if (!selected || isFolder(selected)) throw new Error('Expected a test node in the workspace state')
 
             selected.links = [{ provider: 'zephyr', externalId: 'PROJ-T90' }]
-            selected.meta = setZephyrHtmlPartsEnabled(selected.meta, true)
+            setZephyrHtmlPartsEnabled(selected, true)
 
             const sync = makeSyncService({
                 pullByLink: vi.fn(async () =>
@@ -125,7 +126,7 @@ describe('workspace pull selected case', () => {
             const updated = findNode(result.nextState.root, folderTest.id)
             if (!updated || isFolder(updated)) throw new Error('Expected updated test node')
 
-            expect(updated.steps[0]?.internal?.parts?.action?.map((part) => part.text)).toEqual([
+            expect(updated.steps[0]?.presentation?.parts?.action?.map((part) => part.text)).toEqual([
                 '<em>{<br />  "id": "1",<br />  "active": true<br />}</em>',
             ])
         } finally {
@@ -144,8 +145,8 @@ describe('workspace pull selected case', () => {
             ...selected.steps[0],
             action: '<strong>Old</strong>',
             text: '<strong>Old</strong>',
-            internal: {
-                ...(selected.steps[0]?.internal ?? {}),
+            presentation: {
+                ...(selected.steps[0]?.presentation ?? {}),
                 parts: {
                     action: [{ id: 'part-1', text: '<em>SELECT 1</em>' }],
                     data: [],
@@ -153,7 +154,7 @@ describe('workspace pull selected case', () => {
                 },
             },
         }
-        selected.meta = setZephyrHtmlPartsEnabled(selected.meta, false)
+        setZephyrHtmlPartsEnabled(selected, false)
 
         const remoteHtml = '<strong>Inspect</strong><br /><br />Prepare data<br /><br /><span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>'
         const sync = makeSyncService({
@@ -177,8 +178,8 @@ describe('workspace pull selected case', () => {
         const updated = findNode(result.nextState.root, folderTest.id)
         if (!updated || isFolder(updated)) throw new Error('Expected updated test node')
 
-        expect(isZephyrHtmlPartsEnabled(updated.meta)).toBe(false)
+        expect(isZephyrHtmlPartsEnabled(updated)).toBe(false)
         expect(updated.steps[0]?.action).toBe(remoteHtml)
-        expect(updated.steps[0]?.internal?.parts?.action).toEqual([])
+        expect(updated.steps[0]?.presentation?.parts?.action).toEqual([])
     })
 })

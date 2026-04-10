@@ -30,9 +30,9 @@ export function summarizeStepLabel(
     return summarizePlainText(resolveDisplayText(buildCompositeActionText(step) || t('tree.untitledStep')), 68, t)
 }
 
-export function buildCompositeActionText(step: Pick<Step, 'action' | 'text' | 'internal'>): string {
+export function buildCompositeActionText(step: Pick<Step, 'action' | 'text' | 'presentation'>): string {
     const topLevel = String(step.action ?? step.text ?? '').trim()
-    const blocks = (step.internal?.parts?.action ?? []).map((part) => String(part.text ?? '').trim()).filter(Boolean)
+    const blocks = (step.presentation?.parts?.action ?? []).map((part) => String(part.text ?? '').trim()).filter(Boolean)
     return [topLevel, ...blocks].filter(Boolean).join('\n').trim()
 }
 

@@ -25,7 +25,7 @@ type Props = {
     inspectRefs(src: string): ResolvedWikiRef[]
     onOpenRef(ref: ResolvedWikiRef): void
     onChange: (
-        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments' | 'links'>>
+        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'details' | 'attachments' | 'links' | 'integration'>>
     ) => void
     onActivateEditorApi(api: MarkdownEditorApi | null): void
     onToggleDetails(): void
@@ -73,8 +73,8 @@ export function TestEditorSecondaryPanels({
                 <DetailsPanel
                     description={test.description ?? ''}
                     onChangeDescription={(value) => onChange({ description: value })}
-                    meta={(test.meta as TestMeta) ?? { tags: [] }}
-                    onChangeMeta={(nextMeta) => onChange({ meta: nextMeta })}
+                    meta={(test.details as TestMeta) ?? { tags: [] }}
+                    onChangeMeta={(nextMeta) => onChange({ details: nextMeta })}
                     allTests={allTests}
                     sharedSteps={sharedSteps}
                     resolveRefs={resolveRefs}
@@ -92,8 +92,8 @@ export function TestEditorSecondaryPanels({
             />
             {showMeta && (
                 <ParamsPanel
-                    meta={(test.meta as TestMeta) ?? { tags: [] }}
-                    onChange={(nextMeta) => onChange({ meta: nextMeta })}
+                    meta={(test.details as TestMeta) ?? { tags: [] }}
+                    onChange={(nextMeta) => onChange({ details: nextMeta })}
                 />
             )}
 

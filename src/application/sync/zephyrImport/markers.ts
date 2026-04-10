@@ -1,4 +1,10 @@
-import { nowISO, type TestCase, type TestMeta } from '@core/domain'
+import { nowISO, type TestCase, type TestDetails } from '@core/domain'
+import {
+    getZephyrStepIntegration,
+    getZephyrTestIntegration,
+    setZephyrTestIntegration,
+    type ZephyrTestIntegration,
+} from '@providers/zephyr/zephyrModel'
 import { stableJson, safeString } from './shared'
 
 export const IMPORT_SIGNATURE_KEY = '__zephyrImport.signature'
@@ -10,7 +16,8 @@ export const IMPORT_CONFLICT_REMOTE_KEY = '__zephyrImport.conflictRemoteKey'
 export const IMPORT_CONFLICT_LOCAL_ID = '__zephyrImport.conflictLocalId'
 
 export function buildImportManagedSignature(test: TestCase, metaKeys: string[]): string {
-    const details = test.meta ?? test.details
+    const details = test.details
+    const zephyr = getZephyrTestIntegration(test)
     return stableJson({
         name: test.name ?? '',
         description: test.description ?? '',
@@ -23,9 +30,9 @@ export function buildImportManagedSignature(test: TestCase, metaKeys: string[]):
             usesShared: step.usesShared ?? '',
             attachments: collectAttachmentSignature(step.attachments ?? []),
             parts: {
-                action: collectPartSignature(step.presentation?.parts?.action ?? step.internal?.parts?.action),
-                data: collectPartSignature(step.presentation?.parts?.data ?? step.internal?.parts?.data),
-                expected: collectPartSignature(step.presentation?.parts?.expected ?? step.internal?.parts?.expected),
+                action: collectPartSignature(step.presentation?.parts?.action),
+                data: collectPartSignature(step.presentation?.parts?.data),
+                expected: collectPartSignature(step.presentation?.parts?.expected),
             },
         })),
         attachments: (test.attachments ?? []).map((attachment) => ({
@@ -36,71 +43,70 @@ export function buildImportManagedSignature(test: TestCase, metaKeys: string[]):
             objective: details?.objective ?? '',
             preconditions: details?.preconditions ?? '',
             publication: {
-                type: details?.publication?.type ?? '',
-                automation: details?.publication?.automation ?? '',
-                assignedTo: details?.publication?.assignedTo ?? '',
+                type: zephyr?.publication?.type ?? '',
+                automation: zephyr?.publication?.automation ?? '',
+                assignedTo: zephyr?.publication?.assignedTo ?? '',
             },
             external: {
-                key: details?.external?.key ?? '',
-                keyNumber: details?.external?.keyNumber ?? '',
-                projectKey: details?.external?.projectKey ?? '',
-                updatedOn: details?.external?.updatedOn ?? '',
-                customFields: details?.external?.customFields ?? {},
-                parameters: details?.external?.parameters ?? {},
+                key: zephyr?.remote?.key ?? '',
+                keyNumber: zephyr?.remote?.keyNumber ?? '',
+                projectKey: zephyr?.remote?.projectKey ?? '',
+                updatedOn: zephyr?.remote?.updatedOn ?? '',
+                customFields: zephyr?.remote?.customFields ?? {},
+                parameters: zephyr?.remote?.parameters ?? {},
             },
-            attributes: Object.fromEntries(metaKeys.map((key) => [key, details?.attributes?.[key] ?? details?.params?.[key] ?? ''])),
+            attributes: Object.fromEntries(metaKeys.map((key) => [key, details?.attributes?.[key] ?? ''])),
         },
     })
 }
 
-export function getManagedMetaKeys(test: Pick<TestCase, 'meta' | 'details'> | undefined): string[] {
-    const details = test?.meta ?? test?.details
-    return Object.keys(details?.attributes ?? details?.params ?? {})
-        .filter((key) => !isImportMarkerKey(key))
+export function getManagedMetaKeys(test: Pick<TestCase, 'details'> | undefined): string[] {
+    const details = test?.details
+    return Object.keys(details?.attributes ?? {})
         .sort((left, right) => left.localeCompare(right))
 }
 
-export function getImportSignature(test: Pick<TestCase, 'meta' | 'details'> | undefined): string | undefined {
-    const details = test?.meta ?? test?.details
-    return safeString(details?.attributes?.[IMPORT_SIGNATURE_KEY] ?? details?.params?.[IMPORT_SIGNATURE_KEY])
+export function getImportSignature(test: Pick<TestCase, 'integration'> | undefined): string | undefined {
+    return safeString(getZephyrTestIntegration(test as TestCase)?.importState?.signature)
 }
 
-export function getImportMetaKeys(test: Pick<TestCase, 'meta' | 'details'> | undefined): string[] | undefined {
-    const details = test?.meta ?? test?.details
-    const raw = safeString(details?.attributes?.[IMPORT_META_KEYS_KEY] ?? details?.params?.[IMPORT_META_KEYS_KEY])
-    if (!raw) return undefined
-    try {
-        const parsed = JSON.parse(raw)
-        return Array.isArray(parsed) ? parsed.map((value) => String(value)).sort((left, right) => left.localeCompare(right)) : undefined
-    } catch {
-        return undefined
-    }
+export function getImportMetaKeys(test: Pick<TestCase, 'integration'> | undefined): string[] | undefined {
+    const keys = getZephyrTestIntegration(test as TestCase)?.importState?.managedAttributeKeys
+    return Array.isArray(keys) ? [...keys].sort((left, right) => left.localeCompare(right)) : undefined
 }
 
 export function applyImportMarkers(
-    meta: TestMeta | undefined,
+    test: TestCase,
     payload: { signature: string; metaKeys: string[]; remoteKey: string; remoteUpdatedAt?: string }
 ) {
-    if (!meta) return
-    meta.attributes = meta.attributes ?? meta.params ?? {}
-    meta.params = meta.attributes
-    meta.attributes[IMPORT_SIGNATURE_KEY] = payload.signature
-    meta.attributes[IMPORT_META_KEYS_KEY] = JSON.stringify(payload.metaKeys)
-    meta.attributes[IMPORT_REMOTE_KEY_KEY] = payload.remoteKey
-    meta.attributes[IMPORT_IMPORTED_AT_KEY] = nowISO()
-    if (payload.remoteUpdatedAt) meta.attributes[IMPORT_REMOTE_UPDATED_AT_KEY] = payload.remoteUpdatedAt
-    else delete meta.attributes[IMPORT_REMOTE_UPDATED_AT_KEY]
+    const currentZephyr = getZephyrTestIntegration(test)
+    setZephyrTestIntegration(test, {
+        ...(currentZephyr ?? {}),
+        remote: {
+            ...(currentZephyr?.remote ?? {}),
+            key: payload.remoteKey,
+            ...(payload.remoteUpdatedAt ? { updatedOn: payload.remoteUpdatedAt } : {}),
+        },
+        importState: {
+            signature: payload.signature,
+            managedAttributeKeys: [...payload.metaKeys],
+            remoteKey: payload.remoteKey,
+            remoteUpdatedAt: payload.remoteUpdatedAt,
+            importedAt: nowISO(),
+            conflictRemoteKey: currentZephyr?.importState?.conflictRemoteKey,
+            conflictLocalId: currentZephyr?.importState?.conflictLocalId,
+        },
+    })
 }
 
 export function buildImportedMeta(
-    existing: TestMeta | undefined,
-    incoming: TestMeta | undefined,
+    existing: TestDetails | undefined,
+    incoming: TestDetails | undefined,
     previousImportedKeys: string[],
     nextImportedKeys: string[],
-    remoteUpdatedAt: string | undefined
-): TestMeta {
-    const existingAttributes = existing?.attributes ?? existing?.params ?? {}
-    const incomingAttributes = incoming?.attributes ?? incoming?.params ?? {}
+): TestDetails {
+    const existingAttributes = existing?.attributes ?? {}
+    const incomingAttributes = incoming?.attributes ?? {}
     const preserved: Record<string, string> = {}
 
     for (const [key, value] of Object.entries(existingAttributes)) {
@@ -108,12 +114,6 @@ export function buildImportedMeta(
         if (previousImportedKeys.includes(key)) continue
         if (nextImportedKeys.includes(key)) continue
         preserved[key] = value
-    }
-
-    const nextExternal = {
-        ...(existing?.external ?? {}),
-        ...(incoming?.external ?? {}),
-        ...(remoteUpdatedAt ? { updatedOn: String(remoteUpdatedAt) } : {}),
     }
 
     return {
@@ -127,13 +127,7 @@ export function buildImportedMeta(
         owner: incoming?.owner ?? existing?.owner,
         folder: incoming?.folder ?? existing?.folder,
         estimated: existing?.estimated,
-        publication: incoming?.publication ?? existing?.publication,
-        external: Object.values(nextExternal).some((value) => value !== undefined) ? nextExternal : undefined,
         attributes: {
-            ...preserved,
-            ...incomingAttributes,
-        },
-        params: {
             ...preserved,
             ...incomingAttributes,
         },

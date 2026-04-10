@@ -10,11 +10,11 @@ type UseStepsPanelControllerOptions = {
 }
 
 function ensureParts(step: Step) {
-    if (!step.internal) step.internal = {}
-    if (!step.internal.parts) step.internal.parts = {}
-    if (!Array.isArray(step.internal.parts.action)) step.internal.parts.action = []
-    if (!Array.isArray(step.internal.parts.data)) step.internal.parts.data = []
-    if (!Array.isArray(step.internal.parts.expected)) step.internal.parts.expected = []
+    if (!step.presentation) step.presentation = {}
+    if (!step.presentation.parts) step.presentation.parts = {}
+    if (!Array.isArray(step.presentation.parts.action)) step.presentation.parts.action = []
+    if (!Array.isArray(step.presentation.parts.data)) step.presentation.parts.data = []
+    if (!Array.isArray(step.presentation.parts.expected)) step.presentation.parts.expected = []
 }
 
 export function useStepsPanelController({
@@ -85,8 +85,8 @@ export function useStepsPanelController({
             data: '',
             expected: '',
             text: '',
-            raw: { action: '', data: '', expected: '' },
-            internal: { parts: { action: [], data: [], expected: [] } },
+            snapshot: { action: '', data: '', expected: '' },
+            presentation: { parts: { action: [], data: [], expected: [] } },
             subSteps: [],
             attachments: [],
         }
@@ -107,15 +107,15 @@ export function useStepsPanelController({
     const addPart = React.useCallback((index: number, kind: StepFieldKind) => {
         const nextStep = structuredClone(steps[index])
         ensureParts(nextStep)
-        nextStep.internal!.parts![kind]!.push({ id: crypto.randomUUID(), text: '' })
+        nextStep.presentation!.parts![kind]!.push({ id: crypto.randomUUID(), text: '' })
         updateStep(index, nextStep)
     }, [steps, updateStep])
 
     const editPart = React.useCallback((index: number, kind: StepFieldKind, partIndex: number, patch: Partial<PartItem>) => {
         const nextStep = structuredClone(steps[index])
         ensureParts(nextStep)
-        nextStep.internal!.parts![kind]![partIndex] = {
-            ...nextStep.internal!.parts![kind]![partIndex],
+        nextStep.presentation!.parts![kind]![partIndex] = {
+            ...nextStep.presentation!.parts![kind]![partIndex],
             ...patch,
         }
         updateStep(index, nextStep)
@@ -124,7 +124,7 @@ export function useStepsPanelController({
     const removePart = React.useCallback((index: number, kind: StepFieldKind, partIndex: number) => {
         const nextStep = structuredClone(steps[index])
         ensureParts(nextStep)
-        nextStep.internal!.parts![kind]!.splice(partIndex, 1)
+        nextStep.presentation!.parts![kind]!.splice(partIndex, 1)
         updateStep(index, nextStep)
     }, [steps, updateStep])
 

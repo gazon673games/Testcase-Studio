@@ -23,7 +23,7 @@ type Props = {
 function mergeMeta(prev: TestMeta | undefined, patch: Partial<TestMeta>): TestMeta {
     return {
         tags: prev?.tags ?? [],
-        params: prev?.params,
+        attributes: prev?.attributes ?? {},
         ...prev,
         ...patch,
     }

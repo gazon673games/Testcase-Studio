@@ -5,6 +5,7 @@ import { isZephyrHtmlPartsEnabled, setZephyrHtmlPartsEnabled } from '@core/zephy
 import { findNode, findParentFolder, insertChild, isFolder, mapTests } from '@core/tree'
 import { fromProviderPayload } from '@providers/mappers'
 import type { ProviderTest } from '@providers/types'
+import { getZephyrStepIntegration, getZephyrTestIntegration, setZephyrStepIntegration } from '@providers/zephyr/zephyrModel'
 import { getStoredJsonBeautifyTolerant } from '@shared/uiPreferences'
 
 export type IncludedCaseResolution = 'inline' | 'create-local-case'
@@ -31,7 +32,8 @@ export function collectIncludedCaseCandidates(state: RootState, testIds?: string
         for (let index = 0; index < test.steps.length; index += 1) {
             const step = test.steps[index]
             const snapshot = getIncludedTestSnapshot(step)
-            const includedTestKey = String(step.source?.includedCaseRef ?? step.internal?.meta?.zephyrIncludedTestKey ?? '').trim()
+            const zephyrStep = getZephyrStepIntegration(step)
+            const includedTestKey = String(step.source?.includedCaseRef ?? zephyrStep?.includedTest?.key ?? '').trim()
             if (!snapshot || !includedTestKey) continue
 
             candidates.push({
@@ -42,7 +44,7 @@ export function collectIncludedCaseCandidates(state: RootState, testIds?: string
                 stepIndex: index,
                 stepLabel: step.action || step.text || `Step ${index + 1}`,
                 includedTestKey,
-                includedTestName: String(step.internal?.meta?.zephyrIncludedTestName ?? snapshot.name ?? '').trim() || undefined,
+                includedTestName: String(zephyrStep?.includedTest?.name ?? snapshot.name ?? '').trim() || undefined,
                 includedStepsCount: snapshot.steps?.length ?? step.subSteps?.length ?? 0,
             })
         }
@@ -94,7 +96,7 @@ export function resolveIncludedCaseDecisions(
             const resolution = decisions[candidate.id]
             if (resolution === 'inline') {
                 const patch = fromProviderPayload(snapshot, [], {
-                    parseHtmlParts: isZephyrHtmlPartsEnabled(hostTest.meta),
+                    parseHtmlParts: isZephyrHtmlPartsEnabled(hostTest),
                     tolerantJsonBeautify,
                 })
                 hostTest.steps.splice(currentIndex, 1, ...patch.steps.map(stripIncludedMarkers))
@@ -103,7 +105,7 @@ export function resolveIncludedCaseDecisions(
             }
 
             if (resolution === 'create-local-case') {
-                const localTest = ensureLocalIncludedCase(nextState, parentFolder.id, hostTest.name, snapshot, existingByZephyrId, hostTest.meta)
+                const localTest = ensureLocalIncludedCase(nextState, parentFolder.id, hostTest.name, snapshot, existingByZephyrId, hostTest)
                 const linkedSteps = buildReferenceStepsFromLocalCase(localTest)
                 hostTest.steps.splice(currentIndex, 1, ...linkedSteps)
                 dirtyIds.add(hostTest.id)
@@ -125,7 +127,7 @@ function ensureLocalIncludedCase(
     hostTestName: string,
     snapshot: ProviderTest,
     existingByZephyrId: Map<string, TestCase>,
-    hostMeta: TestCase['meta']
+    hostTest: TestCase
 ) {
     const zephyrId = String(snapshot.id ?? '').trim()
     const existing = zephyrId ? existingByZephyrId.get(zephyrId) : undefined
@@ -133,13 +135,14 @@ function ensureLocalIncludedCase(
 
     const tolerantJsonBeautify = getStoredJsonBeautifyTolerant()
     const created = materializeImportedTest(snapshot, undefined, { tolerantJsonBeautify })
-    if (isZephyrHtmlPartsEnabled(hostMeta)) {
-        created.meta = setZephyrHtmlPartsEnabled(created.meta, true)
+    if (isZephyrHtmlPartsEnabled(hostTest)) {
+        setZephyrHtmlPartsEnabled(created, true)
         const parsed = fromProviderPayload(snapshot, [], {
             parseHtmlParts: true,
             tolerantJsonBeautify,
         })
         created.steps = parsed.steps
+        created.integration = parsed.integration
     }
 
     const includedFolder = ensureIncludedFolder(state, parentFolderId, hostTestName)
@@ -171,8 +174,7 @@ function buildExistingByZephyrId(state: RootState) {
     for (const test of mapTests(state.root)) {
         const zephyrId = String(
             test.links.find((link) => link.provider === 'zephyr')?.externalId
-            ?? test.meta?.external?.key
-            ?? (test.meta as any)?.params?.key
+            ?? getZephyrTestIntegration(test)?.remote?.key
             ?? ''
         ).trim()
         if (!zephyrId || map.has(zephyrId)) continue
@@ -182,26 +184,17 @@ function buildExistingByZephyrId(state: RootState) {
 }
 
 function stripIncludedMarkers(step: Step): Step {
-    const nextMeta = { ...(step.internal?.meta ?? {}) } as Record<string, unknown>
-    delete nextMeta.zephyrIncludedTestKey
-    delete nextMeta.zephyrIncludedTestName
-    delete nextMeta.zephyrIncludedTestSnapshot
-    delete nextMeta.zephyrIncludedLocalTestId
-
     const nextSource = {
         ...(step.source ?? {}),
         includedCaseRef: undefined,
     }
-
-    return {
+    const nextStep: Step = {
         ...step,
         source: nextSource.sourceStepId ? nextSource : undefined,
-        internal: {
-            ...(step.internal ?? {}),
-            meta: Object.keys(nextMeta).length ? nextMeta : undefined,
-        },
         subSteps: step.subSteps ?? [],
     }
+    setZephyrStepIntegration(nextStep, undefined)
+    return nextStep
 }
 
 function buildReferenceStepsFromLocalCase(test: TestCase): Step[] {
@@ -220,16 +213,13 @@ function buildReferenceStepsFromLocalCase(test: TestCase): Step[] {
             data: dataRef,
             expected: expectedRef,
             text: actionRef,
-            raw: {
+            snapshot: {
                 action: actionRef,
                 data: dataRef,
                 expected: expectedRef,
             },
             subSteps: [],
-            internal: {
-                meta: {
-                    zephyrIncludedLocalTestId: test.id,
-                },
+            presentation: {
                 parts: {
                     action: [],
                     data: [],
@@ -238,11 +228,15 @@ function buildReferenceStepsFromLocalCase(test: TestCase): Step[] {
             },
             attachments: [],
         }
-    })
+    }).map((step) =>
+        setZephyrStepIntegration(step, {
+            includedTest: { localTestId: test.id },
+        })
+    )
 }
 
 function getIncludedTestSnapshot(step: Step): ProviderTest | null {
-    const snapshot = step.internal?.meta?.zephyrIncludedTestSnapshot
+    const snapshot = getZephyrStepIntegration(step)?.includedTest?.snapshot
     if (!snapshot || typeof snapshot !== 'object') return null
     const candidate = snapshot as ProviderTest
     if (typeof candidate.id !== 'string' || typeof candidate.name !== 'string' || !Array.isArray(candidate.steps)) return null

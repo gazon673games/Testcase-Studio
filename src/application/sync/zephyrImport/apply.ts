@@ -2,6 +2,7 @@ import type { Folder, RootState, TestCase } from '@core/domain'
 import { findNode, findParentFolder, insertChild, isFolder, mapTests, moveNode as moveTreeNode } from '@core/tree'
 import { getStoredJsonBeautifyTolerant } from '@shared/uiPreferences'
 import type { SyncText } from '../text'
+import { getZephyrTestIntegration, setZephyrTestIntegration } from '@providers/zephyr/zephyrModel'
 import { buildTargetFolderSegments, ensureTargetFolder, getConflictFolderName, resolveDestinationFolder } from './folders'
 import { IMPORT_CONFLICT_LOCAL_ID, IMPORT_CONFLICT_REMOTE_KEY } from './markers'
 import { buildLocalMatchIndex, findLocalMatches, materializeImportedTest, upsertLocalMatch } from './materialize'
@@ -93,10 +94,14 @@ function upsertConflictDraft(
     })
     imported.name = `[Import draft] ${item.remote.name}`
     imported.links = imported.links.filter((link) => link.provider !== 'zephyr')
-    imported.meta = imported.meta ?? { tags: [], params: {} }
-    imported.meta.params = imported.meta.params ?? {}
-    imported.meta.params[IMPORT_CONFLICT_REMOTE_KEY] = item.remoteId
-    if (localTest) imported.meta.params[IMPORT_CONFLICT_LOCAL_ID] = localTest.id
+    setZephyrTestIntegration(imported, {
+        ...(getZephyrTestIntegration(imported) ?? {}),
+        importState: {
+            ...(getZephyrTestIntegration(imported)?.importState ?? {}),
+            conflictRemoteKey: item.remoteId,
+            ...(localTest ? { conflictLocalId: localTest.id } : {}),
+        },
+    })
 
     const baseFolder = ensureTargetFolder(state.root, destinationFolder.id, [getConflictFolderName(text), ...buildTargetFolderSegments(item.remote, request)])
     const draftKey = makeConflictDraftKey(item.remoteId, localTest?.id)
@@ -117,10 +122,10 @@ function upsertConflictDraft(
 function buildConflictDraftIndex(tests: TestCase[]) {
     const index = new Map<string, TestCase>()
     for (const test of tests) {
-        const params = test.meta?.params ?? {}
-        const remoteId = String(params[IMPORT_CONFLICT_REMOTE_KEY] ?? '').trim()
+        const importState = getZephyrTestIntegration(test)?.importState
+        const remoteId = String(importState?.conflictRemoteKey ?? '').trim()
         if (!remoteId) continue
-        const localId = String(params[IMPORT_CONFLICT_LOCAL_ID] ?? '').trim() || undefined
+        const localId = String(importState?.conflictLocalId ?? '').trim() || undefined
         index.set(makeConflictDraftKey(remoteId, localId), test)
     }
     return index

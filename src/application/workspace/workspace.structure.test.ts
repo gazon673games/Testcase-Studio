@@ -101,9 +101,9 @@ describe('workspace structure', () => {
         const folderClearedNode = findNode(folderCleared?.nextState.root ?? state.root, childFolder.id)
 
         expect(testAssigned?.dirtyIds).toEqual([rootTest.id])
-        expect(testAssignedNode && !isFolder(testAssignedNode) ? testAssignedNode.meta?.params?.['ui.icon'] : undefined).toBe('rocket.png')
+        expect(testAssignedNode && !isFolder(testAssignedNode) ? testAssignedNode.details?.attributes?.['ui.icon'] : undefined).toBe('rocket.png')
         expect(testCleared?.dirtyIds).toEqual([rootTest.id])
-        expect(testClearedNode && !isFolder(testClearedNode) ? testClearedNode.meta?.params?.['ui.icon'] : undefined).toBeUndefined()
+        expect(testClearedNode && !isFolder(testClearedNode) ? testClearedNode.details?.attributes?.['ui.icon'] : undefined).toBeUndefined()
         expect(folderAssigned?.dirtyIds).toBeUndefined()
         expect(folderAssignedNode && isFolder(folderAssignedNode) ? folderAssignedNode.iconKey : undefined).toBe('folder.png')
         expect(folderCleared?.dirtyIds).toBeUndefined()
@@ -123,9 +123,9 @@ describe('workspace structure', () => {
         const folderClearedNode = findNode(folderCleared?.nextState.root ?? state.root, childFolder.id)
 
         expect(testAssigned?.dirtyIds).toEqual([rootTest.id])
-        expect(testAssignedNode && !isFolder(testAssignedNode) ? testAssignedNode.meta?.params?.['ui.alias'] : undefined).toBe('Smoke payment')
+        expect(testAssignedNode && !isFolder(testAssignedNode) ? testAssignedNode.details?.attributes?.['ui.alias'] : undefined).toBe('Smoke payment')
         expect(testCleared?.dirtyIds).toEqual([rootTest.id])
-        expect(testClearedNode && !isFolder(testClearedNode) ? testClearedNode.meta?.params?.['ui.alias'] : undefined).toBeUndefined()
+        expect(testClearedNode && !isFolder(testClearedNode) ? testClearedNode.details?.attributes?.['ui.alias'] : undefined).toBeUndefined()
         expect(folderAssigned?.dirtyIds).toBeUndefined()
         expect(folderAssignedNode && isFolder(folderAssignedNode) ? folderAssignedNode.alias : undefined).toBe('Платежи')
         expect(folderCleared?.dirtyIds).toBeUndefined()

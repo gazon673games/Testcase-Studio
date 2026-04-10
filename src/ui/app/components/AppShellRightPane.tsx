@@ -31,7 +31,7 @@ type Props = {
     loadingEditorLabel: string
     onUpdateTest(
         testId: string,
-        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments' | 'links'>>
+        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'details' | 'attachments' | 'links' | 'integration'>>
     ): void
     onAddSharedStep(): Promise<string | null> | string | null
     onAddSharedStepFromStep(step: Step, name?: string): Promise<string | null> | string | null

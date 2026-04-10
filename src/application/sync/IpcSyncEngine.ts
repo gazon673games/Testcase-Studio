@@ -13,6 +13,7 @@ import {
     type ZephyrPublishPreview,
     type ZephyrPublishResult,
 } from './zephyrPublish'
+import { resolveZephyrExternalId } from './zephyrPublish/common'
 import type { SyncText } from './text'
 import type { SyncService } from './service'
 
@@ -85,7 +86,7 @@ export class IpcSyncEngine implements SyncService {
     ): Promise<ZephyrPublishPreview> {
         const remoteIds = [...new Set(
             tests
-                .map((test) => test.links.find((link) => link.provider === 'zephyr')?.externalId ?? test.meta?.params?.key ?? '')
+                .map((test) => resolveZephyrExternalId(test) ?? '')
                 .map((item) => String(item).trim())
                 .filter(Boolean)
         )]

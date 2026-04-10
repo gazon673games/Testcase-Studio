@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { findNode, findParentFolder, isFolder } from '@core/tree'
+import { setZephyrStepIntegration } from '@providers/zephyr/zephyrModel'
 import { collectIncludedCaseCandidates, resolveIncludedCaseDecisions } from './includedCases'
 import { makeWorkspace } from './testSupport'
 
@@ -10,26 +11,24 @@ describe('workspace included Zephyr cases', () => {
         if (!host || isFolder(host)) throw new Error('Expected host test')
 
         host.steps = [
-            {
+            setZephyrStepIntegration({
                 ...host.steps[0],
                 source: { ...(host.steps[0]?.source ?? {}), includedCaseRef: 'PROD-T9701' },
-                internal: {
-                    ...(host.steps[0]?.internal ?? {}),
-                    meta: {
-                        zephyrIncludedTestKey: 'PROD-T9701',
-                        zephyrIncludedTestName: 'Nested case',
-                        zephyrIncludedTestSnapshot: {
-                            id: 'PROD-T9701',
-                            name: 'Nested case',
-                            description: '',
-                            steps: [
-                                { action: 'Nested action', data: '', expected: 'Nested expected', text: 'Nested action' },
-                            ],
-                            attachments: [],
-                        },
+            }, {
+                includedTest: {
+                    key: 'PROD-T9701',
+                    name: 'Nested case',
+                    snapshot: {
+                        id: 'PROD-T9701',
+                        name: 'Nested case',
+                        description: '',
+                        steps: [
+                            { action: 'Nested action', data: '', expected: 'Nested expected', text: 'Nested action' },
+                        ],
+                        attachments: [],
                     },
                 },
-            },
+            }),
         ]
 
         const candidates = collectIncludedCaseCandidates(state, [folderTest.id])
@@ -41,7 +40,7 @@ describe('workspace included Zephyr cases', () => {
             includedTestName: 'Nested case',
             includedStepsCount: 1,
         })
-        })
+    })
 
     it('can inline included testcase steps into the parent case', () => {
         const { state, folderTest } = makeWorkspace()
@@ -49,29 +48,27 @@ describe('workspace included Zephyr cases', () => {
         if (!host || isFolder(host)) throw new Error('Expected host test')
 
         host.steps = [
-            {
+            setZephyrStepIntegration({
                 ...host.steps[0],
                 source: { ...(host.steps[0]?.source ?? {}), includedCaseRef: 'PROD-T9701' },
                 action: 'Included placeholder',
                 text: 'Included placeholder',
-                internal: {
-                    ...(host.steps[0]?.internal ?? {}),
-                    meta: {
-                        zephyrIncludedTestKey: 'PROD-T9701',
-                        zephyrIncludedTestName: 'Nested case',
-                        zephyrIncludedTestSnapshot: {
-                            id: 'PROD-T9701',
-                            name: 'Nested case',
-                            description: '',
-                            steps: [
-                                { action: 'Nested step 1', data: '', expected: 'Done 1', text: 'Nested step 1' },
-                                { action: 'Nested step 2', data: 'Payload', expected: 'Done 2', text: 'Nested step 2' },
-                            ],
-                            attachments: [],
-                        },
+            }, {
+                includedTest: {
+                    key: 'PROD-T9701',
+                    name: 'Nested case',
+                    snapshot: {
+                        id: 'PROD-T9701',
+                        name: 'Nested case',
+                        description: '',
+                        steps: [
+                            { action: 'Nested step 1', data: '', expected: 'Done 1', text: 'Nested step 1' },
+                            { action: 'Nested step 2', data: 'Payload', expected: 'Done 2', text: 'Nested step 2' },
+                        ],
+                        attachments: [],
                     },
                 },
-            },
+            }),
         ]
 
         const [candidate] = collectIncludedCaseCandidates(state, [folderTest.id])
@@ -90,27 +87,25 @@ describe('workspace included Zephyr cases', () => {
         if (!host || isFolder(host)) throw new Error('Expected host test')
 
         host.steps = [
-            {
+            setZephyrStepIntegration({
                 ...host.steps[0],
                 source: { ...(host.steps[0]?.source ?? {}), includedCaseRef: 'PROD-T9701' },
-                internal: {
-                    ...(host.steps[0]?.internal ?? {}),
-                    meta: {
-                        zephyrIncludedTestKey: 'PROD-T9701',
-                        zephyrIncludedTestName: 'Nested case',
-                        zephyrIncludedTestSnapshot: {
-                            id: 'PROD-T9701',
-                            name: 'Nested case',
-                            description: 'Imported nested case',
-                            steps: [
-                                { action: 'Nested step 1', data: '', expected: 'Done 1', text: 'Nested step 1' },
-                            ],
-                            attachments: [],
-                            extras: { key: 'PROD-T9701' },
-                        },
+            }, {
+                includedTest: {
+                    key: 'PROD-T9701',
+                    name: 'Nested case',
+                    snapshot: {
+                        id: 'PROD-T9701',
+                        name: 'Nested case',
+                        description: 'Imported nested case',
+                        steps: [
+                            { action: 'Nested step 1', data: '', expected: 'Done 1', text: 'Nested step 1' },
+                        ],
+                        attachments: [],
+                        extras: { key: 'PROD-T9701' },
                     },
                 },
-            },
+            }),
         ]
 
         const [candidate] = collectIncludedCaseCandidates(state, [folderTest.id])
@@ -133,6 +128,8 @@ describe('workspace included Zephyr cases', () => {
         expect(updated.steps).toHaveLength(1)
         expect(updated.steps[0]?.action).toBe(`[[id:${created.id}#${created.steps[0]!.id}.action]]`)
         expect(updated.steps[0]?.expected).toBe(`[[id:${created.id}#${created.steps[0]!.id}.expected]]`)
-        expect(updated.steps[0]?.internal?.meta?.zephyrIncludedLocalTestId).toBe(created.id)
+        expect(updated.steps[0]?.integration?.zephyr).toMatchObject({
+            includedTest: { localTestId: created.id },
+        })
     })
 })

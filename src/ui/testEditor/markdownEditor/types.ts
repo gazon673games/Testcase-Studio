@@ -9,7 +9,7 @@ export type RefStep = {
     data?: string
     expected?: string
     text?: string
-    internal?: {
+    presentation?: {
         parts?: {
             action?: RefPart[]
             data?: RefPart[]

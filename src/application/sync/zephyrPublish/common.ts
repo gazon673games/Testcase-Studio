@@ -1,15 +1,17 @@
 import type { Attachment, TestCase } from '@core/domain'
 import type { ProviderTest } from '@providers/types'
+import { getZephyrTestIntegration } from '@providers/zephyr/zephyrModel'
 
 export const PUBLISH_SIGNATURE_KEY = '__zephyrPublish.signature'
 export const PUBLISH_REMOTE_KEY = '__zephyrPublish.remoteKey'
 export const PUBLISH_AT_KEY = '__zephyrPublish.publishedAt'
 
-export function resolveZephyrExternalId(test: Pick<TestCase, 'links' | 'meta'>): string | undefined {
+export function resolveZephyrExternalId(test: Pick<TestCase, 'links' | 'integration'>): string | undefined {
     const link = test.links?.find((item) => item.provider === 'zephyr')?.externalId
     const fromLink = safeString(link)
     if (fromLink) return fromLink
-    return safeString(test.meta?.params?.key ?? test.meta?.params?.[PUBLISH_REMOTE_KEY])
+    const zephyr = getZephyrTestIntegration(test as TestCase)
+    return safeString(zephyr?.remote?.key ?? zephyr?.publishState?.remoteKey)
 }
 
 export function buildPublishSignature(payload: ProviderTest): string {

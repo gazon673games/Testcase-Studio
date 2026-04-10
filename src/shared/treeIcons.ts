@@ -10,7 +10,7 @@ export type LocalTreeIconOption = {
 export type LocalTestIconOption = LocalTreeIconOption
 
 type MetaLike = {
-    params?: Record<string, string> | null | undefined
+    attributes?: Record<string, string> | null | undefined
 } | null | undefined
 
 type FolderLike = {
@@ -23,7 +23,7 @@ export function normalizeNodeIconKey(value: unknown) {
 }
 
 export function getStoredNodeIconKey(meta: MetaLike) {
-    return normalizeNodeIconKey(meta?.params?.[NODE_ICON_PARAM_KEY])
+    return normalizeNodeIconKey(meta?.attributes?.[NODE_ICON_PARAM_KEY])
 }
 
 export function getStoredTestIconKey(meta: MetaLike) {

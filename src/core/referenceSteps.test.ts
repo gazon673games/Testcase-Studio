@@ -29,7 +29,7 @@ describe('referenceSteps', () => {
     it('treats step parts as referenceable content', () => {
         const source = mkTest('Flow with blocks')
         const step = mkStep('', '', '')
-        step.internal!.parts!.expected!.push({ id: 'part-1', text: 'Block value' })
+        step.presentation!.parts!.expected!.push({ id: 'part-1', text: 'Block value' })
         source.steps = [step]
 
         const inserted = buildReferenceStepsFromTest(source, [step.id])

@@ -32,13 +32,13 @@ function buildReferenceStep(test: TestCase, step: Step): Step {
         data,
         expected,
         text: action || data || expected,
-        raw: {
+        snapshot: {
             action,
             data,
             expected,
         },
         subSteps: [],
-        internal: {
+        presentation: {
             parts: {
                 action: [],
                 data: [],
@@ -57,7 +57,7 @@ function hasReferenceableField(step: Step, kind: 'action' | 'data' | 'expected')
     const topLevel = getFieldValue(step, kind).trim()
     if (topLevel) return true
 
-    const parts = step.internal?.parts?.[kind] ?? []
+    const parts = step.presentation?.parts?.[kind] ?? []
     return parts.some((part) => part.export !== false && String(part.text ?? '').trim())
 }
 

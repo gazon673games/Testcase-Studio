@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mkStep } from './domain'
+import { mkStep, mkTest } from './domain'
 import {
     applyZephyrHtmlPartsParsing,
     beautifyZephyrJsonBlocksInStep,
@@ -11,25 +11,26 @@ import {
 describe('zephyr html parts parsing', () => {
     it('splits html fields into top level text and extra parts using double breaks', () => {
         const step = mkStep(
-            '<strong>Проверить</strong><br /><br />Выполнить запрос<br /><br /><span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span><br /><br /><span>где {{id}} - значение из ответа</span>'
+            '<strong>РџСЂРѕРІРµСЂРёС‚СЊ</strong><br /><br />Р’С‹РїРѕР»РЅРёС‚СЊ Р·Р°РїСЂРѕСЃ<br /><br /><span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span><br /><br /><span>РіРґРµ {{id}} - Р·РЅР°С‡РµРЅРёРµ РёР· РѕС‚РІРµС‚Р°</span>'
         )
 
         const parsed = applyZephyrHtmlPartsParsing(step)
 
-        expect(parsed.action).toBe('<strong>Проверить</strong>')
-        expect(parsed.internal?.parts?.action?.map((part) => part.text)).toEqual([
-            'Выполнить запрос',
+        expect(parsed.action).toBe('<strong>РџСЂРѕРІРµСЂРёС‚СЊ</strong>')
+        expect(parsed.presentation?.parts?.action?.map((part) => part.text)).toEqual([
+            'Р’С‹РїРѕР»РЅРёС‚СЊ Р·Р°РїСЂРѕСЃ',
             '<span><em>SELECT x.*<br />WHERE id=\'{{id}}\'</em></span>',
-            '<span>где {{id}} - значение из ответа</span>',
+            '<span>РіРґРµ {{id}} - Р·РЅР°С‡РµРЅРёРµ РёР· РѕС‚РІРµС‚Р°</span>',
         ])
     })
 
-    it('stores and reads the per-test parse flag in meta params', () => {
-        const enabled = setZephyrHtmlPartsEnabled({ tags: [], params: {} }, true)
-        const disabled = setZephyrHtmlPartsEnabled(enabled, false)
+    it('stores and reads the per-test parse flag in test integration', () => {
+        const test = mkTest('HTML parsing')
+        setZephyrHtmlPartsEnabled(test, true)
+        expect(isZephyrHtmlPartsEnabled(test)).toBe(true)
 
-        expect(isZephyrHtmlPartsEnabled(enabled)).toBe(true)
-        expect(isZephyrHtmlPartsEnabled(disabled)).toBe(false)
+        setZephyrHtmlPartsEnabled(test, false)
+        expect(isZephyrHtmlPartsEnabled(test)).toBe(false)
     })
 
     it('beautifies valid json blocks after splitting zephyr html', () => {
@@ -40,7 +41,7 @@ describe('zephyr html parts parsing', () => {
         const parsed = applyZephyrHtmlPartsParsing(step)
 
         expect(parsed.action).toBe('<strong>Inspect</strong>')
-        expect(parsed.internal?.parts?.action?.map((part) => part.text)).toEqual([
+        expect(parsed.presentation?.parts?.action?.map((part) => part.text)).toEqual([
             '<em>{<br />  "insurance_object": [<br />    {<br />      "id": "1",<br />      "active": true<br />    }<br />  ]<br />}</em>',
         ])
     })
@@ -52,7 +53,7 @@ describe('zephyr html parts parsing', () => {
 
         const parsed = applyZephyrHtmlPartsParsing(step)
 
-        expect(parsed.internal?.parts?.action?.map((part) => part.text)).toEqual([
+        expect(parsed.presentation?.parts?.action?.map((part) => part.text)).toEqual([
             '<span><em>{<br />"insurance_object": [<br />{<br />"id": "1"<br />"active": true<br />}<br />]}</em></span>',
         ])
     })
@@ -64,7 +65,7 @@ describe('zephyr html parts parsing', () => {
 
         const parsed = applyZephyrHtmlPartsParsing(step, { tolerant: true })
 
-        expect(parsed.internal?.parts?.action?.map((part) => part.text)).toEqual([
+        expect(parsed.presentation?.parts?.action?.map((part) => part.text)).toEqual([
             '<em>{<br />  "id": "1",<br />  "active": true<br />}</em>',
         ])
     })
@@ -76,7 +77,7 @@ describe('zephyr html parts parsing', () => {
 
         const parsed = applyZephyrHtmlPartsParsing(step, { tolerant: true })
 
-        expect(parsed.internal?.parts?.action?.map((part) => part.text)).toEqual([
+        expect(parsed.presentation?.parts?.action?.map((part) => part.text)).toEqual([
             '<em>{<br />  "scoring_request_id": "8116acb5-4b3c-40df-8c05-9c02af105fa0",<br />  "is_deleted": false,<br />  "deleted_at": null<br />}</em>',
         ])
     })
@@ -88,28 +89,28 @@ describe('zephyr html parts parsing', () => {
 
         const parsed = applyZephyrHtmlPartsParsing(step, { tolerant: true })
 
-        expect(parsed.internal?.parts?.action?.map((part) => part.text)).toEqual([
+        expect(parsed.presentation?.parts?.action?.map((part) => part.text)).toEqual([
             '<em>{<br />  "test": 12,<br />  "test1": "test",<br />  "test2": "test"<br />}</em>',
         ])
     })
 
     it('beautifies json blocks in existing step parts on demand', () => {
         const step = mkStep('Inspect')
-        step.internal!.parts!.action = [{
+        step.presentation!.parts!.action = [{
             id: 'part-1',
             text: '<span><em>{<br />&quot;id&quot;: &quot;1&quot;,<br />&quot;active&quot;: true<br />}</em></span>',
         }]
 
         const beautified = beautifyZephyrJsonBlocksInStep(step)
 
-        expect(beautified.internal?.parts?.action?.map((part) => part.text)).toEqual([
+        expect(beautified.presentation?.parts?.action?.map((part) => part.text)).toEqual([
             '<em>{<br />  "id": "1",<br />  "active": true<br />}</em>',
         ])
     })
 
     it('reports parse errors for json-like blocks that still cannot be repaired', () => {
         const step = mkStep('Inspect')
-        step.internal!.parts!.action = [{
+        step.presentation!.parts!.action = [{
             id: 'part-1',
             text: '<span><em>{ "test": 12, "test1": "test" "test2":"test }</em></span>',
         }]

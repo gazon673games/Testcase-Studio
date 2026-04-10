@@ -1,14 +1,14 @@
 import { normalizeStep, type Step } from '@core/domain'
 import type { ProviderStep } from '@providers/types'
 
-export function buildImportedStepInternal(previousStep: Step | undefined, shouldKeepParts: boolean | undefined): Step['internal'] {
+export function buildImportedStepInternal(previousStep: Step | undefined, shouldKeepParts: boolean | undefined): Step['presentation'] {
     return {
-        ...(previousStep?.internal ?? {}),
+        ...(previousStep?.presentation ?? {}),
         parts: shouldKeepParts
             ? {
-                action: [...(previousStep?.internal?.parts?.action ?? [])],
-                data: [...(previousStep?.internal?.parts?.data ?? [])],
-                expected: [...(previousStep?.internal?.parts?.expected ?? [])],
+                action: [...(previousStep?.presentation?.parts?.action ?? [])],
+                data: [...(previousStep?.presentation?.parts?.data ?? [])],
+                expected: [...(previousStep?.presentation?.parts?.expected ?? [])],
             }
             : {
                 action: [],

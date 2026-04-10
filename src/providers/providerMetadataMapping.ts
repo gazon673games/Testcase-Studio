@@ -1,5 +1,11 @@
-import type { TestMeta } from '@core/domain'
 import type { ProviderTest, ProviderTestExtras } from '@providers/types'
+import type { ZephyrTestIntegration } from '@providers/zephyr/zephyrModel'
+import type { TestDetails } from '@core/domain'
+
+export interface ProviderImportedTestMetadataProjection {
+    details: TestDetails
+    integration: ZephyrTestIntegration
+}
 
 function toOptionalString(value: unknown): string | undefined {
     if (typeof value !== 'string') return value == null ? undefined : String(value)
@@ -40,14 +46,12 @@ function compactObject<T extends Record<string, unknown>>(value: T): T | undefin
     return Object.values(value).some((item) => item !== undefined) ? value : undefined
 }
 
-export function buildTestDetailsFromProviderTest(src: ProviderTest): TestMeta {
+export function buildLocalTestDetailsFromProviderTest(src: ProviderTest): TestDetails {
     const providerMetadata = src.extras ?? {}
-    const customFields = normalizeCustomFields(providerMetadata)
 
     return {
         tags: [],
         attributes: {},
-        params: {},
         objective: toOptionalString(providerMetadata.objective),
         preconditions: toOptionalString(providerMetadata.preconditions),
         status: toOptionalString(providerMetadata.status),
@@ -55,12 +59,20 @@ export function buildTestDetailsFromProviderTest(src: ProviderTest): TestMeta {
         component: toOptionalString(providerMetadata.component),
         owner: toOptionalString(providerMetadata.owner),
         folder: toOptionalString(providerMetadata.folder),
+    }
+}
+
+export function buildZephyrIntegrationFromProviderTest(src: ProviderTest): ZephyrTestIntegration {
+    const providerMetadata = src.extras ?? {}
+    const customFields = normalizeCustomFields(providerMetadata)
+
+    return {
         publication: compactObject({
             type: toOptionalString(customFields?.['Test Type']),
             automation: toOptionalString(customFields?.Automation),
             assignedTo: toOptionalString(customFields?.['Assigned to']),
         }),
-        external: compactObject({
+        remote: compactObject({
             key: toOptionalString(providerMetadata.key),
             keyNumber: toOptionalString(providerMetadata.keyNumber),
             projectKey: toOptionalString(providerMetadata.projectKey),
@@ -74,7 +86,13 @@ export function buildTestDetailsFromProviderTest(src: ProviderTest): TestMeta {
             customFields,
             parameters: normalizeParameters(providerMetadata),
         }),
+        options: undefined,
     }
 }
 
-export const buildMetaFromProviderTest = buildTestDetailsFromProviderTest
+export function projectProviderTestMetadata(src: ProviderTest): ProviderImportedTestMetadataProjection {
+    return {
+        details: buildLocalTestDetailsFromProviderTest(src),
+        integration: buildZephyrIntegrationFromProviderTest(src),
+    }
+}

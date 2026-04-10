@@ -8,7 +8,7 @@ describe('resolveRefsInText', () => {
         owner.id = 'test-composite'
         const step = mkStep('Base action', '', '')
         step.id = 'step-composite'
-        step.internal!.parts!.action = [
+        step.presentation!.parts!.action = [
             { id: 'block-1', text: 'Follow-up block' },
         ]
         owner.steps = [step]
@@ -25,7 +25,7 @@ describe('resolveRefsInText', () => {
         owner.id = 'test-composite'
         const step = mkStep('Base action', '', '')
         step.id = 'step-composite'
-        step.internal!.parts!.action = [
+        step.presentation!.parts!.action = [
             { id: 'block-1', text: 'Follow-up block' },
         ]
         owner.steps = [step]

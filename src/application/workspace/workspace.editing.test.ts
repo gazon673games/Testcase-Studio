@@ -9,8 +9,8 @@ describe('workspace test editing', () => {
 
         const result = updateTestCase(state, rootTest.id, {
             description: 'Updated local description',
-            meta: {
-                ...(rootTest.meta ?? { tags: [], params: {} }),
+            details: {
+                ...(rootTest.details ?? { tags: [], attributes: {} }),
                 tags: ['critical'],
             },
         })
@@ -19,7 +19,7 @@ describe('workspace test editing', () => {
 
         expect(result?.dirtyIds).toEqual([rootTest.id])
         expect(updated && !isFolder(updated) ? updated.description : '').toBe('Updated local description')
-        expect(updated && !isFolder(updated) ? updated.meta?.tags : []).toEqual(['critical'])
+        expect(updated && !isFolder(updated) ? updated.details?.tags : []).toEqual(['critical'])
     })
 
     it('can clear external links by replacing them with an empty list', () => {

@@ -53,7 +53,7 @@ function buildCompositeFieldText(step: RefStep, kind: IndexedFieldKind): string 
                 ? step.data ?? ''
                 : step.expected ?? ''
     ).trim()
-    const blocks = (step.internal?.parts?.[kind] ?? []).map((part) => String(part.text ?? '').trim()).filter(Boolean)
+    const blocks = (step.presentation?.parts?.[kind] ?? []).map((part) => String(part.text ?? '').trim()).filter(Boolean)
     return [topLevel, ...blocks].filter(Boolean).join('\n').trim()
 }
 
@@ -80,7 +80,7 @@ function buildIndexedField(
     resolveDisplayText: ResolveDisplayText
 ): IndexedField {
     const text = resolveDisplayText(buildCompositeFieldText(step, kind))
-    const parts = (step.internal?.parts?.[kind] ?? []).map((part, index) => {
+    const parts = (step.presentation?.parts?.[kind] ?? []).map((part, index) => {
         const displayText = resolveDisplayText(part.text ?? '')
         return {
             part,

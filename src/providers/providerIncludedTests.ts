@@ -1,24 +1,20 @@
 import { v4 as uuid } from 'uuid'
 import type { Step, SubStep } from '@core/domain'
 import type { ProviderStep, ProviderTest } from '@providers/types'
+import { updateZephyrStepIntegration } from '@providers/zephyr/zephyrModel'
 
 export function attachIncludedTestSnapshot(step: Step, providerStep: ProviderStep, includedCaseRef: string | undefined) {
     if (!includedCaseRef && !providerStep.includedTest?.name) return
-
-    step.internal = step.internal ?? { parts: { action: [], data: [], expected: [] } }
-    const nextMeta = { ...(step.internal.meta ?? {}) }
-
-    if (includedCaseRef) nextMeta.zephyrIncludedTestKey = includedCaseRef
-    else delete (nextMeta as Record<string, unknown>).zephyrIncludedTestKey
-
-    const includedName = safeStr(providerStep.includedTest?.name).trim()
-    if (includedName) nextMeta.zephyrIncludedTestName = includedName
-    else delete (nextMeta as Record<string, unknown>).zephyrIncludedTestName
-
-    if (providerStep.includedTest) nextMeta.zephyrIncludedTestSnapshot = cloneProviderTest(providerStep.includedTest)
-    else delete (nextMeta as Record<string, unknown>).zephyrIncludedTestSnapshot
-
-    step.internal.meta = Object.keys(nextMeta).length ? nextMeta : undefined
+    updateZephyrStepIntegration(step, (current) => {
+        const includedName = safeStr(providerStep.includedTest?.name).trim()
+        const nextIncluded = {
+            ...(includedCaseRef ? { key: includedCaseRef } : {}),
+            ...(includedName ? { name: includedName } : {}),
+            ...(providerStep.includedTest ? { snapshot: cloneProviderTest(providerStep.includedTest) } : {}),
+            ...(current?.includedTest?.localTestId ? { localTestId: current.includedTest.localTestId } : {}),
+        }
+        return Object.keys(nextIncluded).length ? { ...(current ?? {}), includedTest: nextIncluded } : current
+    })
 }
 
 export function buildNestedSubSteps(test: ProviderTest | undefined, seen = new Set<string>()): SubStep[] {

@@ -1,9 +1,10 @@
 import { mdToHtml, looksLikeHtml } from '@core/markdown'
 import { buildExport } from '@core/export'
 import { buildRefCatalog, renderRefsInText } from '@core/refs'
-import { nowISO, type RootState, type TestCase, type TestMeta } from '@core/domain'
+import { nowISO, type RootState, type TestCase, type TestDetails } from '@core/domain'
 import { mapTests } from '@core/tree'
 import type { ProviderStep, ProviderTest } from '@providers/types'
+import { getZephyrTestIntegration } from '@providers/zephyr/zephyrModel'
 import { copyAttachment, resolveZephyrExternalId, safeString } from './common'
 
 type ZephyrPublishPayloadContext = {
@@ -21,16 +22,17 @@ export function buildZephyrPublishPayload(
     state: RootState,
     context: ZephyrPublishPayloadContext = createZephyrPublishPayloadContext(state)
 ): ProviderTest {
-    const details = test.meta ?? test.details
+    const details = test.details
+    const zephyr = getZephyrTestIntegration(test)
     const exportPayload = buildExport(test, state)
     const render = (value: string | undefined) => renderZephyrText(value, context.refCatalog)
     const externalId = resolveZephyrExternalId(test) ?? ''
     const projectKey = resolveProjectKey(test)
-    const folder = safeString(details?.folder ?? details?.attributes?.folder ?? (details as any)?.params?.folder)
+    const folder = safeString(details?.folder)
     const objective = render(details?.objective)
     const preconditions = render(details?.preconditions)
     const labels = (details?.tags ?? []).map((item) => String(item).trim()).filter(Boolean)
-    const customFields = buildPublishCustomFields(details)
+    const customFields = buildPublishCustomFields(zephyr)
     const steps = exportPayload.steps.map((step) => ({
         action: render(step.action),
         data: render(step.data),
@@ -38,7 +40,7 @@ export function buildZephyrPublishPayload(
         text: render(step.action),
         attachments: (step.attachments ?? []).map(copyAttachment),
     }))
-    const parametersInfo = buildPublishParameters(details, steps)
+    const parametersInfo = buildPublishParameters(zephyr, steps)
     const parameters = parametersInfo.value
 
     return {
@@ -76,32 +78,22 @@ function normalizeZephyrHtmlText(value: string): string {
 }
 
 function resolveProjectKey(test: TestCase): string | undefined {
-    const details = test.meta ?? test.details
-    const explicit = safeString(details?.external?.projectKey ?? details?.attributes?.projectKey ?? (details as any)?.params?.projectKey)
+    const explicit = safeString(getZephyrTestIntegration(test)?.remote?.projectKey)
     if (explicit) return explicit
     const linked = resolveZephyrExternalId(test)
     const match = linked?.match(/^([A-Z][A-Z0-9_]+)-\d+$/)
     return match?.[1]
 }
 
-function buildPublishCustomFields(meta: TestMeta | undefined): Record<string, unknown> | undefined {
-    const params = {
-        ...(meta?.params ?? {}),
-        ...(meta?.attributes ?? {}),
-    }
-    const entries = Object.entries(params)
-        .filter(([key]) => key.startsWith('customFields.'))
-        .map(([key, value]) => [key.slice('customFields.'.length), parseStoredParamValue(value)] as const)
-        .filter(([key]) => Boolean(key.trim()))
-
+function buildPublishCustomFields(zephyr: ReturnType<typeof getZephyrTestIntegration>): Record<string, unknown> | undefined {
     const next = {
-        ...Object.fromEntries(entries),
-        ...(meta?.external?.customFields ?? {}),
+        ...(zephyr?.remote?.customFields ?? {}),
     } as Record<string, unknown>
+
     const fallbackFields: Array<[string, unknown]> = [
-        ['Automation', meta?.publication?.automation ?? (meta as any)?.automation],
-        ['Test Type', meta?.publication?.type ?? (meta as any)?.testType],
-        ['Assigned to', meta?.publication?.assignedTo ?? (meta as any)?.assignedTo],
+        ['Automation', zephyr?.publication?.automation],
+        ['Test Type', zephyr?.publication?.type],
+        ['Assigned to', zephyr?.publication?.assignedTo],
     ]
 
     for (const [key, value] of fallbackFields) {
@@ -111,19 +103,18 @@ function buildPublishCustomFields(meta: TestMeta | undefined): Record<string, un
         next[key] = normalized
     }
 
-    if (!Object.keys(next).length) return undefined
-    return next
+    return Object.keys(next).length ? next : undefined
 }
 
 function buildPublishParameters(
-    meta: TestMeta | undefined,
+    zephyr: ReturnType<typeof getZephyrTestIntegration>,
     _steps: ProviderStep[]
 ): {
     value?: { variables?: unknown[]; entries?: unknown[] }
     mode: 'none' | 'explicit'
 } {
-    const explicitVariables = normalizeParameterVariableList(meta?.external?.parameters?.variables ?? [])
-    const explicitEntries = Array.isArray(meta?.external?.parameters?.entries) ? [...(meta?.external?.parameters?.entries ?? [])] : []
+    const explicitVariables = normalizeParameterVariableList(zephyr?.remote?.parameters?.variables ?? [])
+    const explicitEntries = Array.isArray(zephyr?.remote?.parameters?.entries) ? [...(zephyr?.remote?.parameters?.entries ?? [])] : []
     if (explicitVariables.length || explicitEntries.length) {
         return {
             value: {
@@ -133,37 +124,7 @@ function buildPublishParameters(
             mode: 'explicit',
         }
     }
-
-    const params = {
-        ...(meta?.params ?? {}),
-        ...(meta?.attributes ?? {}),
-    }
-    const hasVariables = Object.prototype.hasOwnProperty.call(params, 'parameters.variables')
-    const hasEntries = Object.prototype.hasOwnProperty.call(params, 'parameters.entries')
-    if (!hasVariables && !hasEntries) return { mode: 'none' }
-
-    const next: { variables?: unknown[]; entries?: unknown[] } = {}
-    const existingVariables = hasVariables ? normalizeParameterVariableList(parseStoredArrayValue(params['parameters.variables'])) : []
-    if (existingVariables.length) next.variables = existingVariables
-    const entries = hasEntries ? parseStoredArrayValue(params['parameters.entries']) : []
-    if (entries.length) next.entries = entries
-    const mode = existingVariables.length > 0 || entries.length > 0 ? 'explicit' : 'none'
-    return Object.keys(next).length ? { value: next, mode } : { mode }
-}
-
-function parseStoredParamValue(value: string | undefined): unknown {
-    const raw = String(value ?? '').trim()
-    if (!raw) return ''
-    try {
-        return JSON.parse(raw)
-    } catch {
-        return raw
-    }
-}
-
-function parseStoredArrayValue(value: string | undefined): unknown[] {
-    const parsed = parseStoredParamValue(value)
-    return Array.isArray(parsed) ? parsed : []
+    return { mode: 'none' }
 }
 
 function normalizeParameterVariableList(values: unknown[]): Array<{ name: string; [key: string]: unknown }> {

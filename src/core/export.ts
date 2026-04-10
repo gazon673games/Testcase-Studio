@@ -24,7 +24,6 @@ export type ExportTest = {
     steps: ExportStep[]
     attachments: Attachment[]
     details?: TestDetails
-    meta?: TestDetails
 }
 
 export class ExportIntegrityError extends Error {
@@ -57,7 +56,7 @@ function pickColumn(
     kind: 'action' | 'data' | 'expected',
     resolveText: (value: string | undefined) => string | undefined
 ) {
-    const parts: StepBlock[] | undefined = step.presentation?.parts?.[kind] ?? step.internal?.parts?.[kind]
+    const parts: StepBlock[] | undefined = step.presentation?.parts?.[kind]
     if (parts?.length) {
         const exportableParts = parts.filter((part) => part.export !== false)
         const topLevel = kind === 'action' ? step.action ?? step.text ?? '' : ((step as any)[kind] ?? '')
@@ -80,9 +79,7 @@ function collectStepAttachments(step: Step): Attachment[] {
     const legacy =
         Array.isArray((step.presentation as any)?.meta?.attachments)
             ? (step.presentation as any).meta.attachments
-            : Array.isArray((step.internal as any)?.meta?.attachments)
-                ? (step.internal as any).meta.attachments
-                : []
+            : []
 
     for (const attachment of [...legacy, ...modern]) {
         if (attachment?.id) next.set(attachment.id, attachment)
@@ -115,14 +112,6 @@ function resolveDetails(details: TestDetails | undefined, resolveText: (value: s
                   ])
               )
             : details.attributes,
-        params: details.attributes
-            ? Object.fromEntries(
-                  Object.entries(details.attributes).map(([key, value]) => [
-                      key,
-                      typeof value === 'string' ? resolveText(value) ?? '' : value,
-                  ])
-              )
-            : details.attributes,
     }
 }
 
@@ -131,7 +120,7 @@ export function buildExport(test: TestCase, state?: RootState): ExportTest {
     const catalog = state ? buildRefCatalog(mapTests(state.root), state.sharedSteps) : undefined
     const resolveText = createTextResolver(catalog)
 
-    const details = resolveDetails(test.meta ?? test.details, resolveText)
+    const details = resolveDetails(test.details, resolveText)
 
     return {
         id: test.id,
@@ -140,7 +129,6 @@ export function buildExport(test: TestCase, state?: RootState): ExportTest {
         steps: steps.map((step) => exportOneStep(step, resolveText)),
         attachments: test.attachments,
         details,
-        meta: details,
     }
 }
 

@@ -2,6 +2,7 @@ import { nowISO, type Folder, type RootState, type TestCase, type TestMeta } fro
 import { buildPreviewStepDiffRows, summarizePreviewSteps, summarizePreviewText, type PreviewStepDiffRow } from '@core/previewDiff'
 import { findParentFolder, mapTests } from '@core/tree'
 import type { ProviderTest } from '@providers/types'
+import { getZephyrTestIntegration } from '@providers/zephyr/zephyrModel'
 import { getStoredJsonBeautifyTolerant } from '@shared/uiPreferences'
 import type { SyncText } from '../text'
 import {
@@ -162,7 +163,7 @@ function diffImportedFields(root: Folder, local: TestCase, remote: TestCase, tar
         summarizePreviewSteps(remote.steps),
         buildPreviewStepDiffRows(local.steps, remote.steps)
     )
-    pushDiff(diffs, 'meta', t('import.diff.meta'), summarizeMeta(local.meta, text), summarizeMeta(remote.meta, text))
+    pushDiff(diffs, 'meta', t('import.diff.meta'), summarizeMeta(local, text), summarizeMeta(remote, text))
     pushDiff(diffs, 'attachments', t('import.diff.attachments'), summarizeAttachments(local, text), summarizeAttachments(remote, text))
 
     const localFolder = describeFolderPath(root, findParentFolder(root, local.id)?.id ?? root.id, text.rootLabel)
@@ -181,7 +182,7 @@ function diffNewImportedFields(remote: TestCase, targetFolderLabel: string, text
             remote: summarizePreviewSteps(remote.steps),
             stepRows: buildPreviewStepDiffRows([], remote.steps),
         },
-        { field: 'meta', label: t('import.diff.meta'), local: t('import.diff.noLocal'), remote: summarizeMeta(remote.meta, text) },
+        { field: 'meta', label: t('import.diff.meta'), local: t('import.diff.noLocal'), remote: summarizeMeta(remote, text) },
         { field: 'folder', label: t('import.diff.folder'), local: t('import.diff.willCreate'), remote: targetFolderLabel },
     ]
 }
@@ -199,12 +200,14 @@ function pushDiff(
     diffs.push({ field, label, local, remote, ...(stepRows?.length ? { stepRows } : {}) })
 }
 
-function summarizeMeta(meta: TestMeta | undefined, text: SyncText): string {
+function summarizeMeta(test: TestCase, text: SyncText): string {
     const t = text.t
-    const paramsCount = Object.keys(meta?.params ?? {}).filter((key) => !isImportMarkerKey(key)).length
+    const details = test.details
+    const paramsCount = Object.keys(details?.attributes ?? {}).filter((key) => !isImportMarkerKey(key)).length
+    const zephyr = getZephyrTestIntegration(test)
     const bits = [
-        meta?.objective ? t('import.summary.objective') : '',
-        meta?.preconditions ? t('import.summary.preconditions') : '',
+        details?.objective ? t('import.summary.objective') : '',
+        details?.preconditions ? t('import.summary.preconditions') : '',
         paramsCount ? t('import.summary.params', { count: paramsCount }) : '',
     ].filter(Boolean)
     return bits.length ? bits.join(', ') : t('import.summary.noMeta')

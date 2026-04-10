@@ -44,7 +44,7 @@ describe('markdown autocomplete indexing', () => {
                     action: 'Open invoice screen',
                     data: 'customer-42',
                     expected: 'Invoice screen appears',
-                    internal: {
+                    presentation: {
                         parts: {
                             action: [{ id: 'action-part-1', text: 'Click the invoice row' }],
                             data: [],

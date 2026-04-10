@@ -124,7 +124,7 @@ function collectOwnerTextSources(owner: RefOwner): OwnerTextSource[] {
 
     if (owner.ownerType === 'test') {
         pushText(`${owner.owner.id}:description`, 'Description', owner.owner.description)
-        pushMetaFields(owner.owner.meta, owner.owner.id, pushText)
+        pushMetaFields(owner.owner.details, owner.owner.id, pushText)
     }
 
     owner.owner.steps.forEach((step, index) => {
@@ -133,7 +133,7 @@ function collectOwnerTextSources(owner: RefOwner): OwnerTextSource[] {
         pushText(`${owner.owner.id}:${step.id}:expected`, `Step ${index + 1} expected`, step.expected, step.id)
 
         for (const kind of ['action', 'data', 'expected'] as RefKind[]) {
-            const parts = step.internal?.parts?.[kind] ?? []
+            const parts = step.presentation?.parts?.[kind] ?? []
             parts.forEach((part, partIndex) => {
                 pushText(
                     `${owner.owner.id}:${step.id}:${kind}:${part.id}`,

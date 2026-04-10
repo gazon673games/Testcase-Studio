@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildZephyrPublishPayload, buildZephyrPublishPreview, createSyncText } from '@app/sync'
 import { mkFolder, mkStep, mkTest, type RootState } from './domain'
 import type { ProviderTest } from '@providers/types'
+import { setZephyrTestIntegration } from '@providers/zephyr/zephyrModel'
 
 const syncText = createSyncText((key) => key)
 
@@ -38,23 +39,25 @@ describe('buildZephyrPublishPreview', () => {
         expect(item.attachmentIdsToDelete).toEqual(['remote-old'])
     })
 
-    it('round-trips required custom fields and Zephyr parameters from meta.params', () => {
+    it('round-trips required custom fields and Zephyr parameters from integration metadata', () => {
         const test = mkTest('Publish case')
         test.id = 'test-publish'
         test.links = [{ provider: 'zephyr', externalId: 'PROJ-T6170' }]
-        test.meta = {
-            ...(test.meta ?? { tags: [], params: {} }),
-            params: {
-                ...(test.meta?.params ?? {}),
+        setZephyrTestIntegration(test, {
+            remote: {
                 key: 'PROJ-T6170',
                 projectKey: 'PROJ',
-                folder: '/CORE/Publish',
-                'customFields.Test Type': 'Manual',
-                'customFields.Automation': 'Not Automated',
-                'parameters.variables': JSON.stringify([{ name: 'insuredId', type: 'string' }]),
-                'parameters.entries': JSON.stringify([{ values: { insuredId: '123' } }]),
+                customFields: {
+                    'Test Type': 'Manual',
+                    Automation: 'Not Automated',
+                },
+                parameters: {
+                    variables: [{ name: 'insuredId', type: 'string' }],
+                    entries: [{ values: { insuredId: '123' } }],
+                },
             },
-        }
+        })
+        test.details = { ...(test.details ?? { tags: [], attributes: {} }), folder: '/CORE/Publish', tags: [] }
         test.steps = [mkStep('Action', '', 'Expected')]
 
         const state: RootState = {
@@ -74,20 +77,19 @@ describe('buildZephyrPublishPreview', () => {
         })
     })
 
-    it('maps dedicated meta fields to Zephyr custom fields when explicit params are absent', () => {
+    it('maps dedicated publication fields to Zephyr custom fields when explicit custom fields are absent', () => {
         const test = mkTest('Publish case')
         test.id = 'test-publish'
-        test.meta = {
-            ...(test.meta ?? { tags: [], params: {} }),
+        setZephyrTestIntegration(test, {
             publication: {
                 automation: 'Automated',
                 type: 'Regression',
                 assignedTo: 'user-1',
             },
-            external: {
+            remote: {
                 projectKey: 'PROJ',
             },
-        }
+        })
         test.steps = [mkStep('Action', '', 'Expected')]
 
         const state: RootState = {
@@ -108,16 +110,16 @@ describe('buildZephyrPublishPreview', () => {
         const test = mkTest('Publish case')
         test.id = 'test-publish'
         test.links = [{ provider: 'zephyr', externalId: 'PROJ-T6170' }]
-        test.meta = {
-            ...(test.meta ?? { tags: [], params: {} }),
-            params: {
-                ...(test.meta?.params ?? {}),
+        setZephyrTestIntegration(test, {
+            remote: {
                 key: 'PROJ-T6170',
                 projectKey: 'PROJ',
-                'customFields.Test Type': 'Manual',
-                'customFields.Automation': 'Not Automated',
+                customFields: {
+                    'Test Type': 'Manual',
+                    Automation: 'Not Automated',
+                },
             },
-        }
+        })
         test.steps = [mkStep('Action', '', 'Expected')]
 
         const state: RootState = {
@@ -151,16 +153,16 @@ describe('buildZephyrPublishPreview', () => {
         const test = mkTest('Publish case')
         test.id = 'test-publish'
         test.links = [{ provider: 'zephyr', externalId: 'PROJ-T6170' }]
-        test.meta = {
-            ...(test.meta ?? { tags: [], params: {} }),
-            params: {
-                ...(test.meta?.params ?? {}),
+        setZephyrTestIntegration(test, {
+            remote: {
                 key: 'PROJ-T6170',
                 projectKey: 'PROJ',
-                'parameters.variables': '[]',
-                'parameters.entries': '[]',
+                parameters: {
+                    variables: [],
+                    entries: [],
+                },
             },
-        }
+        })
         test.steps = [
             mkStep(
                 'POST {{objectId}} with {{$guid}}',
@@ -183,8 +185,8 @@ describe('buildZephyrPublishPreview', () => {
         const test = mkTest('Publish case')
         test.id = 'test-publish'
         test.links = [{ provider: 'zephyr', externalId: 'PROJ-T6170' }]
-        const step = mkStep('<strong>Предварительные условия</strong><br />1. Получен токен авторизации', '', '')
-        step.internal!.parts!.action = [{ id: 'part-note', text: 'dsfds' }]
+        const step = mkStep('<strong>РџСЂРµРґРІР°СЂРёС‚РµР»СЊРЅС‹Рµ СѓСЃР»РѕРІРёСЏ</strong><br />1. РџРѕР»СѓС‡РµРЅ С‚РѕРєРµРЅ Р°РІС‚РѕСЂРёР·Р°С†РёРё', '', '')
+        step.presentation!.parts!.action = [{ id: 'part-note', text: 'dsfds' }]
         test.steps = [step]
 
         const state: RootState = {
@@ -194,7 +196,7 @@ describe('buildZephyrPublishPreview', () => {
 
         const payload = buildZephyrPublishPayload(test, state)
 
-        expect(payload.steps[0]?.action).toBe('<strong>Предварительные условия</strong><br />1. Получен токен авторизации<br />dsfds')
+        expect(payload.steps[0]?.action).toBe('<strong>РџСЂРµРґРІР°СЂРёС‚РµР»СЊРЅС‹Рµ СѓСЃР»РѕРІРёСЏ</strong><br />1. РџРѕР»СѓС‡РµРЅ С‚РѕРєРµРЅ Р°РІС‚РѕСЂРёР·Р°С†РёРё<br />dsfds')
     })
 
     it('does not add parameter diffs when local test has no explicit Zephyr parameters', () => {

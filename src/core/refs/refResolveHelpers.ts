@@ -89,13 +89,13 @@ export function findTargetStep(targetOwner: RefOwner, parsed: ParsedWikiRef) {
 
 export function getStepRefValue(step: Step, kind: RefKind, partId?: string): string | null {
     if (partId) {
-        const part = findPart(step.internal?.parts?.[kind], partId)
+        const part = findPart(step.presentation?.parts?.[kind], partId)
         if (!part) return null
         const text = String(part.text ?? '').trim()
         return text.length ? text : null
     }
 
-    const parts = (step.internal?.parts?.[kind] ?? []).filter((part) => part.export !== false)
+    const parts = (step.presentation?.parts?.[kind] ?? []).filter((part) => part.export !== false)
     const topLevel = getTopLevelStepValue(step, kind)
     const value = parts.length
         ? [String(topLevel ?? '').trim(), ...parts.map((part) => String(part.text ?? '').trim())].filter(Boolean).join('\n')

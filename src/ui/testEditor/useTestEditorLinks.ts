@@ -4,7 +4,7 @@ import type { ProviderKind, TestCase, TestCaseLink } from '@core/domain'
 type Options = {
     test: TestCase
     onChange: (
-        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments' | 'links'>>
+        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'details' | 'attachments' | 'links' | 'integration'>>
     ) => void
 }
 

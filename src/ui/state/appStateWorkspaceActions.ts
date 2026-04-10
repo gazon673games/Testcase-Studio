@@ -115,7 +115,7 @@ export function createAppStateWorkspaceActions({
 
     async function updateTest(
         testId: ID,
-        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments' | 'links'>>
+        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'details' | 'attachments' | 'links' | 'integration'>>
     ) {
         const currentState = getCurrentState()
         if (!currentState) return

@@ -1,7 +1,7 @@
 export const NODE_ALIAS_PARAM_KEY = 'ui.alias'
 
 type MetaLike = {
-    params?: Record<string, string> | null | undefined
+    attributes?: Record<string, string> | null | undefined
 } | null | undefined
 
 type FolderLike = {
@@ -14,7 +14,7 @@ export function normalizeNodeAlias(value: unknown) {
 }
 
 export function getStoredTestAlias(meta: MetaLike) {
-    return normalizeNodeAlias(meta?.params?.[NODE_ALIAS_PARAM_KEY])
+    return normalizeNodeAlias(meta?.attributes?.[NODE_ALIAS_PARAM_KEY])
 }
 
 export function getStoredFolderAlias(folder: FolderLike) {

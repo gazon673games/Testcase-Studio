@@ -1,5 +1,6 @@
 import { nowISO, type TestCase } from '@core/domain'
 import type { ProviderTest } from '@providers/types'
+import { getZephyrTestIntegration, setZephyrTestIntegration } from '@providers/zephyr/zephyrModel'
 import { buildPublishSignature, PUBLISH_AT_KEY, PUBLISH_REMOTE_KEY, PUBLISH_SIGNATURE_KEY, safeString } from './common'
 
 export function applyPublishSuccess(test: TestCase, externalId: string, payload: ProviderTest) {
@@ -8,20 +9,29 @@ export function applyPublishSuccess(test: TestCase, externalId: string, payload:
         { provider: 'zephyr', externalId },
     ]
 
-    const details = (test.details ?? test.meta ?? { tags: [], attributes: {}, params: {} })
-    details.attributes = details.attributes ?? details.params ?? {}
-    details.params = details.attributes
-    details.external = {
-        ...(details.external ?? {}),
-        key: externalId,
-    }
+    const details = test.details ?? { tags: [], attributes: {} }
+    details.attributes = details.attributes ?? {}
     test.details = details
-    test.meta = details
+
+    const currentZephyr = getZephyrTestIntegration(test)
+    const nextZephyr = {
+        ...(currentZephyr ?? {}),
+        remote: {
+            ...(currentZephyr?.remote ?? {}),
+            key: externalId,
+        },
+        publishState: {
+            ...(currentZephyr?.publishState ?? {}),
+            signature: buildPublishSignature(payload),
+            remoteKey: externalId,
+            publishedAt: nowISO(),
+        },
+    }
 
     const projectKey = safeString(payload.extras?.projectKey)
     if (projectKey) {
-        details.external = {
-            ...(details.external ?? {}),
+        nextZephyr.remote = {
+            ...(nextZephyr.remote ?? {}),
             projectKey,
         }
     }
@@ -29,8 +39,6 @@ export function applyPublishSuccess(test: TestCase, externalId: string, payload:
     const folder = safeString(payload.extras?.folder)
     if (folder) details.folder = folder
 
-    details.attributes[PUBLISH_SIGNATURE_KEY] = buildPublishSignature(payload)
-    details.attributes[PUBLISH_REMOTE_KEY] = externalId
-    details.attributes[PUBLISH_AT_KEY] = nowISO()
+    setZephyrTestIntegration(test, nextZephyr)
     test.updatedAt = nowISO()
 }

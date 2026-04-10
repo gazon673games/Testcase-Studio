@@ -8,9 +8,9 @@ export function collectStepTexts(steps: Step[]) {
             step.data,
             step.expected,
             step.text,
-            ...(step.internal?.parts?.action?.map((part) => part.text) ?? []),
-            ...(step.internal?.parts?.data?.map((part) => part.text) ?? []),
-            ...(step.internal?.parts?.expected?.map((part) => part.text) ?? []),
+            ...(step.presentation?.parts?.action?.map((part) => part.text) ?? []),
+            ...(step.presentation?.parts?.data?.map((part) => part.text) ?? []),
+            ...(step.presentation?.parts?.expected?.map((part) => part.text) ?? []),
         ])
         .filter((value): value is string => Boolean(value))
 }

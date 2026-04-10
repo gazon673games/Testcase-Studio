@@ -98,7 +98,7 @@ export function TreeNodeView(props: TreeNodeViewProps) {
     const inputRef = React.useRef<HTMLInputElement | null>(null)
     const [hoverDrop, setHoverDrop] = React.useState(false)
     const hasChildren = isDir ? node.children.length > 0 : node.steps.length > 0
-    const storedAlias = isDir ? getStoredFolderAlias(node) : getStoredTestAlias(node.meta)
+    const storedAlias = isDir ? getStoredFolderAlias(node) : getStoredTestAlias(node.details)
     const displayName = aliasMode ? (storedAlias || node.name) : node.name
     const itemCount = isDir ? mapTests(node).length : node.steps.length
     const itemLabel = isDir

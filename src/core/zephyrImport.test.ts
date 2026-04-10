@@ -7,7 +7,7 @@ describe('buildImportManagedSignature', () => {
         const test = mkTest('Imported case')
         const step = mkStep('Action', 'Data', 'Expected')
         step.id = 'step-1'
-        step.raw = { action: 'Action', data: 'Data', expected: 'Expected' }
+        step.snapshot = { action: 'Action', data: 'Data', expected: 'Expected' }
         step.source = { sourceStepId: 'provider-1' }
         test.steps = [step]
 
@@ -15,7 +15,7 @@ describe('buildImportManagedSignature', () => {
 
         step.usesShared = 'shared-login'
         step.attachments = [{ id: 'att-step', name: 'proof.png', pathOrDataUrl: '/tmp/proof.png' }]
-        step.internal!.parts!.action = [{ id: 'part-1', text: 'More detail', export: true }]
+        step.presentation!.parts!.action = [{ id: 'part-1', text: 'More detail', export: true }]
 
         const enriched = buildImportManagedSignature(normalizeTestCase(test), [])
 

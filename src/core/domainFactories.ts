@@ -29,7 +29,7 @@ export function mkTest(name: string, description?: string): TestCase {
         attachments: [],
         links: [],
         updatedAt: nowISO(),
-        details: { tags: [], attributes: {}, params: {} },
+        details: { tags: [], attributes: {} },
         exportCfg: { enabled: true },
     })
 }

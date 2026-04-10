@@ -16,7 +16,7 @@ import { NODE_ALIAS_PARAM_KEY } from '@shared/treeAliases'
 import { NODE_ICON_PARAM_KEY } from '@shared/treeIcons'
 import { getSelectedNode } from './queries'
 
-type TestPatch = Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments' | 'links'>>
+type TestPatch = Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'details' | 'attachments' | 'links' | 'integration'>>
 
 type WorkspaceMutationResult = {
     nextState: RootState
@@ -135,10 +135,10 @@ export function setNodeIcon(state: RootState, nodeId: ID, iconKey: string | null
         }
     }
 
-    node.meta = node.meta ?? { tags: [], params: {} }
-    node.meta.params = node.meta.params ?? {}
-    if (normalizedKey) node.meta.params[NODE_ICON_PARAM_KEY] = normalizedKey
-    else delete node.meta.params[NODE_ICON_PARAM_KEY]
+    node.details = node.details ?? { tags: [], attributes: {} }
+    node.details.attributes = node.details.attributes ?? {}
+    if (normalizedKey) node.details.attributes[NODE_ICON_PARAM_KEY] = normalizedKey
+    else delete node.details.attributes[NODE_ICON_PARAM_KEY]
 
     node.updatedAt = nowISO()
     return {
@@ -162,10 +162,10 @@ export function setNodeAlias(state: RootState, nodeId: ID, alias: string | null)
         }
     }
 
-    node.meta = node.meta ?? { tags: [], params: {} }
-    node.meta.params = node.meta.params ?? {}
-    if (normalizedAlias) node.meta.params[NODE_ALIAS_PARAM_KEY] = normalizedAlias
-    else delete node.meta.params[NODE_ALIAS_PARAM_KEY]
+    node.details = node.details ?? { tags: [], attributes: {} }
+    node.details.attributes = node.details.attributes ?? {}
+    if (normalizedAlias) node.details.attributes[NODE_ALIAS_PARAM_KEY] = normalizedAlias
+    else delete node.details.attributes[NODE_ALIAS_PARAM_KEY]
 
     node.updatedAt = nowISO()
     return {
@@ -252,8 +252,8 @@ function mkSharedPlaceholder(sharedId: string): Step {
         data: '',
         expected: '',
         text: '',
-        raw: { action: '', data: '', expected: '' },
-        internal: { parts: { action: [], data: [], expected: [] } },
+        snapshot: { action: '', data: '', expected: '' },
+        presentation: { parts: { action: [], data: [], expected: [] } },
         subSteps: [],
         attachments: [],
         usesShared: sharedId,

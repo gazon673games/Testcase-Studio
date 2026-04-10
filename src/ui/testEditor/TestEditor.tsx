@@ -22,7 +22,7 @@ type Props = {
     sessionDraft?: TestCase | null
     onSessionDraftChange?(draft: TestCase): void
     onChange: (
-        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments' | 'links'>>
+        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'details' | 'attachments' | 'links' | 'integration'>>
     ) => void
     focusStepId?: string | null
     allTests: TestCase[]
@@ -73,7 +73,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     const [activeEditorApi, setActiveEditorApi] = React.useState<MarkdownEditorApi | null>(null)
 
     const applyDraftPatch = React.useCallback((
-        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'meta' | 'attachments' | 'links'>>
+        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'details' | 'attachments' | 'links' | 'integration'>>
     ) => {
         setDraftTest((current) => {
             const next = { ...current, ...patch }
@@ -114,8 +114,8 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         allureLink,
         t,
     })
-    const parseZephyrHtmlParts = isZephyrHtmlPartsEnabled(draftTest.meta)
-    const testAlias = getStoredTestAlias(draftTest.meta) ?? ''
+    const parseZephyrHtmlParts = isZephyrHtmlPartsEnabled(draftTest)
+    const testAlias = getStoredTestAlias(draftTest.details) ?? ''
 
     React.useEffect(() => {
         const previousSource = latestSourceRef.current
@@ -150,7 +150,8 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
             name: current.name,
             description: current.description,
             steps: current.steps,
-            meta: current.meta,
+            details: current.details,
+            integration: current.integration,
             attachments: current.attachments,
             links: current.links,
         })
@@ -171,9 +172,9 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                         sharedStepsCount={sharedSteps.length}
                         parseZephyrHtmlParts={parseZephyrHtmlParts}
                         onToggleSharedLibrary={() => setShowSharedLibrary((current) => !current)}
-                        onToggleParseZephyrHtmlParts={(value) => applyDraftPatch({ meta: setZephyrHtmlPartsEnabled(draftTest.meta, value) })}
+                        onToggleParseZephyrHtmlParts={(value) => applyDraftPatch({ integration: setZephyrHtmlPartsEnabled(structuredClone(draftTest), value).integration })}
                         onChangeName={(value) => applyDraftPatch({ name: value })}
-                        onChangeAlias={(value) => applyDraftPatch({ meta: setTestAlias(draftTest.meta, value) })}
+                        onChangeAlias={(value) => applyDraftPatch({ details: setTestAlias(draftTest.details, value) })}
                     />
 
                     <StepsPanel
@@ -249,29 +250,31 @@ function areEditableTestFieldsEqual(left: TestCase, right: TestCase) {
         left.name,
         left.description ?? '',
         left.steps,
-        left.meta ?? null,
+        left.details ?? null,
+        left.integration ?? null,
         left.attachments ?? [],
         left.links ?? [],
     ]) === JSON.stringify([
         right.name,
         right.description ?? '',
         right.steps,
-        right.meta ?? null,
+        right.details ?? null,
+        right.integration ?? null,
         right.attachments ?? [],
         right.links ?? [],
     ])
 }
 
-function setTestAlias(meta: TestCase['meta'], alias: string) {
+function setTestAlias(details: TestCase['details'], alias: string) {
     const normalizedAlias = normalizeNodeAlias(alias)
-    const nextMeta = {
-        ...(meta ?? { tags: [], params: {} }),
-        tags: [...(meta?.tags ?? [])],
-        params: { ...(meta?.params ?? {}) },
+    const nextDetails = {
+        ...(details ?? { tags: [], attributes: {} }),
+        tags: [...(details?.tags ?? [])],
+        attributes: { ...(details?.attributes ?? {}) },
     }
 
-    if (normalizedAlias) nextMeta.params[NODE_ALIAS_PARAM_KEY] = normalizedAlias
-    else delete nextMeta.params[NODE_ALIAS_PARAM_KEY]
+    if (normalizedAlias) nextDetails.attributes[NODE_ALIAS_PARAM_KEY] = normalizedAlias
+    else delete nextDetails.attributes[NODE_ALIAS_PARAM_KEY]
 
-    return nextMeta
+    return nextDetails
 }

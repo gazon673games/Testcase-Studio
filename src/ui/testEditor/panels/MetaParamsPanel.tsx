@@ -11,7 +11,7 @@ const LEGACY_KEYS: Array<keyof TestMeta> = ['status', 'priority', 'component']
 export function ParamsPanel({ meta, onChange }: Props) {
     const { t } = useUiPreferences()
     const current = meta ?? { tags: [] }
-    const committed: Record<string, any> = (current as any).params ?? {}
+    const committed: Record<string, any> = current.attributes ?? {}
     const didMigrateRef = React.useRef(false)
     const [draftRows, setDraftRows] = React.useState<DraftRow[]>([])
 
@@ -31,7 +31,7 @@ export function ParamsPanel({ meta, onChange }: Props) {
         }
 
         if (changed) {
-            nextMeta.params = nextParams
+            nextMeta.attributes = nextParams
             onChange(nextMeta as TestMeta)
         }
         didMigrateRef.current = true
@@ -48,18 +48,18 @@ export function ParamsPanel({ meta, onChange }: Props) {
         delete params[oldKey]
         const key = makeUniqueKey(newKey.trim(), new Set(Object.keys(params)))
         params[key] = value
-        onChange({ ...(current as any), params } as TestMeta)
+        onChange({ ...(current as any), attributes: params } as TestMeta)
     }
 
     function updateExistingValue(key: string, value: string) {
         const params = { ...committed, [key]: value }
-        onChange({ ...(current as any), params } as TestMeta)
+        onChange({ ...(current as any), attributes: params } as TestMeta)
     }
 
     function removeExisting(key: string) {
         const params = { ...committed }
         delete params[key]
-        onChange({ ...(current as any), params } as TestMeta)
+        onChange({ ...(current as any), attributes: params } as TestMeta)
     }
 
     function addDraft() {
@@ -89,7 +89,7 @@ export function ParamsPanel({ meta, onChange }: Props) {
             used.add(normalizedKey)
             params[normalizedKey] = value
         }
-        onChange({ ...(current as any), params } as TestMeta)
+        onChange({ ...(current as any), attributes: params } as TestMeta)
         setDraftRows([])
     }
 

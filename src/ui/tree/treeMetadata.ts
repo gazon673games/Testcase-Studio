@@ -33,13 +33,13 @@ export function collectFolderAliases(root: Folder) {
 
 export function collectTestIconKeys(tests: TestCase[]) {
     const icons = new Map<string, string | null>()
-    for (const test of tests) icons.set(test.id, getStoredTestIconKey(test.meta))
+    for (const test of tests) icons.set(test.id, getStoredTestIconKey(test.details))
     return icons
 }
 
 export function collectTestAliases(tests: TestCase[]) {
     const aliases = new Map<string, string | null>()
-    for (const test of tests) aliases.set(test.id, getStoredTestAlias(test.meta))
+    for (const test of tests) aliases.set(test.id, getStoredTestAlias(test.details))
     return aliases
 }
 

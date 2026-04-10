@@ -1,4 +1,4 @@
-import { nowISO, type ID, type RootState, type TestCase } from '@core/domain'
+import { normalizeTestCase, nowISO, type ID, type RootState, type TestCase } from '@core/domain'
 import { isZephyrHtmlPartsEnabled, preserveZephyrHtmlPartsFlag } from '@core/zephyrHtmlParts'
 import { findNode, isFolder } from '@core/tree'
 import { resolveZephyrExternalId, type SyncService } from '@app/sync'
@@ -37,16 +37,23 @@ export async function pullSelectedCase(
     const nextState = structuredClone(state)
     const target = findNode(nextState.root, node.id) as TestCase
     const patch = fromProviderPayload(remote, target.steps, {
-        parseHtmlParts: isZephyrHtmlPartsEnabled(target.meta),
+        parseHtmlParts: isZephyrHtmlPartsEnabled(target),
         tolerantJsonBeautify: getStoredJsonBeautifyTolerant(),
     })
-
-    target.name = patch.name
-    target.description = patch.description
-    target.steps = patch.steps
-    target.attachments = patch.attachments
-    target.meta = preserveZephyrHtmlPartsFlag(node.meta, patch.meta)
-    target.updatedAt = patch.updatedAt ?? nowISO()
+    const nextTarget = preserveZephyrHtmlPartsFlag(
+        node,
+        normalizeTestCase({
+            ...target,
+            name: patch.name,
+            description: patch.description,
+            steps: patch.steps,
+            attachments: patch.attachments,
+            details: patch.details,
+            integration: patch.integration,
+            updatedAt: patch.updatedAt ?? nowISO(),
+        })
+    )
+    Object.assign(target, nextTarget)
 
     return {
         status: 'ok',

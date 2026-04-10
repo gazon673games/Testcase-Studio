@@ -16,7 +16,7 @@ export function useTestEditorSummary({ test, zephyrLink, allureLink, t }: Option
         () => (test.steps ?? []).filter((step) => step.usesShared).length,
         [test.steps]
     )
-    const tagsCount = test.meta?.tags?.length ?? 0
+    const tagsCount = test.details?.tags?.length ?? 0
     const externalLinksCount = (zephyrLink ? 1 : 0) + (allureLink ? 1 : 0)
 
     const summaryItems = React.useMemo(

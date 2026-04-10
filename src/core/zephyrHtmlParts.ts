@@ -9,11 +9,10 @@ import {
     type ZephyrJsonBeautifyOptions,
 } from './zephyrJsonHtml'
 export {
-    ZEPHYR_PARSE_HTML_PARTS_KEY,
     isZephyrHtmlPartsEnabled,
     preserveZephyrHtmlPartsFlag,
     setZephyrHtmlPartsEnabled,
-} from './zephyrHtmlPartsFlag'
+} from '@providers/zephyr/zephyrHtmlPartsFlag'
 export type {
     ZephyrJsonBeautifyDiagnostics,
     ZephyrJsonBeautifyFailure,
@@ -21,18 +20,10 @@ export type {
 } from './zephyrJsonHtml'
 
 export function applyZephyrHtmlPartsParsing(step: Step, options?: ZephyrJsonBeautifyOptions): Step {
-    const basePresentation = step.presentation ?? step.internal
+    const basePresentation = step.presentation
     const next: Step = {
         ...step,
         presentation: {
-            ...(basePresentation ?? {}),
-            parts: {
-                action: [],
-                data: [],
-                expected: [],
-            },
-        },
-        internal: {
             ...(basePresentation ?? {}),
             parts: {
                 action: [],
@@ -50,18 +41,10 @@ export function applyZephyrHtmlPartsParsing(step: Step, options?: ZephyrJsonBeau
 }
 
 export function beautifyZephyrJsonBlocksInStep(step: Step, options?: ZephyrJsonBeautifyOptions): Step {
-    const basePresentation = step.presentation ?? step.internal
+    const basePresentation = step.presentation
     const next: Step = {
         ...step,
         presentation: {
-            ...(basePresentation ?? {}),
-            parts: {
-                action: [...(basePresentation?.parts?.action ?? [])],
-                data: [...(basePresentation?.parts?.data ?? [])],
-                expected: [...(basePresentation?.parts?.expected ?? [])],
-            },
-        },
-        internal: {
             ...(basePresentation ?? {}),
             parts: {
                 action: [...(basePresentation?.parts?.action ?? [])],
@@ -81,14 +64,13 @@ export function beautifyZephyrJsonBlocksInStep(step: Step, options?: ZephyrJsonB
             changed = true
         }
 
-        const parts = step.presentation?.parts?.[kind] ?? step.internal?.parts?.[kind] ?? []
+        const parts = step.presentation?.parts?.[kind] ?? []
         const beautifiedParts = parts.map((part) => {
             const beautifiedPart = beautifyZephyrJsonHtmlBlock(part.text, options)
             if (beautifiedPart !== part.text) changed = true
             return beautifiedPart === part.text ? part : { ...part, text: beautifiedPart }
         })
         next.presentation!.parts![kind] = beautifiedParts
-        next.internal!.parts![kind] = beautifiedParts
     }
 
     return changed ? next : step
@@ -113,7 +95,7 @@ export function inspectZephyrJsonBeautifyStep(
             })
         }
 
-        const parts = step.presentation?.parts?.[kind] ?? step.internal?.parts?.[kind] ?? []
+        const parts = step.presentation?.parts?.[kind] ?? []
         for (const part of parts) {
             const partAttempt = inspectZephyrJsonHtmlBlock(part.text, options)
             if (partAttempt.candidate) candidateCount += 1
@@ -134,11 +116,10 @@ export function inspectZephyrJsonBeautifyStep(
 function parseStepFieldIntoHtmlParts(step: Step, kind: 'action' | 'data' | 'expected', options?: ZephyrJsonBeautifyOptions) {
     const current = readStepFieldValue(step, kind)
     const blocks = splitZephyrHtmlBlocks(current, options)
-    const previousParts = step.presentation?.parts?.[kind] ?? step.internal?.parts?.[kind] ?? []
+    const previousParts = step.presentation?.parts?.[kind] ?? []
 
     if (!blocks) {
         step.presentation!.parts![kind] = []
-        step.internal!.parts![kind] = []
         return
     }
 
@@ -149,7 +130,6 @@ function parseStepFieldIntoHtmlParts(step: Step, kind: 'action' | 'data' | 'expe
         text,
     }))
     step.presentation!.parts![kind] = nextParts
-    step.internal!.parts![kind] = nextParts
 }
 
 function readStepFieldValue(step: Step, kind: 'action' | 'data' | 'expected') {

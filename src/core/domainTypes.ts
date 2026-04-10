@@ -52,36 +52,9 @@ export interface Step {
     source?: ImportedStepSource
     subSteps?: SubStep[]
     presentation?: StepPresentation
+    integration?: Record<string, unknown>
     usesShared?: SharedStepID
     attachments?: Attachment[]
-    raw?: StepSnapshot
-    internal?: StepPresentation
-}
-
-export interface PublicationDetails {
-    type?: string
-    automation?: string
-    assignedTo?: string
-}
-
-export interface ExternalParameterCatalog {
-    variables?: unknown[]
-    entries?: unknown[]
-}
-
-export interface ExternalSystemDetails {
-    key?: string
-    keyNumber?: string
-    projectKey?: string
-    latestVersion?: boolean
-    lastTestResultStatus?: string
-    updatedBy?: string
-    createdBy?: string
-    createdOn?: string
-    updatedOn?: string
-    issueLinks?: string[]
-    customFields?: Record<string, unknown>
-    parameters?: ExternalParameterCatalog
 }
 
 export interface TestDetails {
@@ -95,9 +68,6 @@ export interface TestDetails {
     owner?: string
     folder?: string
     estimated?: string
-    publication?: PublicationDetails
-    external?: ExternalSystemDetails
-    params?: Record<string, string>
 }
 
 export interface TestCaseLink {
@@ -118,8 +88,8 @@ export interface TestCase {
     links: TestCaseLink[]
     updatedAt: string
     details?: TestDetails
+    integration?: Record<string, unknown>
     exportCfg?: ExportConfig
-    meta?: TestDetails
 }
 
 export interface Folder {
@@ -144,9 +114,5 @@ export interface RootState {
 
 export type PartItem = StepBlock
 export type StepInternal = StepPresentation
-export type StepSource = ImportedStepSource
 export type StepRaw = StepSnapshot
-export type TestPublication = PublicationDetails
-export type TestExternalParameters = ExternalParameterCatalog
-export type TestExternalMeta = ExternalSystemDetails
 export type TestMeta = TestDetails
