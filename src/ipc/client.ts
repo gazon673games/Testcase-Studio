@@ -67,4 +67,12 @@ export const apiClient = {
 
     writePublishLog: (payload: Record<string, unknown>) =>
         window.api.writePublishLog(payload),
+    getWindowIcon: (): Promise<string | null> =>
+        requireApiMethod('getWindowIcon')(),
+    setWindowIcon: (pngBytes: ArrayBuffer): Promise<string> =>
+        requireApiMethod('setWindowIcon')(pngBytes),
+    pickWindowIcon: (): Promise<string | null> =>
+        requireApiMethod('pickWindowIcon')(),
+    resetWindowIcon: (): Promise<void> =>
+        requireApiMethod('resetWindowIcon')(),
 }

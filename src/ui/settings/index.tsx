@@ -2,6 +2,7 @@ import * as React from 'react'
 import { useUiPreferences, type UiLocale, type UiThemeMode } from '../preferences'
 import { AtlassianSettingsPanel } from './AtlassianSettingsPanel'
 import { AppearanceSettingsPanel } from './AppearanceSettingsPanel'
+import antIconUrl from '../assets/icons/ant.svg'
 import { TabButton } from './SettingsShared'
 import { useSettingsModalState } from './useSettingsModalState'
 import './Settings.css'
@@ -100,12 +101,17 @@ export function SettingsModal({ open, onClose }: Props) {
                                     updateInfo={state.updateInfo}
                                     updateError={state.updateError}
                                     checkingUpdates={state.checkingUpdates}
+                                    windowIconDataUrl={state.windowIconDataUrl}
+                                    iconStatus={state.iconStatus}
                                     t={t}
                                     onSetLocale={(value) => setLocale(value as UiLocale)}
                                     onSetThemeMode={(value) => setThemeMode(value as UiThemeMode)}
                                     onSetJsonBeautifyTolerant={setJsonBeautifyTolerant}
                                     onCheckUpdates={() => void state.checkUpdates()}
                                     onClose={onClose}
+                                    onSetAntIcon={() => void state.setAntIcon(antIconUrl)}
+                                    onPickIconFile={() => void state.pickIconFile()}
+                                    onResetIcon={() => void state.resetIcon()}
                                 />
                             )}
                         </div>

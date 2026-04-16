@@ -45,7 +45,15 @@ export const settingsMessages = {
         "settings.updateError": "Не удалось проверить обновления: {message}",
         "settings.updateHint": "Проверка идёт по последнему GitHub Release, без отдельного сервера обновлений.",
         "settings.jsonBeautifyTolerant": "Толерантный JSON beautify",
-        "settings.jsonBeautifyTolerantHint": "Пытается аккуратно чинить типовые JSON-ошибки вроде пропущенных запятых перед форматированием. Если блок всё равно невалиден, он останется без изменений."
+        "settings.jsonBeautifyTolerantHint": "Пытается аккуратно чинить типовые JSON-ошибки вроде пропущенных запятых перед форматированием. Если блок всё равно невалиден, он останется без изменений.",
+        "settings.appIcon": "Иконка приложения",
+        "settings.appIcon.hint": "Иконка отображается на панели задач и в заголовке окна. Вступает в силу сразу без перезапуска.",
+        "settings.appIcon.default": "Системная (по умолчанию)",
+        "settings.appIcon.ant": "Муравей",
+        "settings.appIcon.fromFile": "Выбрать файл…",
+        "settings.appIcon.reset": "Сбросить",
+        "settings.appIcon.applying": "Применяется…",
+        "settings.appIcon.applied": "Иконка обновлена"
     },
     en: {
         "settings.title": "Settings",
@@ -93,6 +101,14 @@ export const settingsMessages = {
         "settings.updateError": "Failed to check for updates: {message}",
         "settings.updateHint": "This check uses the latest GitHub Release and does not require a separate update server.",
         "settings.jsonBeautifyTolerant": "Tolerant JSON beautify",
-        "settings.jsonBeautifyTolerantHint": "Attempts a conservative repair for common JSON mistakes such as missing commas before formatting. If the block is still invalid, it stays unchanged."
+        "settings.jsonBeautifyTolerantHint": "Attempts a conservative repair for common JSON mistakes such as missing commas before formatting. If the block is still invalid, it stays unchanged.",
+        "settings.appIcon": "App icon",
+        "settings.appIcon.hint": "Icon shown in the taskbar and window title bar. Takes effect immediately without restarting.",
+        "settings.appIcon.default": "System default",
+        "settings.appIcon.ant": "Ant",
+        "settings.appIcon.fromFile": "Choose file…",
+        "settings.appIcon.reset": "Reset",
+        "settings.appIcon.applying": "Applying…",
+        "settings.appIcon.applied": "Icon updated"
     },
 } as const
