@@ -2,7 +2,7 @@ import * as React from 'react'
 import type { IncludedCaseCandidate } from '@app/workspace'
 import type { ZephyrImportPreview, ZephyrPublishPreview } from '@app/sync'
 import { buildExport } from '@core/export'
-import { findNode, isFolder } from '@core/tree'
+import { getTestById } from '@app/workspace'
 import type { useAppState } from '../../state/useAppState'
 import type { useToast } from '../../uiKit'
 import type { TestEditorHandle } from '../../testEditor/TestEditor'
@@ -59,8 +59,8 @@ export function useAppShellActions({
             return
         }
 
-        const node = findNode(app.state.root, app.selectedId)
-        if (!node || isFolder(node)) {
+        const node = getTestById(app.state, app.selectedId)
+        if (!node) {
             push({ kind: 'error', text: t('toast.exportOnlyForCase'), ttl: 2500 })
             return
         }

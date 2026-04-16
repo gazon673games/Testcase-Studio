@@ -1,7 +1,6 @@
 import * as React from 'react'
-import { loadWorkspaceState, saveWorkspace as saveWorkspaceUseCase } from '@app/workspace'
+import { getAllTests, loadWorkspaceState, saveWorkspace as saveWorkspaceUseCase } from '@app/workspace'
 import { type ID, type RootState } from '@core/domain'
-import { mapTests } from '@core/tree'
 import type { AppServices } from '../services'
 import { createAppStateSelection } from './appStateSelection'
 import { createAppStateSyncActions } from './appStateSyncActions'
@@ -196,7 +195,7 @@ export function useAppState(services: AppServices) {
         saveError,
         hasUnsavedChanges,
         focusStepId,
-        mapAllTests: () => (getCurrentState() ? mapTests(getCurrentState()!.root) : []),
+        mapAllTests: () => getAllTests(getCurrentState()),
     }
 
     const persistenceApi = {

@@ -1,6 +1,18 @@
 import { mkFolder, normalizeRootState, type RootState } from '@core/domain'
 import { apiClient } from '@ipc/client'
 
+/**
+ * Contract for workspace persistence.
+ * Implement this interface to substitute the default IPC-backed store
+ * with an alternative (e.g. in-memory stub in tests, file-system adapter).
+ */
+export interface IWorkspaceRepository {
+    loadWorkspaceState(): Promise<RootState>
+    saveWorkspaceState(state: RootState): Promise<void>
+    writeWorkspaceSnapshot(state: RootState, kind?: string, meta?: Record<string, unknown>): Promise<string>
+    writeWorkspacePublishLog(payload: Record<string, unknown>): Promise<string>
+}
+
 const DEFAULT_STATE: RootState = {
     root: mkFolder('Root', []),
     sharedSteps: [],

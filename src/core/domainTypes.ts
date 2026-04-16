@@ -79,6 +79,11 @@ export interface ExportConfig {
     enabled: boolean
 }
 
+/**
+ * @aggregate root for individual test cases.
+ * Owns its steps, attachments, links and metadata.
+ * Mutations must go through workspace commands, not direct property writes.
+ */
 export interface TestCase {
     id: ID
     name: string
@@ -92,6 +97,11 @@ export interface TestCase {
     exportCfg?: ExportConfig
 }
 
+/**
+ * @aggregate root for the workspace tree.
+ * Contains child Folders and TestCases; the top-level root Folder is the
+ * entry point for all tree navigation and structural mutations.
+ */
 export interface Folder {
     id: ID
     name: string
@@ -100,6 +110,11 @@ export interface Folder {
     children: Array<Folder | TestCase>
 }
 
+/**
+ * @aggregate root for reusable step libraries.
+ * A SharedStep is referenced by TestCase steps via `usesShared`.
+ * Deleting a SharedStep cascades removal of all referencing steps.
+ */
 export interface SharedStep {
     id: SharedStepID
     name: string

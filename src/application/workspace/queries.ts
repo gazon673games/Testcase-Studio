@@ -39,3 +39,22 @@ export function getPublishSelection(state: RootState | null, selectedId: ID | nu
         tests: mapTests(selected),
     }
 }
+
+export function getTestById(state: RootState | null, testId: ID | null): TestCase | null {
+    if (!state || !testId) return null
+    const node = findNode(state.root, testId)
+    return node && !isFolder(node) ? (node as TestCase) : null
+}
+
+export function getAllTests(state: RootState | null): TestCase[] {
+    if (!state) return []
+    return mapTests(state.root)
+}
+
+export function getSelectedFolder(state: RootState | null, selectedId: ID | null): Folder | null {
+    if (!state) return null
+    if (!selectedId) return state.root
+    const node = findNode(state.root, selectedId)
+    if (!node) return null
+    return isFolder(node) ? node : null
+}

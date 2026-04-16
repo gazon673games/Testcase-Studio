@@ -8,8 +8,8 @@ import {
     pullSelectedCase,
 } from '@app/workspace'
 import { type SyncService, type ZephyrImportPreview, type ZephyrImportRequest, type ZephyrPublishPreview, type ZephyrPublishResult } from '@app/sync'
+import { getAllTests } from '@app/workspace'
 import type { ID, RootState } from '@core/domain'
-import { mapTests } from '@core/tree'
 type SyncAllResult = { status: 'ok'; count: number }
 
 type AppStateSyncActionsOptions = {
@@ -71,7 +71,7 @@ export function createAppStateSyncActions({
         const currentState = getCurrentState()
         if (!currentState) return { status: 'ok', count: 0 }
         const next = structuredClone(currentState)
-        const tests = mapTests(next.root)
+        const tests = getAllTests(next)
         await sync.twoWaySync(next)
         await persistStateNow(next)
         clearDirty(tests.map((test) => test.id))

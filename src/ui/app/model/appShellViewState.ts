@@ -1,4 +1,4 @@
-import { findNode, isFolder } from '@core/tree'
+import { getSelectedNode, getTestById } from '@app/workspace'
 import { buildSelectionSummary } from './selectionSummary'
 import type { useAppState } from '../../state/useAppState'
 
@@ -13,8 +13,8 @@ export function buildAppShellViewState(
     const state = app.state
     if (!state) return null
 
-    const selected = app.selectedId ? findNode(state.root, app.selectedId) : null
-    const selectedTest = selected && !isFolder(selected) ? selected : null
+    const selected = getSelectedNode(state, app.selectedId)
+    const selectedTest = getTestById(state, app.selectedId)
     const allTests = app.mapAllTests()
     const importDestination = app.getImportDestination()
     const publishSelection = app.getPublishSelection()

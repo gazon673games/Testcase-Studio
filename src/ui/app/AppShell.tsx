@@ -1,6 +1,6 @@
 import React from 'react'
 import type { IncludedCaseResolution } from '@app/workspace'
-import { findNode, isFolder } from '@core/tree'
+import { getSelectedNode, getSelectedFolder, getTestById } from '@app/workspace'
 import { Toolbar } from '../toolbar'
 import { useToast } from '../uiKit'
 import { useUiPreferences } from '../preferences'
@@ -71,9 +71,9 @@ export function AppShell() {
         const currentState = app.state
         if (!currentState) return false
         const id = typeof targetId === 'string' && targetId ? targetId : app.selectedId
-        const node = id ? findNode(currentState.root, id) : null
+        const node = getSelectedNode(currentState, id)
         if (!node || node.id === currentState.root.id) return false
-        const kindLabel = isFolder(node) ? t('confirm.deleteFolderKind') : t('confirm.deleteCaseKind')
+        const kindLabel = getTestById(currentState, id) ? t('confirm.deleteCaseKind') : t('confirm.deleteFolderKind')
         return window.confirm(t('confirm.deleteNode', { kind: kindLabel, name: node.name || t('tree.untitled') }))
     }, [app.selectedId, app.state, t])
 
@@ -117,8 +117,7 @@ export function AppShell() {
         canPublish,
         canSyncAll,
     } = shellViewState
-    const selectedNode = app.selectedId ? findNode(app.state.root, app.selectedId) : app.state.root
-    const selectedFolder = selectedNode && isFolder(selectedNode) ? selectedNode : null
+    const selectedFolder = getSelectedFolder(app.state, app.selectedId)
 
     const rightPane = (
         <AppShellRightPane
