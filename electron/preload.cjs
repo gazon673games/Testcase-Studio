@@ -20,6 +20,10 @@ const CHANNELS = {
     SYNC_PUBLISH_ZEPHYR_PREVIEW: 'SYNC_PUBLISH_ZEPHYR_PREVIEW',
     WRITE_STATE_SNAPSHOT: 'WRITE_STATE_SNAPSHOT',
     WRITE_PUBLISH_LOG: 'WRITE_PUBLISH_LOG',
+    APP_GET_WINDOW_ICON: 'APP_GET_WINDOW_ICON',
+    APP_SET_WINDOW_ICON: 'APP_SET_WINDOW_ICON',
+    APP_PICK_WINDOW_ICON: 'APP_PICK_WINDOW_ICON',
+    APP_RESET_WINDOW_ICON: 'APP_RESET_WINDOW_ICON',
 }
 
 contextBridge.exposeInMainWorld('api', {
@@ -47,4 +51,8 @@ contextBridge.exposeInMainWorld('api', {
     writeStateSnapshot: (state, kind = 'snapshot', meta) =>
         ipcRenderer.invoke(CHANNELS.WRITE_STATE_SNAPSHOT, { state, kind, meta }),
     writePublishLog: (payload) => ipcRenderer.invoke(CHANNELS.WRITE_PUBLISH_LOG, payload),
+    getWindowIcon: () => ipcRenderer.invoke(CHANNELS.APP_GET_WINDOW_ICON),
+    setWindowIcon: (pngBytes) => ipcRenderer.invoke(CHANNELS.APP_SET_WINDOW_ICON, { pngBytes }),
+    pickWindowIcon: () => ipcRenderer.invoke(CHANNELS.APP_PICK_WINDOW_ICON),
+    resetWindowIcon: () => ipcRenderer.invoke(CHANNELS.APP_RESET_WINDOW_ICON),
 })

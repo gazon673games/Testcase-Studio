@@ -3,6 +3,7 @@ import { useUiPreferences, type UiLocale, type UiThemeMode } from '../preference
 import { AtlassianSettingsPanel } from './AtlassianSettingsPanel'
 import { AppearanceSettingsPanel } from './AppearanceSettingsPanel'
 import antIconUrl from '../assets/icons/ant.svg'
+import ghostIconUrl from '../assets/icons/ghost.svg'
 import { TabButton } from './SettingsShared'
 import { useSettingsModalState } from './useSettingsModalState'
 import './Settings.css'
@@ -109,6 +110,7 @@ export function SettingsModal({ open, onClose }: Props) {
                                     onSetJsonBeautifyTolerant={setJsonBeautifyTolerant}
                                     onCheckUpdates={() => void state.checkUpdates()}
                                     onClose={onClose}
+                                    onSetGhostIcon={() => void state.setGhostIcon(ghostIconUrl)}
                                     onSetAntIcon={() => void state.setAntIcon(antIconUrl)}
                                     onPickIconFile={() => void state.pickIconFile()}
                                     onResetIcon={() => void state.resetIcon()}

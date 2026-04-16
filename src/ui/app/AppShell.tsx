@@ -15,6 +15,7 @@ import { WorkspacePane } from './components/WorkspacePane'
 import { useAppShellActions } from './hooks/useAppShellActions'
 import { useAppShellDialogs } from './hooks/useAppShellDialogs'
 import { useAppShellEffects } from './hooks/useAppShellEffects'
+import { useWindowIconInit } from './hooks/useWindowIconInit'
 import { useStartupUpdateCheck } from './hooks/useStartupUpdateCheck'
 import { buildAppShellViewState } from './model/appShellViewState'
 import './appShell.css'
@@ -60,6 +61,7 @@ export function AppShell() {
         })()
     }, [app, dialogs])
 
+    useWindowIconInit()
     useAppShellEffects({
         onSave: handleSave,
         setCompactWorkspace,

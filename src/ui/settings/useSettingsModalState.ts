@@ -2,27 +2,7 @@ import * as React from 'react'
 import { apiClient } from '@ipc/client'
 import type { AtlassianSettings } from '@core/settings'
 import type { AppInfo, AppUpdateCheckResult } from '@shared/appUpdates'
-
-async function svgUrlToPngBuffer(svgUrl: string, size: number): Promise<ArrayBuffer> {
-    const img = new Image()
-    await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve()
-        img.onerror = () => reject(new Error('Failed to load SVG'))
-        img.src = svgUrl
-    })
-    const canvas = document.createElement('canvas')
-    canvas.width = size
-    canvas.height = size
-    const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('Failed to get canvas context')
-    ctx.drawImage(img, 0, 0, size, size)
-    return new Promise<ArrayBuffer>((resolve, reject) =>
-        canvas.toBlob(
-            (blob) => (blob ? blob.arrayBuffer().then(resolve) : reject(new Error('canvas.toBlob failed'))),
-            'image/png'
-        )
-    )
-}
+import { svgUrlToPngBuffer } from '../assets/icons/svgToPng'
 
 export function useSettingsModalState(open: boolean) {
     const [loading, setLoading] = React.useState(true)
@@ -102,12 +82,15 @@ export function useSettingsModalState(open: boolean) {
         }
     }, [])
 
-    const setAntIcon = React.useCallback(async (antSvgUrl: string) => {
+    const setIconFromSvg = React.useCallback(async (svgUrl: string) => {
         await applyIcon(async () => {
-            const pngBytes = await svgUrlToPngBuffer(antSvgUrl, 256)
+            const pngBytes = await svgUrlToPngBuffer(svgUrl, 256)
             return apiClient.setWindowIcon(pngBytes)
         })
     }, [applyIcon])
+
+    const setAntIcon = setIconFromSvg
+    const setGhostIcon = setIconFromSvg
 
     const pickIconFile = React.useCallback(async () => {
         await applyIcon(() => apiClient.pickWindowIcon())
@@ -144,6 +127,7 @@ export function useSettingsModalState(open: boolean) {
         setSecret,
         save,
         checkUpdates,
+        setGhostIcon,
         setAntIcon,
         pickIconFile,
         resetIcon,

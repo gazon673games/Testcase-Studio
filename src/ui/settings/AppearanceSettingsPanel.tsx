@@ -5,6 +5,7 @@ import { Field } from './SettingsShared'
 import { UpdatesSettingsCard } from './UpdatesSettingsCard'
 import type { SettingsTranslate } from './types'
 import antIconUrl from '../assets/icons/ant.svg'
+import ghostIconUrl from '../assets/icons/ghost.svg'
 
 type Props = {
     locale: UiLocale
@@ -22,6 +23,7 @@ type Props = {
     onSetJsonBeautifyTolerant(value: boolean): void
     onCheckUpdates(): void
     onClose(): void
+    onSetGhostIcon(): void
     onSetAntIcon(): void
     onPickIconFile(): void
     onResetIcon(): void
@@ -43,6 +45,16 @@ export function AppearanceSettingsPanel(props: Props) {
                         }
                     </div>
                     <div className="settings-modal__icon-actions">
+                        <button
+                            type="button"
+                            className="settings-modal__icon-option"
+                            disabled={applyingIcon}
+                            onClick={props.onSetGhostIcon}
+                            title={props.t('settings.appIcon.ghost')}
+                        >
+                            <img src={ghostIconUrl} alt="" className="settings-modal__icon-option-img" />
+                            <span>{props.t('settings.appIcon.ghost')}</span>
+                        </button>
                         <button
                             type="button"
                             className="settings-modal__icon-option"
