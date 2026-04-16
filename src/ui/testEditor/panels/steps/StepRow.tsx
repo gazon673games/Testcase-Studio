@@ -162,7 +162,7 @@ function StepCell({ kind, label, index, step, preview, props, onInsertLink }: St
     const parts = step.presentation?.parts?.[kind] ?? []
     const blockCount = parts.length + (topValue.trim() ? 1 : 0)
 
-    const setTop = (nextValue: string) => props.onEditTop({ [kind]: nextValue, ...(kind === 'action' ? { text: nextValue } : {}) })
+    const setTop = (nextValue: string) => props.onEditTop(index, { [kind]: nextValue, ...(kind === 'action' ? { text: nextValue } : {}) })
 
     return (
         <div className={`step-cell step-cell--${kind}`}>
@@ -245,16 +245,16 @@ function SharedReferenceStepCard({
             ref={cardRef}
             className={`step-card shared-ref-card${props.isDragging ? ' dragging' : ''}${props.isDropTarget ? ' drop-target' : ''}`}
             onDragOver={props.onCardDragOver}
-            onDragEnter={props.onCardDragEnter}
-            onDragLeave={props.onCardDragLeave}
-            onDrop={props.onCardDrop}
+            onDragEnter={() => props.onCardDragEnter(index)}
+            onDragLeave={() => props.onCardDragLeave(index)}
+            onDrop={() => props.onCardDrop(index)}
         >
             <div className="step-header">
                 <div
                     className="drag"
                     title={t('steps.dragToReorder')}
                     draggable
-                    onDragStart={props.onHandleDragStart}
+                    onDragStart={(event) => props.onHandleDragStart(index, event)}
                     onDragEnd={props.onHandleDragEnd}
                 >
                     {"\u2261"}
@@ -270,7 +270,7 @@ function SharedReferenceStepCard({
                 </div>
                 <span className="spacer" />
                 <div className="step-header-actions">
-                    <button type="button" className="btn-icon step-remove-btn" title={t('steps.remove')} onClick={props.onRemove}>
+                    <button type="button" className="btn-icon step-remove-btn" title={t('steps.remove')} onClick={() => props.onRemove(index)}>
                         x
                     </button>
                     <StepOverflowMenu actions={sharedActions} />
@@ -313,7 +313,7 @@ function EditableStepCard({
 }) {
     const { t } = useUiPreferences()
     const { owner, index, step, preview, isNarrow } = props
-    const attachments = props.getStepAttachments()
+    const attachments = props.attachments
     const zephyrStep = getZephyrStepIntegration(step)
     const includedTestKey = String(step.source?.includedCaseRef ?? zephyrStep?.includedTest?.key ?? '').trim()
     const includedTestName = String(zephyrStep?.includedTest?.name ?? '').trim()
@@ -332,16 +332,16 @@ function EditableStepCard({
             ref={cardRef}
             className={`step-card${props.isDragging ? ' dragging' : ''}${props.isDropTarget ? ' drop-target' : ''}`}
             onDragOver={props.onCardDragOver}
-            onDragEnter={props.onCardDragEnter}
-            onDragLeave={props.onCardDragLeave}
-            onDrop={props.onCardDrop}
+            onDragEnter={() => props.onCardDragEnter(index)}
+            onDragLeave={() => props.onCardDragLeave(index)}
+            onDrop={() => props.onCardDrop(index)}
         >
             <div className="step-header">
                 <div
                     className="drag"
                     title={t('steps.dragToReorder')}
                     draggable
-                    onDragStart={props.onHandleDragStart}
+                    onDragStart={(event) => props.onHandleDragStart(index, event)}
                     onDragEnd={props.onHandleDragEnd}
                 >
                     {"\u2261"}
@@ -361,13 +361,13 @@ function EditableStepCard({
                             type="button"
                             className="btn-small"
                             title={t('editor.beautifyJsonBlocks')}
-                            onClick={props.onBeautifyJson}
+                            onClick={() => props.onBeautifyJson?.(index, step)}
                             disabled={!props.canBeautifyJson}
                         >
                             JSON
                         </button>
                     )}
-                    <button type="button" className="btn-icon step-remove-btn" title={t('steps.remove')} onClick={props.onRemove}>
+                    <button type="button" className="btn-icon step-remove-btn" title={t('steps.remove')} onClick={() => props.onRemove(index)}>
                         x
                     </button>
                     <StepOverflowMenu actions={normalActions} />
@@ -413,7 +413,7 @@ function EditableStepCard({
                 <StepAttachmentsPanel
                     stepId={step.id}
                     attachments={attachments}
-                    onChange={props.setStepAttachments}
+                    onChange={(next) => props.onSetStepAttachments(index, next)}
                     onUploadStepFiles={props.onUploadStepFiles}
                     accept="*/*"
                     compact
@@ -423,7 +423,7 @@ function EditableStepCard({
     )
 }
 
-export const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(props, ref) {
+const StepRowComponent = React.forwardRef<HTMLDivElement, StepRowProps>(function StepRow(props, ref) {
     const { t } = useUiPreferences()
     const { owner, step, sharedById } = props
 
@@ -431,8 +431,8 @@ export const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function S
         ...(owner.type === 'test' && props.onCreateSharedFromStep
             ? [{ label: t('steps.saveAsShared'), onClick: () => void props.onCreateSharedFromStep?.(step) }]
             : []),
-        { label: t('steps.clone'), onClick: props.onClone },
-        { label: t('steps.addBelow'), onClick: props.onAddNext },
+        { label: t('steps.clone'), onClick: () => props.onClone(props.index) },
+        { label: t('steps.addBelow'), onClick: () => props.onAddNext(props.index) },
     ]
 
     const sharedActions: OverflowAction[] = step.usesShared
@@ -440,8 +440,8 @@ export const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function S
             ...(sharedById.get(step.usesShared) && props.onOpenShared
                 ? [{ label: t('steps.openShared'), onClick: () => props.onOpenShared?.(step.usesShared!, undefined) }]
                 : []),
-            { label: t('steps.clone'), onClick: props.onClone },
-            { label: t('steps.addBelow'), onClick: props.onAddNext },
+            { label: t('steps.clone'), onClick: () => props.onClone(props.index) },
+            { label: t('steps.addBelow'), onClick: () => props.onAddNext(props.index) },
         ]
         : []
 
@@ -451,3 +451,46 @@ export const StepRow = React.forwardRef<HTMLDivElement, StepRowProps>(function S
             : <EditableStepCard props={props} normalActions={normalActions} cardRef={ref} />
     )
 })
+
+function areStepRowPropsEqual(previous: StepRowProps, next: StepRowProps) {
+    return (
+        previous.owner.id === next.owner.id &&
+        previous.owner.type === next.owner.type &&
+        previous.index === next.index &&
+        previous.step === next.step &&
+        previous.preview === next.preview &&
+        previous.isNarrow === next.isNarrow &&
+        previous.allTests === next.allTests &&
+        previous.sharedSteps === next.sharedSteps &&
+        previous.sharedById === next.sharedById &&
+        previous.resolveRefs === next.resolveRefs &&
+        previous.inspectRefs === next.inspectRefs &&
+        previous.onOpenRef === next.onOpenRef &&
+        previous.onActivateEditorApi === next.onActivateEditorApi &&
+        previous.onClone === next.onClone &&
+        previous.onAddNext === next.onAddNext &&
+        previous.onRemove === next.onRemove &&
+        previous.onBeautifyJson === next.onBeautifyJson &&
+        previous.canBeautifyJson === next.canBeautifyJson &&
+        previous.onEditTop === next.onEditTop &&
+        previous.onAddPart === next.onAddPart &&
+        previous.onEditPart === next.onEditPart &&
+        previous.onRemovePart === next.onRemovePart &&
+        previous.onHandleDragStart === next.onHandleDragStart &&
+        previous.onHandleDragEnd === next.onHandleDragEnd &&
+        previous.onCardDragOver === next.onCardDragOver &&
+        previous.onCardDragEnter === next.onCardDragEnter &&
+        previous.onCardDragLeave === next.onCardDragLeave &&
+        previous.onCardDrop === next.onCardDrop &&
+        previous.isDragging === next.isDragging &&
+        previous.isDropTarget === next.isDropTarget &&
+        previous.attachments === next.attachments &&
+        previous.onSetStepAttachments === next.onSetStepAttachments &&
+        previous.onUploadStepFiles === next.onUploadStepFiles &&
+        previous.onCreateSharedFromStep === next.onCreateSharedFromStep &&
+        previous.onOpenShared === next.onOpenShared &&
+        previous.onInsertText === next.onInsertText
+    )
+}
+
+export const StepRow = React.memo(StepRowComponent, areStepRowPropsEqual)

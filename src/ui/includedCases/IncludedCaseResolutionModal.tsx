@@ -25,7 +25,9 @@ export function IncludedCaseResolutionModal({ open, items, onClose, onApply }: P
 
     React.useEffect(() => {
         if (!open) return
-        setDecisions({})
+        setDecisions(
+            Object.fromEntries(items.map((item) => [item.id, 'create-local-case' satisfies IncludedCaseResolution]))
+        )
     }, [items, open])
 
     const canApply = items.length > 0 && items.every((item) => Boolean(decisions[item.id]))

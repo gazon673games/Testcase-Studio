@@ -39,25 +39,25 @@ export type StepRowProps = {
     inspectRefs(src: string): ResolvedWikiRef[]
     onOpenRef(ref: ResolvedWikiRef): void
     onActivateEditorApi?: (api: MarkdownEditorApi | null) => void
-    onClone(): void
-    onAddNext(): void
-    onRemove(): void
-    onBeautifyJson?(): void
+    onClone(index: number): void
+    onAddNext(index: number): void
+    onRemove(index: number): void
+    onBeautifyJson?(index: number, step: Step): void
     canBeautifyJson?: boolean
-    onEditTop(patch: Partial<Step>): void
+    onEditTop(index: number, patch: Partial<Step>): void
     onAddPart(idx: number, kind: StepFieldKind): void
     onEditPart(idx: number, kind: StepFieldKind, partIndex: number, patch: Partial<PartItem>): void
     onRemovePart(idx: number, kind: StepFieldKind, partIndex: number): void
-    onHandleDragStart(event: React.DragEvent): void
+    onHandleDragStart(index: number, event: React.DragEvent): void
     onHandleDragEnd(): void
     onCardDragOver(event: React.DragEvent): void
-    onCardDragEnter(): void
-    onCardDragLeave(): void
-    onCardDrop(): void
+    onCardDragEnter(index: number): void
+    onCardDragLeave(index: number): void
+    onCardDrop(index: number): void
     isDragging: boolean
     isDropTarget: boolean
-    getStepAttachments(): Attachment[]
-    setStepAttachments(next: Attachment[]): void
+    attachments: Attachment[]
+    onSetStepAttachments(index: number, next: Attachment[]): void
     onUploadStepFiles?: (stepId: string, files: File[]) => Promise<Attachment[]>
     onCreateSharedFromStep?: (step: Step, name?: string) => void | Promise<void>
     onOpenShared?: (sharedId: string, stepId?: string) => void

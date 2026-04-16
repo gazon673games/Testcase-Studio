@@ -11,6 +11,7 @@ import { useUiPreferences } from '../../../preferences'
 
 const LAZY_STEP_ROWS_THRESHOLD = 10
 const EAGER_STEP_ROWS_COUNT = 3
+const EMPTY_ATTACHMENTS: NonNullable<Step['attachments']> = []
 
 function stepMayContainJson(step: Step) {
     const candidateText = [
@@ -86,6 +87,36 @@ export default function StepsPanel({
         focusStepId,
         previewMode,
     })
+
+    const handleBeautifyJsonStep = React.useCallback((index: number, step: Step) => {
+        const beautifiedStep = beautifyZephyrJsonBlocksInStep(step, { tolerant: jsonBeautifyTolerant })
+        if (beautifiedStep !== step) {
+            updateStep(index, beautifiedStep)
+            return
+        }
+
+        const beautifyDiagnostics = inspectZephyrJsonBeautifyStep(step, { tolerant: jsonBeautifyTolerant })
+        if (beautifyDiagnostics.failures.length) {
+            console.warn('[Testcase Studio] JSON beautify failed', {
+                stepId: step.id,
+                stepIndex: index + 1,
+                tolerant: jsonBeautifyTolerant,
+                failures: beautifyDiagnostics.failures,
+            })
+            return
+        }
+
+        console.info('[Testcase Studio] JSON beautify skipped: no JSON-like blocks found', {
+            stepId: step.id,
+            stepIndex: index + 1,
+            tolerant: jsonBeautifyTolerant,
+            candidateCount: beautifyDiagnostics.candidateCount,
+        })
+    }, [jsonBeautifyTolerant, updateStep])
+
+    const handleSetStepAttachments = React.useCallback((index: number, nextAttachments: NonNullable<Step['attachments']>) => {
+        updateStep(index, { attachments: nextAttachments })
+    }, [updateStep])
 
     const handleInsertFromTest = React.useCallback((sourceTestId: string, stepIds: string[]) => {
         const source = allTests.find((test) => test.id === sourceTestId)
@@ -164,31 +195,6 @@ export default function StepsPanel({
                         steps.map((step, index) => {
                             const eagerRow = !useLazyStepRows || index < EAGER_STEP_ROWS_COUNT || step.id === focusStepId
                             const canBeautifyJson = stepMayContainJson(step)
-                            const handleBeautifyJson = () => {
-                                const beautifiedStep = beautifyZephyrJsonBlocksInStep(step, { tolerant: jsonBeautifyTolerant })
-                                if (beautifiedStep !== step) {
-                                    updateStep(index, beautifiedStep)
-                                    return
-                                }
-
-                                const beautifyDiagnostics = inspectZephyrJsonBeautifyStep(step, { tolerant: jsonBeautifyTolerant })
-                                if (beautifyDiagnostics.failures.length) {
-                                    console.warn('[Testcase Studio] JSON beautify failed', {
-                                        stepId: step.id,
-                                        stepIndex: index + 1,
-                                        tolerant: jsonBeautifyTolerant,
-                                        failures: beautifyDiagnostics.failures,
-                                    })
-                                    return
-                                }
-
-                                console.info('[Testcase Studio] JSON beautify skipped: no JSON-like blocks found', {
-                                    stepId: step.id,
-                                    stepIndex: index + 1,
-                                    tolerant: jsonBeautifyTolerant,
-                                    candidateCount: beautifyDiagnostics.candidateCount,
-                                })
-                            }
 
                             return (
                                 <LazyStepRow
@@ -215,25 +221,25 @@ export default function StepsPanel({
                                         inspectRefs={inspectRefs}
                                         onOpenRef={onOpenRef}
                                         onActivateEditorApi={onActivateEditorApi}
-                                        onClone={() => cloneStep(index)}
-                                        onAddNext={() => addStepAfter(index)}
-                                        onRemove={() => removeStep(index)}
+                                        onClone={cloneStep}
+                                        onAddNext={addStepAfter}
+                                        onRemove={removeStep}
                                         canBeautifyJson={canBeautifyJson}
-                                        onBeautifyJson={handleBeautifyJson}
-                                        onEditTop={(patch) => updateStep(index, patch)}
+                                        onBeautifyJson={handleBeautifyJsonStep}
+                                        onEditTop={updateStep}
                                         onAddPart={addPart}
                                         onEditPart={editPart}
                                         onRemovePart={removePart}
-                                        onHandleDragStart={(event) => handleDragStart(index, event)}
+                                        onHandleDragStart={handleDragStart}
                                         onHandleDragEnd={handleDragEnd}
                                         onCardDragOver={handleCardDragOver}
-                                        onCardDragEnter={() => handleCardDragEnter(index)}
-                                        onCardDragLeave={() => handleCardDragLeave(index)}
-                                        onCardDrop={() => handleCardDrop(index)}
+                                        onCardDragEnter={handleCardDragEnter}
+                                        onCardDragLeave={handleCardDragLeave}
+                                        onCardDrop={handleCardDrop}
                                         isDragging={draggingIndex === index}
                                         isDropTarget={hoverIndex === index}
-                                        getStepAttachments={() => (Array.isArray(step.attachments) ? step.attachments : [])}
-                                        setStepAttachments={(nextAttachments) => updateStep(index, { attachments: nextAttachments })}
+                                        attachments={Array.isArray(step.attachments) ? step.attachments : EMPTY_ATTACHMENTS}
+                                        onSetStepAttachments={handleSetStepAttachments}
                                         onUploadStepFiles={onUploadStepFiles}
                                         onCreateSharedFromStep={onCreateSharedFromStep}
                                         onOpenShared={onOpenShared}

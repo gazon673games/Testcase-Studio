@@ -21,7 +21,7 @@ import { useStoredToggle } from '../hooks/useStoredToggle'
 type Props = {
     test: TestCase
     sessionDraft?: TestCase | null
-    onSessionDraftChange?(draft: TestCase): void
+    onSessionDraftChange?(draft: TestCase | null): void
     onChange: (
         patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'details' | 'attachments' | 'links' | 'integration'>>
     ) => void
@@ -62,6 +62,9 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
 ) {
     const { t } = useUiPreferences()
     const [draftTest, setDraftTest] = React.useState(() => structuredClone(sessionDraft ?? test))
+    const draftRevisionCounterRef = React.useRef(1)
+    const currentDraftRevisionRef = React.useRef(1)
+    const syncedDraftRevisionRef = React.useRef(sessionDraft ? 0 : 1)
     const latestDraftRef = React.useRef(draftTest)
     const latestSourceRef = React.useRef(test)
     const previousTestIdRef = React.useRef(test.id)
@@ -73,12 +76,29 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     const [showSharedLibrary, setShowSharedLibrary] = useStoredToggle('test-editor.show-shared-library.v2', false)
     const [activeEditorApi, setActiveEditorApi] = React.useState<MarkdownEditorApi | null>(null)
     const markdownReferenceData = useSharedMarkdownReferenceData(allTests, sharedSteps)
+    const stepOwner = React.useMemo(() => ({ type: 'test' as const, id: draftTest.id }), [draftTest.id])
+
+    const replaceDraft = React.useCallback((nextDraft: TestCase, dirty: boolean) => {
+        draftRevisionCounterRef.current += 1
+        currentDraftRevisionRef.current = draftRevisionCounterRef.current
+        syncedDraftRevisionRef.current = dirty ? draftRevisionCounterRef.current - 1 : draftRevisionCounterRef.current
+        latestDraftRef.current = nextDraft
+        setDraftTest(nextDraft)
+        onSessionDraftChange?.(dirty ? nextDraft : null)
+    }, [onSessionDraftChange])
 
     const applyDraftPatch = React.useCallback((
         patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'details' | 'attachments' | 'links' | 'integration'>>
     ) => {
         setDraftTest((current) => {
+            const patchEntries = Object.entries(patch) as Array<[keyof typeof patch, (typeof patch)[keyof typeof patch]]>
+            if (patchEntries.length === 0 || patchEntries.every(([key, value]) => Object.is(current[key], value))) {
+                return current
+            }
+
             const next = { ...current, ...patch }
+            draftRevisionCounterRef.current += 1
+            currentDraftRevisionRef.current = draftRevisionCounterRef.current
             latestDraftRef.current = next
             onSessionDraftChange?.(next)
             return next
@@ -119,34 +139,28 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     const testAlias = getStoredTestAlias(draftTest.details) ?? ''
 
     React.useEffect(() => {
-        const previousSource = latestSourceRef.current
         const nextSource = test
         const switchedTest = previousTestIdRef.current !== nextSource.id
-        const hasLocalEdits = !areEditableTestFieldsEqual(previousSource, latestDraftRef.current)
+        const hasLocalEdits = currentDraftRevisionRef.current !== syncedDraftRevisionRef.current
 
         latestSourceRef.current = nextSource
 
         if (switchedTest) {
             previousTestIdRef.current = nextSource.id
-            const nextDraft = structuredClone(sessionDraft ?? nextSource)
-            latestDraftRef.current = nextDraft
-            setDraftTest(nextDraft)
-            onSessionDraftChange?.(nextDraft)
+            replaceDraft(structuredClone(sessionDraft ?? nextSource), Boolean(sessionDraft))
             return
         }
 
         if (!hasLocalEdits) {
-            const nextDraft = structuredClone(sessionDraft ?? nextSource)
-            latestDraftRef.current = nextDraft
-            setDraftTest(nextDraft)
-            onSessionDraftChange?.(nextDraft)
+            replaceDraft(structuredClone(sessionDraft ?? nextSource), Boolean(sessionDraft))
         }
-    }, [onSessionDraftChange, sessionDraft, test])
+    }, [replaceDraft, sessionDraft, test])
 
     const commitDraft = React.useCallback(() => {
+        if (currentDraftRevisionRef.current === syncedDraftRevisionRef.current) return false
+
         const current = latestDraftRef.current
-        const source = latestSourceRef.current
-        if (areEditableTestFieldsEqual(source, current)) return false
+        syncedDraftRevisionRef.current = currentDraftRevisionRef.current
         onChange({
             name: current.name,
             description: current.description,
@@ -158,6 +172,22 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         })
         return true
     }, [onChange])
+
+    const handleStepsChange = React.useCallback((next: Step[]) => {
+        applyDraftPatch({ steps: next })
+    }, [applyDraftPatch])
+
+    const handleToggleParseZephyrHtmlParts = React.useCallback((value: boolean) => {
+        applyDraftPatch({ integration: setZephyrHtmlPartsEnabled(structuredClone(latestDraftRef.current), value).integration })
+    }, [applyDraftPatch])
+
+    const handleChangeName = React.useCallback((value: string) => {
+        applyDraftPatch({ name: value })
+    }, [applyDraftPatch])
+
+    const handleChangeAlias = React.useCallback((value: string) => {
+        applyDraftPatch({ details: setTestAlias(latestDraftRef.current.details, value) })
+    }, [applyDraftPatch])
 
     React.useImperativeHandle(ref, () => ({ commit: commitDraft }), [commitDraft])
 
@@ -174,15 +204,15 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
                             sharedStepsCount={sharedSteps.length}
                             parseZephyrHtmlParts={parseZephyrHtmlParts}
                             onToggleSharedLibrary={() => setShowSharedLibrary((current) => !current)}
-                            onToggleParseZephyrHtmlParts={(value) => applyDraftPatch({ integration: setZephyrHtmlPartsEnabled(structuredClone(draftTest), value).integration })}
-                            onChangeName={(value) => applyDraftPatch({ name: value })}
-                            onChangeAlias={(value) => applyDraftPatch({ details: setTestAlias(draftTest.details, value) })}
+                            onToggleParseZephyrHtmlParts={handleToggleParseZephyrHtmlParts}
+                            onChangeName={handleChangeName}
+                            onChangeAlias={handleChangeAlias}
                         />
 
                         <StepsPanel
-                            owner={{ type: 'test', id: draftTest.id }}
+                            owner={stepOwner}
                             steps={draftTest.steps}
-                            onChange={(next) => applyDraftPatch({ steps: next })}
+                            onChange={handleStepsChange}
                             allTests={allTests}
                             sharedSteps={sharedSteps}
                             resolveRefs={resolveRefs}
@@ -247,26 +277,6 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
         </MarkdownReferenceDataProvider>
     )
 })
-
-function areEditableTestFieldsEqual(left: TestCase, right: TestCase) {
-    return JSON.stringify([
-        left.name,
-        left.description ?? '',
-        left.steps,
-        left.details ?? null,
-        left.integration ?? null,
-        left.attachments ?? [],
-        left.links ?? [],
-    ]) === JSON.stringify([
-        right.name,
-        right.description ?? '',
-        right.steps,
-        right.details ?? null,
-        right.integration ?? null,
-        right.attachments ?? [],
-        right.links ?? [],
-    ])
-}
 
 function setTestAlias(details: TestCase['details'], alias: string) {
     const normalizedAlias = normalizeNodeAlias(alias)

@@ -282,6 +282,14 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
                         ref={previewRef}
                         className={`md-preview ${editInPreview ? 'md-preview--editable' : ''} ${editInPreview && isActive ? 'md-preview--editing' : ''}`}
                         tabIndex={editInPreview ? -1 : 0}
+                        onMouseDown={editInPreview && !isRichPreviewEditing ? (event) => {
+                            event.preventDefault()
+                            const nextTextarea = textareaRef.current
+                            if (!nextTextarea) return
+                            nextTextarea.focus()
+                            const end = nextTextarea.value.length
+                            nextTextarea.setSelectionRange(end, end)
+                        } : undefined}
                         dangerouslySetInnerHTML={{ __html: previewHtml }}
                     />
                 ) : null}

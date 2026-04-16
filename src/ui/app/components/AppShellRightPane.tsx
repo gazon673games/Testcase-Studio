@@ -76,6 +76,7 @@ export function AppShellRightPane({
     onSetFolderAlias,
 }: Props) {
     const sessionDraftsRef = React.useRef(new Map<string, TestCase>())
+    const selectedTestId = selectedTest?.id ?? null
 
     React.useEffect(() => {
         const existingIds = new Set(allTests.map((test) => test.id))
@@ -84,6 +85,20 @@ export function AppShellRightPane({
         }
     }, [allTests])
 
+    const handleSessionDraftChange = React.useCallback((draft: TestCase | null) => {
+        if (!selectedTestId) return
+        if (draft) sessionDraftsRef.current.set(selectedTestId, draft)
+        else sessionDraftsRef.current.delete(selectedTestId)
+    }, [selectedTestId])
+
+    const handleCommitTestChange = React.useCallback((
+        patch: Partial<Pick<TestCase, 'name' | 'description' | 'steps' | 'details' | 'attachments' | 'links' | 'integration'>>
+    ) => {
+        if (!selectedTestId) return
+        sessionDraftsRef.current.delete(selectedTestId)
+        onUpdateTest(selectedTestId, patch)
+    }, [onUpdateTest, selectedTestId])
+
     if (selectedTest) {
         return (
             <React.Suspense fallback={<div className="app-shell__editor-loading">{loadingEditorLabel}</div>}>
@@ -91,10 +106,8 @@ export function AppShellRightPane({
                     ref={editorRef}
                     test={selectedTest}
                     sessionDraft={sessionDraftsRef.current.get(selectedTest.id) ?? null}
-                    onSessionDraftChange={(draft) => {
-                        sessionDraftsRef.current.set(selectedTest.id, structuredClone(draft))
-                    }}
-                    onChange={(patch) => onUpdateTest(selectedTest.id, patch)}
+                    onSessionDraftChange={handleSessionDraftChange}
+                    onChange={handleCommitTestChange}
                     focusStepId={focusStepId}
                     allTests={allTests}
                     sharedSteps={sharedSteps}
