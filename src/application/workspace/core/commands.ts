@@ -1,3 +1,4 @@
+import { produce } from 'immer'
 import {
     mkFolder,
     mkShared,
@@ -26,27 +27,21 @@ type WorkspaceMutationResult = {
 }
 
 export function addFolderAt(state: RootState, parentId: ID, name: string): WorkspaceMutationResult {
-    const nextState = structuredClone(state)
     const folder = mkFolder(name)
-    insertChild(nextState.root, parentId, folder)
-    return {
-        nextState,
-        selectedId: folder.id,
-    }
+    const nextState = produce(state, (draft) => {
+        insertChild(draft.root, parentId, folder)
+    })
+    return { nextState, selectedId: folder.id }
 }
 
 export function addTestAt(state: RootState, parentId: ID, testName: string, firstStepAction: string): WorkspaceMutationResult {
-    const nextState = structuredClone(state)
     const test = mkTest(testName, '')
     const first = mkStep(firstStepAction, '', '')
     test.steps.push(first)
-    insertChild(nextState.root, parentId, test)
-    return {
-        nextState,
-        selectedId: test.id,
-        focusStepId: first.id,
-        dirtyIds: [test.id],
-    }
+    const nextState = produce(state, (draft) => {
+        insertChild(draft.root, parentId, test)
+    })
+    return { nextState, selectedId: test.id, focusStepId: first.id, dirtyIds: [test.id] }
 }
 
 export function addFolderFromSelection(state: RootState, selectedId: ID | null, name: string): WorkspaceMutationResult {
@@ -59,37 +54,35 @@ export function addTestFromSelection(state: RootState, selectedId: ID | null, te
 
 export function removeSelectedNode(state: RootState, selectedId: ID | null): WorkspaceMutationResult | null {
     if (!selectedId || selectedId === state.root.id) return null
-    const nextState = structuredClone(state)
-    if (!deleteNode(nextState.root, selectedId)) return null
-    return {
-        nextState,
-        selectedId: nextState.root.id,
-        focusStepId: null,
-    }
+    const nextState = produce(state, (draft) => {
+        deleteNode(draft.root, selectedId)
+    })
+    if (nextState === state) return null  // deleteNode found nothing
+    return { nextState, selectedId: nextState.root.id, focusStepId: null }
 }
 
 export function renameWorkspaceNode(state: RootState, id: ID, newName: string): WorkspaceMutationResult | null {
-    const nextState = structuredClone(state)
-    const node = findNode(nextState.root, id)
-    if (!node) return null
-
-    if (isFolder(node)) {
+    const nextState = produce(state, (draft) => {
+        const node = findNode(draft.root, id)
+        if (!node) return
         node.name = newName
-        return { nextState }
-    }
+        if (!isFolder(node)) node.updatedAt = nowISO()
+    })
+    if (nextState === state) return null
 
-    node.name = newName
-    node.updatedAt = nowISO()
+    const node = findNode(nextState.root, id)
     return {
         nextState,
-        dirtyIds: [node.id],
+        dirtyIds: node && !isFolder(node) ? [node.id] : undefined,
     }
 }
 
 export function deleteNodeById(state: RootState, id: ID, currentSelectedId: ID | null): WorkspaceMutationResult | null {
     if (id === state.root.id) return null
-    const nextState = structuredClone(state)
-    if (!deleteNode(nextState.root, id)) return null
+    const nextState = produce(state, (draft) => {
+        deleteNode(draft.root, id)
+    })
+    if (nextState === state) return null
     return {
         nextState,
         selectedId: currentSelectedId === id ? nextState.root.id : undefined,
@@ -98,80 +91,70 @@ export function deleteNodeById(state: RootState, id: ID, currentSelectedId: ID |
 }
 
 export function moveWorkspaceNode(state: RootState, nodeId: ID, targetFolderId: ID): WorkspaceMutationResult & { moved: boolean } {
-    const nextState = structuredClone(state)
-    const moved = moveTreeNode(nextState.root, nodeId, targetFolderId)
-    return {
-        nextState,
-        moved,
-        selectedId: moved ? nodeId : undefined,
-    }
+    let moved = false
+    const nextState = produce(state, (draft) => {
+        moved = moveTreeNode(draft.root, nodeId, targetFolderId)
+    })
+    return { nextState, moved, selectedId: moved ? nodeId : undefined }
 }
 
 export function updateTestCase(state: RootState, testId: ID, patch: TestPatch): WorkspaceMutationResult | null {
-    const nextState = structuredClone(state)
-    const node = findNode(nextState.root, testId)
-    if (!node || isFolder(node)) return null
-
-    Object.assign(node, patch)
-    node.updatedAt = nowISO()
-    return {
-        nextState,
-        dirtyIds: [testId],
-    }
+    const nextState = produce(state, (draft) => {
+        const node = findNode(draft.root, testId)
+        if (!node || isFolder(node)) return
+        Object.assign(node, patch)
+        node.updatedAt = nowISO()
+    })
+    if (nextState === state) return null
+    return { nextState, dirtyIds: [testId] }
 }
 
 export function setNodeIcon(state: RootState, nodeId: ID, iconKey: string | null): WorkspaceMutationResult | null {
-    const nextState = structuredClone(state)
-    const node = findNode(nextState.root, nodeId)
-    if (!node) return null
-
     const normalizedKey = String(iconKey ?? '').trim()
+    const nextState = produce(state, (draft) => {
+        const node = findNode(draft.root, nodeId)
+        if (!node) return
 
-    if (isFolder(node)) {
-        if (normalizedKey) node.iconKey = normalizedKey
-        else delete node.iconKey
-        return {
-            nextState,
+        if (isFolder(node)) {
+            if (normalizedKey) node.iconKey = normalizedKey
+            else delete node.iconKey
+            return
         }
-    }
 
-    node.details = node.details ?? { tags: [], attributes: {} }
-    node.details.attributes = node.details.attributes ?? {}
-    if (normalizedKey) node.details.attributes[NODE_ICON_PARAM_KEY] = normalizedKey
-    else delete node.details.attributes[NODE_ICON_PARAM_KEY]
+        node.details = node.details ?? { tags: [], attributes: {} }
+        node.details.attributes = node.details.attributes ?? {}
+        if (normalizedKey) node.details.attributes[NODE_ICON_PARAM_KEY] = normalizedKey
+        else delete node.details.attributes[NODE_ICON_PARAM_KEY]
+        node.updatedAt = nowISO()
+    })
+    if (nextState === state) return null
 
-    node.updatedAt = nowISO()
-    return {
-        nextState,
-        dirtyIds: [nodeId],
-    }
+    const node = findNode(nextState.root, nodeId)
+    return { nextState, dirtyIds: node && !isFolder(node) ? [nodeId] : undefined }
 }
 
 export function setNodeAlias(state: RootState, nodeId: ID, alias: string | null): WorkspaceMutationResult | null {
-    const nextState = structuredClone(state)
-    const node = findNode(nextState.root, nodeId)
-    if (!node) return null
-
     const normalizedAlias = String(alias ?? '').trim()
+    const nextState = produce(state, (draft) => {
+        const node = findNode(draft.root, nodeId)
+        if (!node) return
 
-    if (isFolder(node)) {
-        if (normalizedAlias) node.alias = normalizedAlias
-        else delete node.alias
-        return {
-            nextState,
+        if (isFolder(node)) {
+            if (normalizedAlias) node.alias = normalizedAlias
+            else delete node.alias
+            return
         }
-    }
 
-    node.details = node.details ?? { tags: [], attributes: {} }
-    node.details.attributes = node.details.attributes ?? {}
-    if (normalizedAlias) node.details.attributes[NODE_ALIAS_PARAM_KEY] = normalizedAlias
-    else delete node.details.attributes[NODE_ALIAS_PARAM_KEY]
+        node.details = node.details ?? { tags: [], attributes: {} }
+        node.details.attributes = node.details.attributes ?? {}
+        if (normalizedAlias) node.details.attributes[NODE_ALIAS_PARAM_KEY] = normalizedAlias
+        else delete node.details.attributes[NODE_ALIAS_PARAM_KEY]
+        node.updatedAt = nowISO()
+    })
+    if (nextState === state) return null
 
-    node.updatedAt = nowISO()
-    return {
-        nextState,
-        dirtyIds: [nodeId],
-    }
+    const node = findNode(nextState.root, nodeId)
+    return { nextState, dirtyIds: node && !isFolder(node) ? [nodeId] : undefined }
 }
 
 export function setTestIcon(state: RootState, testId: ID, iconKey: string | null): WorkspaceMutationResult | null {
@@ -179,13 +162,11 @@ export function setTestIcon(state: RootState, testId: ID, iconKey: string | null
 }
 
 export function addSharedStep(state: RootState, name: string, steps: Step[] = []): WorkspaceMutationResult & { sharedId: string } {
-    const nextState = structuredClone(state)
     const shared = mkShared(name, steps.length ? structuredClone(steps) : [mkStep()])
-    nextState.sharedSteps.push(shared)
-    return {
-        nextState,
-        sharedId: shared.id,
-    }
+    const nextState = produce(state, (draft) => {
+        draft.sharedSteps.push(shared)
+    })
+    return { nextState, sharedId: shared.id }
 }
 
 export function addSharedStepFromStep(state: RootState, step: Step, fallbackName: string, explicitName?: string) {
@@ -194,48 +175,43 @@ export function addSharedStepFromStep(state: RootState, step: Step, fallbackName
 }
 
 export function updateSharedStep(state: RootState, sharedId: string, patch: Partial<Pick<SharedStep, 'name' | 'steps'>>): WorkspaceMutationResult | null {
-    const nextState = structuredClone(state)
-    const shared = nextState.sharedSteps.find((item) => item.id === sharedId)
-    if (!shared) return null
-
-    if (typeof patch.name === 'string') shared.name = patch.name
-    if (Array.isArray(patch.steps)) shared.steps = structuredClone(patch.steps)
-    shared.updatedAt = nowISO()
+    const nextState = produce(state, (draft) => {
+        const shared = draft.sharedSteps.find((item) => item.id === sharedId)
+        if (!shared) return
+        if (typeof patch.name === 'string') shared.name = patch.name
+        if (Array.isArray(patch.steps)) shared.steps = structuredClone(patch.steps)
+        shared.updatedAt = nowISO()
+    })
+    if (nextState === state) return null
     return { nextState }
 }
 
 export function deleteSharedStep(state: RootState, sharedId: string): WorkspaceMutationResult {
-    const nextState = structuredClone(state)
-    nextState.sharedSteps = nextState.sharedSteps.filter((item) => item.id !== sharedId)
     const dirtyIds: string[] = []
-
-    for (const test of mapTests(nextState.root)) {
-        const beforeLength = test.steps.length
-        test.steps = test.steps.filter((step) => step.usesShared !== sharedId)
-        if (test.steps.length !== beforeLength) {
-            test.updatedAt = nowISO()
-            dirtyIds.push(test.id)
+    const nextState = produce(state, (draft) => {
+        draft.sharedSteps = draft.sharedSteps.filter((item) => item.id !== sharedId)
+        for (const test of mapTests(draft.root)) {
+            const before = test.steps.length
+            test.steps = test.steps.filter((step) => step.usesShared !== sharedId)
+            if (test.steps.length !== before) {
+                test.updatedAt = nowISO()
+                dirtyIds.push(test.id)
+            }
         }
-    }
-
-    return {
-        nextState,
-        dirtyIds,
-    }
+    })
+    return { nextState, dirtyIds }
 }
 
 export function insertSharedReference(state: RootState, testId: string, sharedId: string, afterIndex?: number): WorkspaceMutationResult | null {
-    const nextState = structuredClone(state)
-    const node = findNode(nextState.root, testId)
-    if (!node || isFolder(node)) return null
-
-    const insertAt = typeof afterIndex === 'number' ? afterIndex + 1 : node.steps.length
-    node.steps.splice(insertAt, 0, mkSharedPlaceholder(sharedId))
-    node.updatedAt = nowISO()
-    return {
-        nextState,
-        dirtyIds: [testId],
-    }
+    const nextState = produce(state, (draft) => {
+        const node = findNode(draft.root, testId)
+        if (!node || isFolder(node)) return
+        const insertAt = typeof afterIndex === 'number' ? afterIndex + 1 : node.steps.length
+        node.steps.splice(insertAt, 0, mkSharedPlaceholder(sharedId))
+        node.updatedAt = nowISO()
+    })
+    if (nextState === state) return null
+    return { nextState, dirtyIds: [testId] }
 }
 
 function resolveParentFolder(state: RootState, selectedId: ID | null): Folder {

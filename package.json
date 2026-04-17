@@ -25,10 +25,12 @@
     "audit:readability": "node tools/readability-audit.mjs"
   },
   "dependencies": {
+    "immer": "^11.1.4",
     "keytar": "^7.9.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@types/node": "^22.7.4",

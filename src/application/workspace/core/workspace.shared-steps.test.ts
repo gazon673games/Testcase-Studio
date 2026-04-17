@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { produce } from 'immer'
 import { addSharedStep, addSharedStepFromStep, deleteSharedStep, insertSharedReference, updateSharedStep } from './commands'
 import { mkStep } from '@core/domain'
 import { findNode, isFolder } from '@core/tree'
@@ -47,12 +48,12 @@ describe('workspace shared step management', () => {
     it('removes a shared step and dirties only tests that actually referenced it', () => {
         const { state, rootTest, folderTest } = makeWorkspace()
         const shared = addSharedStep(state, 'Reusable login')
-        const sharedStateRootTest = findNode(shared.nextState.root, rootTest.id)
-        if (sharedStateRootTest && !isFolder(sharedStateRootTest)) {
-            sharedStateRootTest.steps[0].usesShared = shared.sharedId
-        }
+        const stateWithRef = produce(shared.nextState, (draft) => {
+            const node = findNode(draft.root, rootTest.id)
+            if (node && !isFolder(node)) node.steps[0].usesShared = shared.sharedId
+        })
 
-        const result = deleteSharedStep(shared.nextState, shared.sharedId)
+        const result = deleteSharedStep(stateWithRef, shared.sharedId)
         const nextRootTest = findNode(result.nextState.root, rootTest.id)
         const nextFolderTest = findNode(result.nextState.root, folderTest.id)
 

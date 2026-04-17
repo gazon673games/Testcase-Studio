@@ -1,3 +1,4 @@
+import { produce } from 'immer'
 import { normalizeTestCase, nowISO, type ID, type RootState, type TestCase } from '@core/domain'
 import { isZephyrHtmlPartsEnabled, preserveZephyrHtmlPartsFlag } from '@core/zephyrHtmlParts'
 import { findNode, isFolder } from '@core/tree'
@@ -34,16 +35,14 @@ export async function pullSelectedCase(
     if (!fallbackLink) return { status: 'no-link' }
 
     const remote = await sync.pullByLink(fallbackLink)
-    const nextState = structuredClone(state)
-    const target = findNode(nextState.root, node.id) as TestCase
-    const patch = fromProviderPayload(remote, target.steps, {
-        parseHtmlParts: isZephyrHtmlPartsEnabled(target),
+    const patch = fromProviderPayload(remote, node.steps, {
+        parseHtmlParts: isZephyrHtmlPartsEnabled(node),
         tolerantJsonBeautify: getStoredJsonBeautifyTolerant(),
     })
-    const nextTarget = preserveZephyrHtmlPartsFlag(
+    const merged = preserveZephyrHtmlPartsFlag(
         node,
         normalizeTestCase({
-            ...target,
+            ...node,
             name: patch.name,
             description: patch.description,
             steps: patch.steps,
@@ -53,18 +52,21 @@ export async function pullSelectedCase(
             updatedAt: patch.updatedAt ?? nowISO(),
         })
     )
-    Object.assign(target, nextTarget)
+    const nextState = produce(state, (draft) => {
+        const target = findNode(draft.root, node.id) as TestCase
+        Object.assign(target, merged)
+    })
 
     return {
         status: 'ok',
         nextState,
-        testId: target.id,
+        testId: node.id,
         externalId:
             zephyrExternalId
             ?? node.links.find((link) => link.provider === 'zephyr')?.externalId
             ?? fallbackLink.externalId
             ?? remote.id
             ?? '',
-        clearedDirtyIds: [target.id],
+        clearedDirtyIds: [node.id],
     }
 }
