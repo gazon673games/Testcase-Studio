@@ -1,18 +1,3 @@
-const fs = require('node:fs')
-const path = require('node:path')
-
-const projectRoot = fs.realpathSync.native(process.cwd())
-const localIconDir = path.join(projectRoot, '.local-assets', 'icons')
-
-function optionalIcon(name) {
-    const fullPath = path.join(localIconDir, name)
-    return fs.existsSync(fullPath) ? fullPath : undefined
-}
-
-const winIcon = optionalIcon('app.ico')
-const macIcon = optionalIcon('app.icns')
-const linuxIcon = optionalIcon('app.png')
-
 /** @type {import('electron-builder').Configuration} */
 const config = {
     appId: 'com.gazon673games.testcase-studio',
@@ -42,7 +27,7 @@ const config = {
             { target: 'nsis', arch: ['x64', 'arm64'] },
             { target: 'portable', arch: ['x64', 'arm64'] },
         ],
-        ...(winIcon ? { icon: winIcon } : {}),
+        icon: 'build-assets/icon.png',
     },
     nsis: {
         artifactName: '${productName}-${version}-setup-${arch}.${ext}',
@@ -60,7 +45,7 @@ const config = {
             { target: 'dmg', arch: ['x64', 'arm64'] },
             { target: 'zip', arch: ['x64', 'arm64'] },
         ],
-        ...(macIcon ? { icon: macIcon } : {}),
+        icon: 'build-assets/icon.png',
     },
     linux: {
         artifactName: '${productName}-${version}-linux-${arch}.${ext}',
@@ -69,7 +54,7 @@ const config = {
             { target: 'AppImage', arch: ['x64', 'arm64'] },
             { target: 'tar.gz', arch: ['x64', 'arm64'] },
         ],
-        ...(linuxIcon ? { icon: linuxIcon } : {}),
+        icon: 'build-assets/icon.png',
     },
 }
 

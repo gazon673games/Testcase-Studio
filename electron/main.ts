@@ -1,5 +1,4 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
-import fs from 'node:fs'
 import path from 'node:path'
 import { registerHandlers } from '../src/ipc/handlers.js'
 
@@ -13,20 +12,8 @@ function resolvePreloadPath() {
     return path.join(app.getAppPath(), 'electron', 'preload.cjs')
 }
 
-function resolveLocalWindowIconPath() {
-    const projectRoot = app.getAppPath()
-    const iconDir = path.join(projectRoot, '.local-assets', 'icons')
-    const candidates = process.platform === 'win32'
-        ? ['app.ico', 'app.png']
-        : process.platform === 'linux'
-            ? ['app.png']
-            : ['app.png', 'app.icns']
-
-    for (const name of candidates) {
-        const target = path.join(iconDir, name)
-        if (fs.existsSync(target)) return target
-    }
-    return undefined
+function resolveAppIconPath() {
+    return path.join(app.getAppPath(), 'build-assets', 'icon.png')
 }
 
 function isSafeExternalUrl(url: string) {
@@ -73,11 +60,10 @@ async function loadRenderer(window: BrowserWindow) {
 }
 
 async function createWindow() {
-    const icon = resolveLocalWindowIconPath()
     win = new BrowserWindow({
         width: 1200,
         height: 800,
-        ...(icon ? { icon } : {}),
+        icon: resolveAppIconPath(),
         webPreferences: {
             preload: resolvePreloadPath(),
             contextIsolation: true,

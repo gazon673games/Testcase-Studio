@@ -4,8 +4,6 @@ import type { UiLocale, UiThemeMode } from '../preferences'
 import { Field } from './SettingsShared'
 import { UpdatesSettingsCard } from './UpdatesSettingsCard'
 import type { SettingsTranslate } from './types'
-import antIconUrl from '../assets/icons/ant.svg'
-import ghostIconUrl from '../assets/icons/ghost.svg'
 
 type Props = {
     locale: UiLocale
@@ -15,84 +13,18 @@ type Props = {
     updateInfo: AppUpdateCheckResult | null
     updateError: string | null
     checkingUpdates: boolean
-    windowIconDataUrl: string | null
-    iconStatus: 'idle' | 'applying' | 'applied'
     t: SettingsTranslate
     onSetLocale(value: UiLocale): void
     onSetThemeMode(value: UiThemeMode): void
     onSetJsonBeautifyTolerant(value: boolean): void
     onCheckUpdates(): void
     onClose(): void
-    onSetGhostIcon(): void
-    onSetAntIcon(): void
-    onPickIconFile(): void
-    onResetIcon(): void
 }
 
 export function AppearanceSettingsPanel(props: Props) {
-    const applyingIcon = props.iconStatus === 'applying'
-
     return (
         <div className="settings-modal__form">
             <h4 className="settings-modal__section-title">{props.t('settings.appearanceTitle')}</h4>
-
-            <Field label={props.t('settings.appIcon')}>
-                <div className="settings-modal__icon-row">
-                    <div className="settings-modal__icon-preview" title={props.t('settings.appIcon')}>
-                        {props.windowIconDataUrl
-                            ? <img src={props.windowIconDataUrl} alt={props.t('settings.appIcon')} className="settings-modal__icon-img" />
-                            : <span className="settings-modal__icon-placeholder">{props.t('settings.appIcon.default')}</span>
-                        }
-                    </div>
-                    <div className="settings-modal__icon-actions">
-                        <button
-                            type="button"
-                            className="settings-modal__icon-option"
-                            disabled={applyingIcon}
-                            onClick={props.onSetGhostIcon}
-                            title={props.t('settings.appIcon.ghost')}
-                        >
-                            <img src={ghostIconUrl} alt="" className="settings-modal__icon-option-img" />
-                            <span>{props.t('settings.appIcon.ghost')}</span>
-                        </button>
-                        <button
-                            type="button"
-                            className="settings-modal__icon-option"
-                            disabled={applyingIcon}
-                            onClick={props.onSetAntIcon}
-                            title={props.t('settings.appIcon.ant')}
-                        >
-                            <img src={antIconUrl} alt="" className="settings-modal__icon-option-img" />
-                            <span>{props.t('settings.appIcon.ant')}</span>
-                        </button>
-                        <button
-                            type="button"
-                            className="settings-modal__button settings-modal__button--secondary"
-                            disabled={applyingIcon}
-                            onClick={props.onPickIconFile}
-                        >
-                            {props.t('settings.appIcon.fromFile')}
-                        </button>
-                        {props.windowIconDataUrl && (
-                            <button
-                                type="button"
-                                className="settings-modal__button settings-modal__button--secondary"
-                                disabled={applyingIcon}
-                                onClick={props.onResetIcon}
-                            >
-                                {props.t('settings.appIcon.reset')}
-                            </button>
-                        )}
-                    </div>
-                </div>
-                {props.iconStatus === 'applying' && (
-                    <div className="settings-modal__hint">{props.t('settings.appIcon.applying')}</div>
-                )}
-                {props.iconStatus === 'applied' && (
-                    <div className="settings-modal__hint settings-modal__hint--ok">{props.t('settings.appIcon.applied')}</div>
-                )}
-                <div className="settings-modal__hint">{props.t('settings.appIcon.hint')}</div>
-            </Field>
 
             <Field label={props.t('settings.language')}>
                 <select

@@ -4,7 +4,6 @@ import type { ZephyrImportRequest, ZephyrPublishPreview } from '../../applicatio
 import { openWorkspaceAttachment, storeWorkspaceAttachments } from '../../../electron/attachmentStore.js'
 import { loadFromFs, saveToFs, writePublishLog, writeStateSnapshot } from '../../../electron/repo.js'
 import { deleteLocalTreeIcon, importLocalTreeIcon, listLocalTreeIcons } from '../../../electron/treeIcons.js'
-import { getWindowIconDataUrl, pickAndSetWindowIcon, resetWindowIcon, setWindowIconFromBuffer } from '../../../electron/windowIcon.js'
 import { CHANNELS } from '../channels.js'
 import { loadMainSettings, saveMainSettings } from './handlerSettings.js'
 import { checkForUpdatesInMain, getAppInfoInMain } from './handlerUpdates.js'
@@ -70,21 +69,6 @@ export function registerPersistenceHandlers(ipcMain: IpcMain) {
         return true
     })
 
-    ipcMain.handle(CHANNELS.APP_GET_WINDOW_ICON, async () => {
-        return await getWindowIconDataUrl()
-    })
-
-    ipcMain.handle(CHANNELS.APP_SET_WINDOW_ICON, async (_event, payload: { pngBytes: ArrayBuffer }) => {
-        return await setWindowIconFromBuffer(payload.pngBytes)
-    })
-
-    ipcMain.handle(CHANNELS.APP_PICK_WINDOW_ICON, async () => {
-        return await pickAndSetWindowIcon()
-    })
-
-    ipcMain.handle(CHANNELS.APP_RESET_WINDOW_ICON, async () => {
-        await resetWindowIcon()
-    })
 }
 
 export function registerSettingsHandlers(ipcMain: IpcMain) {

@@ -6,10 +6,6 @@ const CHANNELS = {
     APP_LIST_LOCAL_TREE_ICONS: 'APP_LIST_LOCAL_TREE_ICONS',
     APP_IMPORT_LOCAL_TREE_ICON: 'APP_IMPORT_LOCAL_TREE_ICON',
     APP_DELETE_LOCAL_TREE_ICON: 'APP_DELETE_LOCAL_TREE_ICON',
-    APP_GET_WINDOW_ICON: 'APP_GET_WINDOW_ICON',
-    APP_SET_WINDOW_ICON: 'APP_SET_WINDOW_ICON',
-    APP_PICK_WINDOW_ICON: 'APP_PICK_WINDOW_ICON',
-    APP_RESET_WINDOW_ICON: 'APP_RESET_WINDOW_ICON',
     LOAD_STATE: 'LOAD_STATE',
     SAVE_STATE: 'SAVE_STATE',
     LOAD_SETTINGS: 'LOAD_SETTINGS',
@@ -69,12 +65,4 @@ contextBridge.exposeInMainWorld('api', {
         ipcRenderer.invoke(CHANNELS.WRITE_STATE_SNAPSHOT, { state, kind, meta }) as Promise<string>,
     writePublishLog: (payload: Record<string, unknown>) =>
         ipcRenderer.invoke(CHANNELS.WRITE_PUBLISH_LOG, payload) as Promise<string>,
-    getWindowIcon: () =>
-        ipcRenderer.invoke(CHANNELS.APP_GET_WINDOW_ICON) as Promise<string | null>,
-    setWindowIcon: (pngBytes: ArrayBuffer) =>
-        ipcRenderer.invoke(CHANNELS.APP_SET_WINDOW_ICON, { pngBytes }) as Promise<string>,
-    pickWindowIcon: () =>
-        ipcRenderer.invoke(CHANNELS.APP_PICK_WINDOW_ICON) as Promise<string | null>,
-    resetWindowIcon: () =>
-        ipcRenderer.invoke(CHANNELS.APP_RESET_WINDOW_ICON) as Promise<void>,
 })

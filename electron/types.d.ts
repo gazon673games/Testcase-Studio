@@ -43,10 +43,6 @@ declare global {
                 meta?: Record<string, unknown>
             ): Promise<string>
             writePublishLog(payload: Record<string, unknown>): Promise<string>
-            getWindowIcon(): Promise<string | null>
-            setWindowIcon(pngBytes: ArrayBuffer): Promise<string>
-            pickWindowIcon(): Promise<string | null>
-            resetWindowIcon(): Promise<void>
         }
     }
 }
