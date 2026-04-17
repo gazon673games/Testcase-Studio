@@ -16,7 +16,7 @@ import { useTestEditorReferenceTools } from './useTestEditorReferenceTools'
 import { useTestEditorSharedLibrary } from './useTestEditorSharedLibrary'
 import { useTestEditorSummary } from './useTestEditorSummary'
 import { useUiPreferences } from '../preferences'
-import { useStoredToggle } from '../hooks/useStoredToggle'
+import { useStoredToggle } from '../app/hooks/useStoredToggle'
 
 type Props = {
     test: TestCase

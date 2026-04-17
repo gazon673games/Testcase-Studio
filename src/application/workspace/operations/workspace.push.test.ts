@@ -13,7 +13,7 @@ vi.mock('./store', () => ({
 }))
 
 import { pushSelectedCase } from './pushSelectedCase'
-import { makePublishResult, makeSyncService, makeWorkspace } from './testSupport'
+import { makePublishResult, makeSyncService, makeWorkspace } from '../testSupport'
 import type { ZephyrPublishPreviewItem } from '@app/sync'
 
 describe('workspace push selected case', () => {

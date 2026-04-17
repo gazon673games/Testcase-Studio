@@ -13,7 +13,7 @@ vi.mock('./store', () => ({
 }))
 
 import { publishZephyrPreview } from './publishZephyrPreview'
-import { makePublishItem, makePublishPreview, makePublishResult, makeSyncService, makeWorkspace } from './testSupport'
+import { makePublishItem, makePublishPreview, makePublishResult, makeSyncService, makeWorkspace } from '../testSupport'
 
 describe('workspace publish apply', () => {
     beforeEach(() => {

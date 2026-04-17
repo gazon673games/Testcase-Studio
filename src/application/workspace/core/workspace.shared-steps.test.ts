@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { addSharedStep, addSharedStepFromStep, deleteSharedStep, insertSharedReference, updateSharedStep } from './commands'
 import { mkStep } from '@core/domain'
 import { findNode, isFolder } from '@core/tree'
-import { makeWorkspace } from './testSupport'
+import { makeWorkspace } from '../testSupport'
 
 describe('workspace shared step management', () => {
     it('creates a visible shared step immediately and gives it at least one step', () => {

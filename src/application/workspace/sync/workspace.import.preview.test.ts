@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { previewZephyrImport } from './previewZephyrImport'
-import { makeSyncService, makeWorkspace } from './testSupport'
+import { makeSyncService, makeWorkspace } from '../testSupport'
 
 describe('workspace import preview', () => {
     it('chooses the parent folder when a test is selected', async () => {

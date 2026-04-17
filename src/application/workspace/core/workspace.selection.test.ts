@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getImportDestination, getPublishSelection } from './queries'
-import { makeWorkspace } from './testSupport'
+import { makeWorkspace } from '../testSupport'
 
 describe('workspace selection queries', () => {
     it('returns the parent folder as import destination when a test is selected', () => {

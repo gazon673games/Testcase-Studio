@@ -12,7 +12,7 @@ const clientMocks = vi.hoisted(() => ({
 vi.mock('@ipc/client', () => clientMocks)
 
 import { loadWorkspaceState, writeWorkspacePublishLog, writeWorkspaceSnapshot } from './store'
-import { makeWorkspace } from './testSupport'
+import { makeWorkspace } from '../testSupport'
 
 describe('workspace load and recovery', () => {
     beforeEach(() => {

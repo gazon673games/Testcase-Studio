@@ -10,7 +10,7 @@ import {
     setNodeIcon,
 } from './commands'
 import { findNode, findParentFolder, isFolder } from '@core/tree'
-import { makeWorkspace } from './testSupport'
+import { makeWorkspace } from '../testSupport'
 
 describe('workspace structure', () => {
     it('adds a folder into the parent folder when a test is selected', () => {

@@ -1,9 +1,9 @@
 import type { RootState } from '@core/domain'
 import { isFolder } from '@core/tree'
 import { type SyncService, type ZephyrPublishResult } from '@app/sync'
-import { getSelectedNode } from './queries'
-import { previewZephyrPublish } from './previewZephyrPublish'
-import { publishZephyrPreview } from './publishZephyrPreview'
+import { getSelectedNode } from '../core/queries'
+import { previewZephyrPublish } from '../sync/previewZephyrPublish'
+import { publishZephyrPreview } from '../sync/publishZephyrPreview'
 
 export type PushSelectedCaseResult =
     | { status: 'no-selection' | 'not-a-test' }

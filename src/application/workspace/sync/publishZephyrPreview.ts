@@ -1,6 +1,6 @@
 import { nowISO, type RootState } from '@core/domain'
 import { type SyncService, type ZephyrPublishPreview, type ZephyrPublishResult } from '@app/sync'
-import { saveWorkspaceState, writeWorkspacePublishLog, writeWorkspaceSnapshot } from './store'
+import { saveWorkspaceState, writeWorkspacePublishLog, writeWorkspaceSnapshot } from '../core/store'
 
 export async function publishZephyrPreview(
     state: RootState | null,

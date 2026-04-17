@@ -4,7 +4,7 @@ import { findNode, isFolder } from '@core/tree'
 import { resolveZephyrExternalId, type SyncService } from '@app/sync'
 import { fromProviderPayload } from '@providers/mappers'
 import { getStoredJsonBeautifyTolerant } from '@shared/uiPreferences'
-import { getSelectedNode } from './queries'
+import { getSelectedNode } from '../core/queries'
 
 export type PullSelectedCaseResult =
     | { status: 'no-selection' | 'not-a-test' | 'no-link' }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { previewZephyrPublish } from './previewZephyrPublish'
-import { makeSyncService, makeWorkspace } from './testSupport'
+import { makeSyncService, makeWorkspace } from '../testSupport'
 
 describe('workspace publish preview', () => {
     it('publishes only the selected test when a single test is selected', async () => {

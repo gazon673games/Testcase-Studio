@@ -1,7 +1,7 @@
 import type { SyncService } from '@app/sync'
 import type { RootState } from '@core/domain'
 import type { ZephyrImportPreview, ZephyrImportRequest } from '@app/sync'
-import { getImportDestination } from './queries'
+import { getImportDestination } from '../core/queries'
 
 export async function previewZephyrImport(
     state: RootState | null,

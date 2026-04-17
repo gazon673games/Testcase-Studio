@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { isZephyrHtmlPartsEnabled, setZephyrHtmlPartsEnabled } from '@core/zephyrHtmlParts'
 import { pullSelectedCase } from './pullSelectedCase'
-import { makeProviderTest, makeSyncService, makeWorkspace } from './testSupport'
+import { makeProviderTest, makeSyncService, makeWorkspace } from '../testSupport'
 import { findNode, isFolder } from '@core/tree'
 
 describe('workspace pull selected case', () => {

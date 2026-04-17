@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { applyZephyrImport } from './applyZephyrImport'
-import { makeImportItem, makeImportPreview, makeSyncService, makeWorkspace } from './testSupport'
+import { makeImportItem, makeImportPreview, makeSyncService, makeWorkspace } from '../testSupport'
 
 describe('workspace import apply', () => {
     it('clears dirty only for tests that were actually updated or created locally', async () => {

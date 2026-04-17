@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { findNode, findParentFolder, isFolder } from '@core/tree'
 import { setZephyrStepIntegration } from '@providers/zephyr/zephyrModel'
 import { collectIncludedCaseCandidates, resolveIncludedCaseDecisions } from './includedCases'
-import { makeWorkspace } from './testSupport'
+import { makeWorkspace } from '../testSupport'
 
 describe('workspace included Zephyr cases', () => {
     it('collects nested testcase references from pulled/imported steps', () => {

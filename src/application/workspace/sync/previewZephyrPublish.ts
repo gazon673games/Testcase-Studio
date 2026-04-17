@@ -1,6 +1,6 @@
 import type { RootState } from '@core/domain'
 import { type SyncService, type ZephyrPublishPreview } from '@app/sync'
-import { getPublishSelection } from './queries'
+import { getPublishSelection } from '../core/queries'
 
 export async function previewZephyrPublish(
     state: RootState | null,

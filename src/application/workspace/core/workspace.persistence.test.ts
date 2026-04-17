@@ -8,8 +8,8 @@ vi.mock('./store', () => ({
     saveWorkspaceState: storeMocks.saveWorkspaceState,
 }))
 
-import { saveWorkspace } from './saveWorkspace'
-import { makeWorkspace } from './testSupport'
+import { saveWorkspace } from '../operations/saveWorkspace'
+import { makeWorkspace } from '../testSupport'
 
 describe('workspace persistence', () => {
     beforeEach(() => {

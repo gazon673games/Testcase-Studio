@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { updateTestCase } from './commands'
-import { makeWorkspace } from './testSupport'
+import { makeWorkspace } from '../testSupport'
 import { findNode, isFolder } from '@core/tree'
 
 describe('workspace test editing', () => {
