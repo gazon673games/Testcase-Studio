@@ -10,7 +10,7 @@ import { getCreateFromScratchItem } from '../../zephyrPublish/createFromScratch'
 
 type AppStateApi = ReturnType<typeof useAppState>
 type ToastPush = ReturnType<typeof useToast>['push']
-type Translate = (key: any, params?: Record<string, string | number>) => string
+type Translate = (key: string, params?: Record<string, string | number>) => string
 
 type UseAppShellActionsOptions = {
     app: AppStateApi
@@ -190,7 +190,11 @@ export function useAppShellActions({
         }
     }, [app, editorRef, handleApplyPublish, openCreateFromScratch, push, t])
 
+    const syncingRef = React.useRef(false)
+
     const handleQuickSync = React.useCallback(async () => {
+        if (syncingRef.current) return
+        syncingRef.current = true
         try {
             const result = await app.syncAll()
             push({
@@ -206,6 +210,8 @@ export function useAppShellActions({
                 }),
                 ttl: 0,
             })
+        } finally {
+            syncingRef.current = false
         }
     }, [app, push, t])
 

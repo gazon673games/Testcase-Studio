@@ -26,16 +26,14 @@ export function fromProviderPayload(
 export function toProviderPayload(
     test: Pick<TestCase, 'id' | 'name' | 'description' | 'steps' | 'attachments' | 'details' | 'integration'> | ExportTest
 ): ProviderTest {
-    const id = (test as any).id
-    const stepsArray: Array<Step | ExportStep> = (test as any).steps ?? []
-    const attachments = (test as any).attachments ?? []
+    const stepsArray: Array<Step | ExportStep> = test.steps ?? []
 
     return {
-        id: id ?? String(Math.random()),
+        id: test.id ?? String(Math.random()),
         name: test.name,
-        description: (test as any).description ?? '',
+        description: test.description ?? '',
         steps: mapDomainStepsToProvider(stepsArray),
-        attachments: attachments.map(copyAttachment),
+        attachments: (test.attachments ?? []).map(copyAttachment),
         updatedAt: new Date().toISOString(),
     }
 }

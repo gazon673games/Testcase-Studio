@@ -5,7 +5,7 @@ import { buildExport } from '@core/export'
 import { isZephyrHtmlPartsEnabled, preserveZephyrHtmlPartsFlag } from '@core/zephyrHtmlParts'
 import { getStoredJsonBeautifyTolerant } from '@shared/uiPreferences'
 import type { SyncText } from './text'
-import type { SyncService } from './service'
+import { resolvePullLink, type SyncService } from './service'
 import {
     applyZephyrImportPreview,
     buildZephyrImportPreview,
@@ -45,13 +45,7 @@ export class SyncEngine implements SyncService {
     }
 
     async pullPreferZephyr(test: TestCase): Promise<ProviderTest | null> {
-        const zephyr = test.links.find((link) => link.provider === 'zephyr')
-        if (zephyr) return this.pullByLink(zephyr)
-
-        const allure = test.links.find((link) => link.provider === 'allure')
-        if (allure) return this.pullByLink(allure)
-
-        return null
+        return resolvePullLink(test, (link) => this.pullByLink(link))
     }
 
     async previewZephyrImport(state: RootState, request: ZephyrImportRequest): Promise<ZephyrImportPreview> {

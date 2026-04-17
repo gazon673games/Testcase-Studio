@@ -6,7 +6,7 @@ const storeMocks = vi.hoisted(() => ({
     writeWorkspacePublishLog: vi.fn(async () => '/tmp/workspace-publish-log.json'),
 }))
 
-vi.mock('./store', () => ({
+vi.mock('../core/store', () => ({
     saveWorkspaceState: storeMocks.saveWorkspaceState,
     writeWorkspaceSnapshot: storeMocks.writeWorkspaceSnapshot,
     writeWorkspacePublishLog: storeMocks.writeWorkspacePublishLog,

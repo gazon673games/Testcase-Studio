@@ -1,4 +1,4 @@
 export type SettingsTranslate = (
-    key: string | number | symbol,
+    key: string,
     params?: Record<string, string | number>
 ) => string

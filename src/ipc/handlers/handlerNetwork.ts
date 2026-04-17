@@ -37,13 +37,22 @@ export function describeFetchFailure(error: unknown): string {
     return combinedMessage
 }
 
+const FETCH_TIMEOUT_MS = 30_000
+
 export async function fetchWithContext(url: string, init: RequestInit, scope: string) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
     try {
-        return await fetch(url, init)
+        return await fetch(url, { ...init, signal: controller.signal })
     } catch (error) {
         const host = safeHost(url)
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error(`${scope} request timed out after ${FETCH_TIMEOUT_MS / 1000}s for ${host}`)
+        }
         const detail = describeFetchFailure(error)
         throw new Error(`${scope} network error for ${host}${detail ? `: ${detail}` : ''}`)
+    } finally {
+        clearTimeout(timeoutId)
     }
 }
 

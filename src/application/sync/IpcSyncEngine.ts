@@ -1,4 +1,5 @@
 import type { RootState, TestCase, TestCaseLink } from '@core/domain'
+import { resolvePullLink } from './service'
 import type { ProviderTest } from '@providers/types'
 import {
     applyZephyrImportPreview,
@@ -60,13 +61,7 @@ export class IpcSyncEngine implements SyncService {
     }
 
     async pullPreferZephyr(test: TestCase): Promise<ProviderTest | null> {
-        const zephyr = test.links.find((link) => link.provider === 'zephyr')
-        if (zephyr) return this.pullByLink(zephyr)
-
-        const allure = test.links.find((link) => link.provider === 'allure')
-        if (allure) return this.pullByLink(allure)
-
-        return null
+        return resolvePullLink(test, (link) => this.pullByLink(link))
     }
 
     async previewZephyrImport(state: RootState, request: ZephyrImportRequest): Promise<ZephyrImportPreview> {

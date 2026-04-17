@@ -63,7 +63,21 @@ export async function fetchZephyrImportInMain(request: ZephyrImportRequest) {
     const { zephyr } = createMainSyncContext()
     const query = buildZephyrImportQuery(request)
     const refs = await collectZephyrImportRefs(zephyr, query, request)
-    const remotes = await Promise.all(refs.map((ref) => zephyr.getTestDetails(ref)))
+
+    const results = await Promise.allSettled(refs.map((ref) => zephyr.getTestDetails(ref)))
+
+    const failed = results
+        .map((r, i) => ({ r, ref: refs[i] }))
+        .filter(({ r }) => r.status === 'rejected')
+    if (failed.length > 0) {
+        const details = failed
+            .map(({ r, ref }) => `${ref}: ${r.status === 'rejected' ? (r.reason instanceof Error ? r.reason.message : String(r.reason)) : ''}`)
+            .join(', ')
+        throw new Error(`Failed to fetch ${failed.length} of ${refs.length} test(s): ${details}`)
+    }
+
+    const remotes = (results as PromiseFulfilledResult<Awaited<ReturnType<typeof zephyr.getTestDetails>>>[])
+        .map((r) => r.value)
     return { query, remotes }
 }
 

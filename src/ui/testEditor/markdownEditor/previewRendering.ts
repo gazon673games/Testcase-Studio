@@ -97,7 +97,8 @@ function isSafeUrl(value: string) {
     try {
         const parsed = new URL(value, 'http://x/')
         const protocol = parsed.protocol.toLowerCase()
-        return protocol === 'http:' || protocol === 'https:' || value.startsWith('data:image/')
+        const SAFE_DATA_IMAGE = /^data:image\/(png|jpe?g|gif|webp|bmp|avif|ico);base64,/i
+        return protocol === 'http:' || protocol === 'https:' || SAFE_DATA_IMAGE.test(value)
     } catch {
         return false
     }

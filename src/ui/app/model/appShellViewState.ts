@@ -2,7 +2,7 @@ import { getSelectedNode, getTestById } from '@app/workspace'
 import { buildSelectionSummary } from './selectionSummary'
 import type { useAppState } from '../../state/useAppState'
 
-type Translate = (key: any, params?: Record<string, string | number>) => string
+type Translate = (key: string, params?: Record<string, string | number>) => string
 type AppStateApi = ReturnType<typeof useAppState>
 
 export function buildAppShellViewState(

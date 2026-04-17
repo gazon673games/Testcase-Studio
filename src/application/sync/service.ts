@@ -3,6 +3,17 @@ import type { ProviderTest } from '@providers/types'
 import type { ZephyrImportApplyResult, ZephyrImportPreview, ZephyrImportRequest } from './zephyrImport'
 import type { ZephyrPublishPreview, ZephyrPublishResult } from './zephyrPublish'
 
+export async function resolvePullLink(
+    test: TestCase,
+    pullByLink: (link: TestCaseLink) => Promise<ProviderTest>
+): Promise<ProviderTest | null> {
+    const zephyr = test.links.find((link) => link.provider === 'zephyr')
+    if (zephyr) return pullByLink(zephyr)
+    const allure = test.links.find((link) => link.provider === 'allure')
+    if (allure) return pullByLink(allure)
+    return null
+}
+
 export interface SyncService {
     pullByLink(link: TestCaseLink): Promise<ProviderTest>
     pushTest(test: TestCase, link: TestCaseLink, state?: RootState): Promise<{ externalId: string }>

@@ -1,6 +1,6 @@
 import type { ZephyrPublishPreview, ZephyrPublishPreviewItem } from '@app/sync'
 
-type Translate = (key: any, params?: Record<string, string | number>) => string
+type Translate = (key: string, params?: Record<string, string | number>) => string
 
 export type ZephyrCreateFromScratchCheck = {
     id: 'name' | 'projectKey' | 'steps' | 'stepContent' | 'testType' | 'automation' | 'payload'

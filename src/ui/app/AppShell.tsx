@@ -54,11 +54,21 @@ export function AppShell() {
 
     const handleApplyIncludedCases = React.useCallback((decisions: Record<string, IncludedCaseResolution>) => {
         void (async () => {
-            const result = await app.resolveIncludedCases(decisions)
-            if (result) await app.save()
-            dialogs.closeIncludedCasesResolution()
+            try {
+                const result = await app.resolveIncludedCases(decisions)
+                if (result) await app.save()
+                dialogs.closeIncludedCasesResolution()
+            } catch (error) {
+                push({
+                    kind: 'error',
+                    text: t('toast.saveFailed', {
+                        message: error instanceof Error ? error.message : String(error),
+                    }),
+                    ttl: 4000,
+                })
+            }
         })()
-    }, [app, dialogs])
+    }, [app, dialogs, push, t])
 
     useAppShellEffects({
         onSave: handleSave,
