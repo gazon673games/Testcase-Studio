@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { produce } from 'immer'
 import type { PartItem, Step } from '@core/domain'
 import type { StepFieldKind } from './stepsPanelTypes'
 
@@ -32,6 +33,15 @@ export function useStepsPanelController({
     const focusTimeout = React.useRef<number | null>(null)
     const [draggingIndex, setDraggingIndex] = React.useState<number | null>(null)
     const [hoverIndex, setHoverIndex] = React.useState<number | null>(null)
+
+    // Refs so that callbacks can always access the latest values without
+    // being recreated (deps []) — keeps StepRow memo effective.
+    const stepsRef = React.useRef(steps)
+    stepsRef.current = steps
+    const onChangeRef = React.useRef(onChange)
+    onChangeRef.current = onChange
+    const draggingIndexRef = React.useRef(draggingIndex)
+    draggingIndexRef.current = draggingIndex
 
     const previewEnabled = previewMode ? previewMode === 'preview' : globalPreview
 
@@ -74,9 +84,9 @@ export function useStepsPanelController({
     }, [focusStepId])
 
     const updateStep = React.useCallback((index: number, patch: Partial<Step> | Step) => {
-        const next = steps.map((step, stepIndex) => (stepIndex === index ? { ...step, ...patch } : step))
-        onChange(next)
-    }, [onChange, steps])
+        const next = stepsRef.current.map((step, stepIndex) => (stepIndex === index ? { ...step, ...patch } : step))
+        onChangeRef.current(next)
+    }, [])
 
     const addStepAfter = React.useCallback((index: number) => {
         const newStep: Step = {
@@ -90,43 +100,43 @@ export function useStepsPanelController({
             subSteps: [],
             attachments: [],
         }
-
-        onChange([...steps.slice(0, index + 1), newStep, ...steps.slice(index + 1)])
-    }, [onChange, steps])
+        const s = stepsRef.current
+        onChangeRef.current([...s.slice(0, index + 1), newStep, ...s.slice(index + 1)])
+    }, [])
 
     const cloneStep = React.useCallback((index: number) => {
-        const cloned = structuredClone(steps[index])
-        cloned.id = crypto.randomUUID()
-        onChange([...steps.slice(0, index + 1), cloned, ...steps.slice(index + 1)])
-    }, [onChange, steps])
+        const cloned = produce(stepsRef.current[index], (draft) => { draft.id = crypto.randomUUID() })
+        const s = stepsRef.current
+        onChangeRef.current([...s.slice(0, index + 1), cloned, ...s.slice(index + 1)])
+    }, [])
 
     const removeStep = React.useCallback((index: number) => {
-        onChange(steps.filter((_, stepIndex) => stepIndex !== index))
-    }, [onChange, steps])
+        onChangeRef.current(stepsRef.current.filter((_, stepIndex) => stepIndex !== index))
+    }, [])
 
     const addPart = React.useCallback((index: number, kind: StepFieldKind) => {
-        const nextStep = structuredClone(steps[index])
-        ensureParts(nextStep)
-        nextStep.presentation!.parts![kind]!.push({ id: crypto.randomUUID(), text: '' })
+        const nextStep = produce(stepsRef.current[index], (draft) => {
+            ensureParts(draft)
+            draft.presentation!.parts![kind]!.push({ id: crypto.randomUUID(), text: '' })
+        })
         updateStep(index, nextStep)
-    }, [steps, updateStep])
+    }, [updateStep])
 
     const editPart = React.useCallback((index: number, kind: StepFieldKind, partIndex: number, patch: Partial<PartItem>) => {
-        const nextStep = structuredClone(steps[index])
-        ensureParts(nextStep)
-        nextStep.presentation!.parts![kind]![partIndex] = {
-            ...nextStep.presentation!.parts![kind]![partIndex],
-            ...patch,
-        }
+        const nextStep = produce(stepsRef.current[index], (draft) => {
+            ensureParts(draft)
+            Object.assign(draft.presentation!.parts![kind]![partIndex]!, patch)
+        })
         updateStep(index, nextStep)
-    }, [steps, updateStep])
+    }, [updateStep])
 
     const removePart = React.useCallback((index: number, kind: StepFieldKind, partIndex: number) => {
-        const nextStep = structuredClone(steps[index])
-        ensureParts(nextStep)
-        nextStep.presentation!.parts![kind]!.splice(partIndex, 1)
+        const nextStep = produce(stepsRef.current[index], (draft) => {
+            ensureParts(draft)
+            draft.presentation!.parts![kind]!.splice(partIndex, 1)
+        })
         updateStep(index, nextStep)
-    }, [steps, updateStep])
+    }, [updateStep])
 
     const handleDragStart = React.useCallback((index: number, event: React.DragEvent) => {
         dragIndex.current = index
@@ -148,8 +158,8 @@ export function useStepsPanelController({
     }, [])
 
     const handleCardDragEnter = React.useCallback((index: number) => {
-        setHoverIndex((current) => (draggingIndex != null && index !== draggingIndex ? index : current))
-    }, [draggingIndex])
+        setHoverIndex((current) => (draggingIndexRef.current != null && index !== draggingIndexRef.current ? index : current))
+    }, [])
 
     const handleCardDragLeave = React.useCallback((index: number) => {
         setHoverIndex((current) => (current === index ? null : current))
@@ -162,11 +172,11 @@ export function useStepsPanelController({
         setHoverIndex(null)
         if (from == null || from === index) return
 
-        const next = steps.slice()
+        const next = stepsRef.current.slice()
         const [moved] = next.splice(from, 1)
         next.splice(index, 0, moved)
-        onChange(next)
-    }, [onChange, steps])
+        onChangeRef.current(next)
+    }, [])
 
     return {
         open,

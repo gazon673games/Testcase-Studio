@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import type { AppServices } from '../services'
 import { useWorkspaceStore } from './workspaceStore'
 
@@ -13,7 +14,7 @@ export type { WorkspaceStore as AppStateApi } from './workspaceStore'
  *  - Exposes a derived `saveState` string for the toolbar
  */
 export function useAppState(services: AppServices) {
-    const store = useWorkspaceStore()
+    const store = useWorkspaceStore(useShallow((s) => s))
 
     // Keep services (defaults labels, sync engine) in sync with the active locale
     React.useEffect(() => {

@@ -43,9 +43,29 @@ function configureWindowSecurity(window: BrowserWindow) {
     })
 }
 
+async function waitForDevServer(url: string, timeoutMs = 30_000): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs
+    while (Date.now() < deadline) {
+        try {
+            await fetch(url, { signal: AbortSignal.timeout(1000) })
+            return true
+        } catch {
+            await new Promise<void>((r) => setTimeout(r, 300))
+        }
+    }
+    return false
+}
+
 async function loadRenderer(window: BrowserWindow) {
     const devUrl = process.env.ELECTRON_RENDERER_URL
     if (!devUrl) {
+        await window.loadFile(resolveRendererPath())
+        return
+    }
+
+    const ready = await waitForDevServer(devUrl)
+    if (!ready) {
+        console.error('Dev server did not respond within 30s, falling back to built files')
         await window.loadFile(resolveRendererPath())
         return
     }

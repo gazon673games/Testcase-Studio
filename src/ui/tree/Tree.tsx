@@ -3,6 +3,20 @@ import type { Folder, SharedStep } from '@core/domain'
 import { buildRefCatalog, renderRefsInText } from '@core/refs'
 import { isFolder, mapTests } from '@core/tree'
 import { useUiPreferences } from '../preferences'
+import type { ViewNode } from './types'
+
+function buildFolderTestCounts(node: ViewNode): Map<string, number> {
+    const map = new Map<string, number>()
+    function visit(n: ViewNode): number {
+        if (!isFolder(n)) return 1
+        let total = 0
+        for (const child of n.children) total += visit(child)
+        map.set(n.id, total)
+        return total
+    }
+    visit(node)
+    return map
+}
 import './Tree.css'
 import { TreeAliasModal } from './TreeAliasModal'
 import { TreeIconPickerModal } from './TreeIconPickerModal'
@@ -47,9 +61,13 @@ export function Tree(props: Props) {
         selectedKey: string | null
     } | null>(null)
     const rowRefs = React.useRef<Record<string, HTMLElement | null>>({})
+    const registerRowRef = React.useCallback((key: string, element: HTMLElement | null) => {
+        rowRefs.current[key] = element
+    }, [])
     const selectedKey = makeNodeKey(props.selectedId ?? props.root.id)
     const [focusedKey, setFocusedKey] = React.useState(selectedKey)
     const allTests = React.useMemo(() => mapTests(props.root), [props.root])
+    const folderTestCounts = React.useMemo(() => buildFolderTestCounts(props.root), [props.root])
     const {
         showAliases,
         setShowAliases,
@@ -299,9 +317,7 @@ export function Tree(props: Props) {
                     focusedKey={focusedKey}
                     onFocusItem={setFocusedKey}
                     onTreeKeyDown={onTreeKeyDown}
-                    registerRowRef={(key, element) => {
-                        rowRefs.current[key] = element
-                    }}
+                    registerRowRef={registerRowRef}
                     onSelect={props.onSelect}
                     onMove={props.onMove}
                     onCreateFolderAt={props.onCreateFolderAt}
@@ -323,6 +339,7 @@ export function Tree(props: Props) {
                     testHeadlineById={testHeadlineById}
                     stepLabelByKey={stepLabelByKey}
                     nodeIconById={nodeIconById}
+                    folderTestCounts={folderTestCounts}
                 />
             </div>
 

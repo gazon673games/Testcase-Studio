@@ -75,7 +75,11 @@ export function AppShell() {
         setCompactWorkspace,
     })
 
-    const shellViewState = buildAppShellViewState(app, t, services.defaults.rootLabel)
+    const shellViewState = React.useMemo(
+        () => buildAppShellViewState(app, t, services.defaults.rootLabel),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [app.state, app.selectedId, t, services.defaults.rootLabel]
+    )
 
     const confirmDelete = React.useCallback((targetId?: string | null) => {
         const currentState = app.state

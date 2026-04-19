@@ -178,7 +178,7 @@ export const TestEditor = React.forwardRef<TestEditorHandle, Props>(function Tes
     }, [applyDraftPatch])
 
     const handleToggleParseZephyrHtmlParts = React.useCallback((value: boolean) => {
-        applyDraftPatch({ integration: setZephyrHtmlPartsEnabled(structuredClone(latestDraftRef.current), value).integration })
+        applyDraftPatch({ integration: setZephyrHtmlPartsEnabled(latestDraftRef.current, value).integration })
     }, [applyDraftPatch])
 
     const handleChangeName = React.useCallback((value: string) => {

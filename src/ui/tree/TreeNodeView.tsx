@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { isFolder, mapTests } from '@core/tree'
+import { isFolder } from '@core/tree'
 import { getStoredFolderAlias, getStoredTestAlias } from '@shared/treeAliases'
 import type { LocalTreeIconOption } from '@shared/treeIcons'
 import type { EditingState, TreeKeyboardHandler, TreeTranslate, ViewNode } from './types'
@@ -58,9 +58,10 @@ export type TreeNodeViewProps = {
     testHeadlineById: Map<string, string>
     stepLabelByKey: Map<string, string>
     nodeIconById: Map<string, LocalTreeIconOption | null>
+    folderTestCounts: Map<string, number>
 }
 
-export function TreeNodeView(props: TreeNodeViewProps) {
+function TreeNodeViewInner(props: TreeNodeViewProps) {
     const {
         node,
         parentKey,
@@ -100,7 +101,7 @@ export function TreeNodeView(props: TreeNodeViewProps) {
     const hasChildren = isDir ? node.children.length > 0 : node.steps.length > 0
     const storedAlias = isDir ? getStoredFolderAlias(node) : getStoredTestAlias(node.details)
     const displayName = aliasMode ? (storedAlias || node.name) : node.name
-    const itemCount = isDir ? mapTests(node).length : node.steps.length
+    const itemCount = isDir ? (props.folderTestCounts.get(id) ?? 0) : node.steps.length
     const itemLabel = isDir
         ? t('tree.testsCount', { count: itemCount })
         : t('tree.stepCount', { count: itemCount })
@@ -272,6 +273,7 @@ export function TreeNodeView(props: TreeNodeViewProps) {
                                     testHeadlineById={testHeadlineById}
                                     stepLabelByKey={stepLabelByKey}
                                     nodeIconById={nodeIconById}
+                                    folderTestCounts={props.folderTestCounts}
                                 />
                             ))}
                         </div>
@@ -295,3 +297,69 @@ export function TreeNodeView(props: TreeNodeViewProps) {
         </div>
     )
 }
+
+function areTreeNodeViewPropsEqual(prev: TreeNodeViewProps, next: TreeNodeViewProps): boolean {
+    // Node data (Immer structural sharing — same ref = unchanged)
+    if (prev.node !== next.node) return false
+    if (prev.parentKey !== next.parentKey) return false
+    if (prev.depth !== next.depth) return false
+    if (prev.aliasMode !== next.aliasMode) return false
+    if (prev.t !== next.t) return false
+    if (prev.folderTestCounts !== next.folderTestCounts) return false
+
+    // Stable callbacks from Tree.tsx (useCallback / setState refs)
+    if (prev.onFocusItem !== next.onFocusItem) return false
+    if (prev.onTreeKeyDown !== next.onTreeKeyDown) return false
+    if (prev.registerRowRef !== next.registerRowRef) return false
+    if (prev.onSelect !== next.onSelect) return false
+    if (prev.onMove !== next.onMove) return false
+    if (prev.onCreateFolderAt !== next.onCreateFolderAt) return false
+    if (prev.onCreateTestAt !== next.onCreateTestAt) return false
+    if (prev.onRename !== next.onRename) return false
+    if (prev.onDelete !== next.onDelete) return false
+    if (prev.onToggleExpanded !== next.onToggleExpanded) return false
+    if (prev.onContextOpen !== next.onContextOpen) return false
+    if (prev.onMenuButtonOpen !== next.onMenuButtonOpen) return false
+    if (prev.setEditing !== next.setEditing) return false
+    if (prev.commitRename !== next.commitRename) return false
+    if (prev.cancelRename !== next.cancelRename) return false
+    if (prev.onOpenStep !== next.onOpenStep) return false
+
+    // Derived state for THIS node — compare effective booleans, not raw values
+    const nodeId = prev.node.id
+    const nodeKey = makeNodeKey(nodeId)
+    const prevIsOpen = prev.expanded.has(nodeId)
+    const nextIsOpen = next.expanded.has(nodeId)
+
+    if ((prev.selectedId === nodeId) !== (next.selectedId === nodeId)) return false
+    if ((prev.focusedKey === nodeKey) !== (next.focusedKey === nodeKey)) return false
+    if (prevIsOpen !== nextIsOpen) return false
+    if ((prev.editing?.id === nodeId) !== (next.editing?.id === nodeId)) return false
+    if (prev.editing?.id === nodeId && prev.editing.value !== next.editing?.value) return false
+
+    // Per-node map entries
+    if (prev.syncStatusById.get(nodeId) !== next.syncStatusById.get(nodeId)) return false
+    if (prev.testHeadlineById.get(nodeId) !== next.testHeadlineById.get(nodeId)) return false
+    if (prev.nodeIconById.get(nodeId) !== next.nodeIconById.get(nodeId)) return false
+
+    // When this node is open, children need updated global state to re-render correctly.
+    // Folder children depend on selection/focus/expansion/editing of their own nodes;
+    // test children (steps) only need stepLabelByKey.
+    if (prevIsOpen) {
+        if (isFolder(prev.node)) {
+            if (prev.selectedId !== next.selectedId) return false
+            if (prev.focusedKey !== next.focusedKey) return false
+            if (prev.expanded !== next.expanded) return false
+            if (prev.editing !== next.editing) return false
+            if (prev.syncStatusById !== next.syncStatusById) return false
+            if (prev.testHeadlineById !== next.testHeadlineById) return false
+            if (prev.nodeIconById !== next.nodeIconById) return false
+        } else {
+            if (prev.stepLabelByKey !== next.stepLabelByKey) return false
+        }
+    }
+
+    return true
+}
+
+export const TreeNodeView = React.memo(TreeNodeViewInner, areTreeNodeViewPropsEqual)
