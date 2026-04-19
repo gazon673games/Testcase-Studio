@@ -54,16 +54,16 @@ export class SyncEngine implements SyncService {
     async previewZephyrImport(state: RootState, request: ZephyrImportRequest): Promise<ZephyrImportPreview> {
         const zephyr = this.providerBy('zephyr')
         const query = buildZephyrImportQuery(request)
-        const refs =
-            request.mode === 'keys'
-                ? [...new Set((request.refs ?? []).map((ref) => String(ref).trim()).filter(Boolean))]
-                : await this.collectZephyrRefs(zephyr, query, request.maxResults ?? 100)
-
-        const remotes = await Promise.all(
-            refs.map((ref) => zephyr.getTestDetails(ref, { includeAttachments: true }))
-        )
-
+        const refs = await this.resolveImportRefs(zephyr, query, request)
+        const remotes = await Promise.all(refs.map((ref) => zephyr.getTestDetails(ref, { includeAttachments: true })))
         return buildZephyrImportPreview(state, request, remotes, this.text, query)
+    }
+
+    private async resolveImportRefs(provider: ITestProvider, query: string, request: ZephyrImportRequest): Promise<string[]> {
+        if (request.mode === 'keys') {
+            return [...new Set((request.refs ?? []).map((ref) => String(ref).trim()).filter(Boolean))]
+        }
+        return this.collectZephyrRefs(provider, query, request.maxResults ?? 100)
     }
 
     applyZephyrImport(state: RootState, preview: ZephyrImportPreview): ZephyrImportApplyResult {
@@ -83,14 +83,13 @@ export class SyncEngine implements SyncService {
                 .filter(Boolean)
         )]
 
-        const remoteMap = new Map<string, ProviderTest | Error>()
-        await Promise.all(
-            remoteIds.map(async (externalId) => {
-                try {
-                    remoteMap.set(externalId, await zephyr.getTestDetails(externalId, { includeAttachments: true }))
-                } catch (error) {
-                    remoteMap.set(externalId, error instanceof Error ? error : new Error(String(error)))
-                }
+        const settled = await Promise.allSettled(
+            remoteIds.map((id) => zephyr.getTestDetails(id, { includeAttachments: true }))
+        )
+        const remoteMap = new Map<string, ProviderTest | Error>(
+            remoteIds.map((id, i) => {
+                const r = settled[i]
+                return [id, r.status === 'fulfilled' ? r.value : toError(r.reason)]
             })
         )
 
@@ -164,26 +163,29 @@ export class SyncEngine implements SyncService {
                     continue
                 }
 
-                const patch = fromProviderPayload(remote, test.steps, {
-                    parseHtmlParts: isZephyrHtmlPartsEnabled(test),
-                    tolerantJsonBeautify: getStoredJsonBeautifyTolerant(),
-                })
-                const nextTest = preserveZephyrHtmlPartsFlag(
-                    test,
-                    normalizeTestCase({
-                        ...test,
-                        name: patch.name,
-                        description: patch.description,
-                        steps: patch.steps,
-                        attachments: patch.attachments,
-                        details: patch.details,
-                        integration: patch.integration,
-                        updatedAt: patch.updatedAt ?? new Date().toISOString(),
-                    })
-                )
-                Object.assign(test, nextTest)
+                Object.assign(test, this.mergeRemote(test, remote))
             }
         }
+    }
+
+    private mergeRemote(test: TestCase, remote: ProviderTest): TestCase {
+        const patch = fromProviderPayload(remote, test.steps, {
+            parseHtmlParts: isZephyrHtmlPartsEnabled(test),
+            tolerantJsonBeautify: getStoredJsonBeautifyTolerant(),
+        })
+        return preserveZephyrHtmlPartsFlag(
+            test,
+            normalizeTestCase({
+                ...test,
+                name: patch.name,
+                description: patch.description,
+                steps: patch.steps,
+                attachments: patch.attachments,
+                details: patch.details,
+                integration: patch.integration,
+                updatedAt: patch.updatedAt ?? new Date().toISOString(),
+            })
+        )
     }
 
     private async collectZephyrRefs(provider: ITestProvider, query: string, maxResults: number): Promise<string[]> {
@@ -192,4 +194,8 @@ export class SyncEngine implements SyncService {
         return [...new Set(refs.map((item) => item.ref).filter(Boolean))]
     }
 
+}
+
+function toError(reason: unknown): Error {
+    return reason instanceof Error ? reason : new Error(String(reason))
 }

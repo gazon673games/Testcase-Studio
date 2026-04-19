@@ -116,7 +116,7 @@ export function resolveIncludedCaseDecisions(
 
     return {
         nextState,
-        dirtyIds: [...dirtyIds, ...createdTestIds].filter((value, index, items) => items.indexOf(value) === index),
+        dirtyIds: [...new Set([...dirtyIds, ...createdTestIds])],
         createdTestIds,
     }
 }
@@ -207,32 +207,19 @@ function buildReferenceStepsFromLocalCase(test: TestCase): Step[] {
         const dataRef = dataValue ? `[[${makeStepRef('test', test.id, step.id, 'data')}]]` : ''
         const expectedRef = expectedValue ? `[[${makeStepRef('test', test.id, step.id, 'expected')}]]` : ''
 
-        return {
+        const newStep = {
             id: crypto.randomUUID(),
             action: actionRef,
             data: dataRef,
             expected: expectedRef,
             text: actionRef,
-            snapshot: {
-                action: actionRef,
-                data: dataRef,
-                expected: expectedRef,
-            },
+            snapshot: { action: actionRef, data: dataRef, expected: expectedRef },
             subSteps: [],
-            presentation: {
-                parts: {
-                    action: [],
-                    data: [],
-                    expected: [],
-                },
-            },
+            presentation: { parts: { action: [], data: [], expected: [] } },
             attachments: [],
         }
-    }).map((step) =>
-        setZephyrStepIntegration(step, {
-            includedTest: { localTestId: test.id },
-        })
-    )
+        return setZephyrStepIntegration(newStep, { includedTest: { localTestId: test.id } })
+    })
 }
 
 function getIncludedTestSnapshot(step: Step): ProviderTest | null {

@@ -1,3 +1,5 @@
+import { HTML_ENTITIES, JSON_VALUE_END_CHARS, JSON_VALUE_START_CHARS } from './zephyrJsonHtmlConstants'
+
 export type ZephyrJsonBeautifyOptions = { tolerant?: boolean }
 
 export type ZephyrJsonBeautifyFailure = {
@@ -164,24 +166,15 @@ function looksLikeJson(value: string) {
 function decodeHtmlEntities(value: string) {
     return String(value ?? '').replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (_full, entity: string) => {
         const normalized = entity.toLowerCase()
-
-        if (normalized === 'nbsp') return ' '
-        if (normalized === 'amp') return '&'
-        if (normalized === 'lt') return '<'
-        if (normalized === 'gt') return '>'
-        if (normalized === 'quot') return '"'
-        if (normalized === 'apos') return "'"
-
+        if (HTML_ENTITIES[normalized]) return HTML_ENTITIES[normalized]
         if (normalized.startsWith('#x')) {
-            const value = Number.parseInt(normalized.slice(2), 16)
-            return Number.isFinite(value) ? String.fromCodePoint(value) : _full
+            const code = Number.parseInt(normalized.slice(2), 16)
+            return Number.isFinite(code) ? String.fromCodePoint(code) : _full
         }
-
         if (normalized.startsWith('#')) {
-            const value = Number.parseInt(normalized.slice(1), 10)
-            return Number.isFinite(value) ? String.fromCodePoint(value) : _full
+            const code = Number.parseInt(normalized.slice(1), 10)
+            return Number.isFinite(code) ? String.fromCodePoint(code) : _full
         }
-
         return _full
     })
 }
@@ -304,11 +297,11 @@ function shouldInsertImplicitComma(previous: string, next: string) {
 }
 
 function isJsonValueEnd(char: string) {
-    return char === '"' || char === '}' || char === ']' || /\d/.test(char) || char === 'e' || char === 'E' || char === 'l'
+    return JSON_VALUE_END_CHARS.has(char) || /\d/.test(char)
 }
 
 function isJsonValueStart(char: string) {
-    return char === '"' || char === '{' || char === '[' || char === '-' || /\d/.test(char) || char === 't' || char === 'f' || char === 'n'
+    return JSON_VALUE_START_CHARS.has(char) || /\d/.test(char)
 }
 
 function wrapBeautifiedJsonHtml(value: string, wrappers: string[]) {
