@@ -36,18 +36,14 @@ import type { ID, RootState, SharedStep, Step, TestCase } from '@core/domain'
 import type { ZephyrImportPreview, ZephyrImportRequest, ZephyrPublishPreview, ZephyrPublishResult } from '@app/sync'
 import type { AppServices } from '../services'
 
-// ─── Autosave queue ──────────────────────────────────────────────────────────
-// These live outside Zustand state — they're imperative bookkeeping that never
-// needs to trigger re-renders.
+// Save queue state.
 let _saveTimer: ReturnType<typeof setTimeout> | null = null
 let _saveQueue: Promise<void> = Promise.resolve()
 let _activeSaves = 0
 let _revision = 0
 
-// ─── Store types ─────────────────────────────────────────────────────────────
-
 export type WorkspaceStore = {
-    // ── Observed state ──────────────────────────────────────────────────────
+    // State
     state: RootState | null
     selectedId: ID | null
     focusStepId: string | null
@@ -57,22 +53,22 @@ export type WorkspaceStore = {
     isSaving: boolean
     saveError: string | null
 
-    // ── Services (locale-sensitive, updated on language change) ─────────────
+    // Services
     _services: AppServices | null
     setServices(services: AppServices): void
 
-    // ── Lifecycle ───────────────────────────────────────────────────────────
+    // Lifecycle
     load(): Promise<void>
     save(): Promise<boolean>
 
-    // ── Selection ───────────────────────────────────────────────────────────
+    // Selection
     select(id: ID): void
     openStep(testId: string, stepId: string): void
     mapAllTests(): TestCase[]
     getImportDestination(): ReturnType<typeof getImportDestinationQuery>
     getPublishSelection(): ReturnType<typeof getPublishSelectionQuery>
 
-    // ── Workspace commands ───────────────────────────────────────────────────
+    // Workspace commands
     addFolder(): Promise<void>
     addFolderAt(parentId: ID): Promise<void>
     addTest(): Promise<void>
@@ -91,7 +87,7 @@ export type WorkspaceStore = {
     insertSharedReference(testId: string, sharedId: string, afterIndex?: number): void
     resolveIncludedCases(decisions: Record<string, IncludedCaseResolution>): Promise<ReturnType<typeof resolveIncludedCaseDecisions> | null>
 
-    // ── Sync actions ─────────────────────────────────────────────────────────
+    // Sync actions
     pull(): Promise<{ status: 'no-selection' | 'no-link' | 'not-a-test' } | { status: 'ok'; testId: string; externalId: string; nextState: RootState; includedCases: ReturnType<typeof collectIncludedCaseCandidates> }>
     push(): Promise<Awaited<ReturnType<typeof pushSelectedCaseUseCase>>>
     syncAll(): Promise<{ status: 'ok'; count: number }>
@@ -101,10 +97,8 @@ export type WorkspaceStore = {
     publishZephyr(preview: ZephyrPublishPreview): Promise<ZephyrPublishResult & { snapshotPath: string; logPath: string }>
 }
 
-// ─── Store ───────────────────────────────────────────────────────────────────
-
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => {
-    // ── Internal helpers ────────────────────────────────────────────────────
+    // Internal helpers
 
     function services(): AppServices {
         const s = get()._services
@@ -190,8 +184,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => {
         })
     }
 
-    // ── Initial state ────────────────────────────────────────────────────────
-
     return {
         state: null,
         selectedId: null,
@@ -203,13 +195,13 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => {
         saveError: null,
         _services: null,
 
-        // ── Services ──────────────────────────────────────────────────────────
+        // Services
 
         setServices(svc) {
             set({ _services: svc })
         },
 
-        // ── Lifecycle ─────────────────────────────────────────────────────────
+        // Lifecycle
 
         async load() {
             try {
@@ -250,7 +242,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => {
             return true
         },
 
-        // ── Selection ──────────────────────────────────────────────────────────
+        // Selection
 
         select(id) {
             set({ selectedId: id, focusStepId: null })
@@ -274,7 +266,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => {
             return getPublishSelectionQuery(state, selectedId, services().defaults.rootLabel)
         },
 
-        // ── Workspace commands ────────────────────────────────────────────────
+        // Workspace commands
 
         async addFolder() {
             const { state: current, selectedId } = get()
@@ -421,7 +413,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => {
             return result
         },
 
-        // ── Sync actions ──────────────────────────────────────────────────────
+        // Sync actions
 
         async pull() {
             const { state: current, selectedId } = get()

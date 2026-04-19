@@ -3,7 +3,7 @@
     margin-top: 8px;
 }
 
-/* Заголовок и кнопки */
+/* Header */
 .attachments-head {
     display: flex;
     align-items: center;
@@ -21,7 +21,7 @@
     display: none;
 }
 
-/* Список */
+/* List */
 .attachments-list {
     list-style: none;
     margin: 0;

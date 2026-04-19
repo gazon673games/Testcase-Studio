@@ -1,6 +1,4 @@
-/* ─────────────────────────────────────────────────────────────
-MarkdownEditor.css — reusable Markdown textarea + preview
-───────────────────────────────────────────────────────────── */
+/* Markdown editor textarea and preview. */
 
 .md-editor { position: relative; width: 100%; }
 
@@ -20,23 +18,21 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     border-radius: 8px;
     background: var(--bg-elevated);
     color: var(--text);
-    white-space: pre-wrap;      /* как у textarea */
-    word-break: break-word;     /* перестраховка для очень длинных токенов */
+    white-space: pre-wrap;
+    word-break: break-word;
     overflow-wrap: anywhere;
     font-size: 14px;
     line-height: 1.45;
     font-family: inherit;
 }
 
-/* с
-/* задаём кастомные CSS-переменные для высоты */
+/* Sizing */
 .md-editor {
     --md-line-height: 1.45;
     --md-font-size: 14px;
-    --md-pad-v: 10px;        /* вертикальные паддинги из textarea */
-    --md-max-rows: 24;       /* по умолчанию максимум ~24 строки */
-    --md-min-rows: 3;        /* минимум */
-    /* max высота ≈ (строки * lineHeight * fontSize) + паддинги сверху/снизу */
+    --md-pad-v: 10px;
+    --md-max-rows: 24;
+    --md-min-rows: 3;
     --md-max-height: calc(var(--md-max-rows) * var(--md-line-height) * var(--md-font-size) + var(--md-pad-v) * 2);
     --md-min-height: calc(var(--md-min-rows) * var(--md-line-height) * var(--md-font-size) + var(--md-pad-v) * 2);
 }
@@ -62,8 +58,8 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     outline: none;
     box-sizing: border-box;
 
-    resize: none;        /* высоту управляем сами */
-    overflow: hidden;    /* никогда не скроллим внутри поля */
+    resize: none;
+    overflow: hidden;
     scrollbar-width: none;
 }
 .md-editor.md-editor--step .md-textarea,
@@ -144,7 +140,7 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     background: var(--focus-ring);
 }
 
-/* overlay-превью поверх textarea */
+/* Preview overlay */
 .md-editor .md-preview {
     position: absolute;
     top: 0;
@@ -224,28 +220,28 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     color: var(--text-dim);
     pointer-events: none;
 }
-/* если превью очень большое — ограничиваем и даём скролл */
+/* Large preview */
 .md-editor .md-preview.clamped {
     max-height: var(--md-max-height);
     overflow: auto;
-    pointer-events: auto;     /* позволяем скроллить мышью/тачем */
+    pointer-events: auto;
 }
 
-/* изображения в превью: адаптивно, но не выше max-height полей */
+/* Preview images */
 .md-editor .md-preview img {
     max-width: 100%;
     height: auto;
     display: inline-block;
 }
 
-/* инлайн-код */
+/* Inline code */
 .md-editor .code-inline {
     background: var(--bg-muted);
     padding: 0 3px;
     border-radius: 4px;
 }
 
-/* тулбар показывается только при фокусе поля (управляется компонентом) */
+/* Toolbar */
 .md-editor .md-toolbar {
     display: flex;
     gap: 4px;
@@ -253,7 +249,7 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     margin: 4px 0;
 }
 
-/* кнопки тулбара */
+/* Toolbar buttons */
 .md-editor .md-btn {
     border: 1px solid var(--border);
     background: var(--bg-elevated);
@@ -273,7 +269,7 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     margin: 0 2px;
 }
 
-/* Автокомплит для [[...]] */
+/* Autocomplete */
 .md-editor .autocomplete {
     position: fixed; z-index: 9999;
     width: min(380px, calc(100vw - 24px)); max-height: 260px; overflow: auto;
@@ -322,7 +318,7 @@ MarkdownEditor.css — reusable Markdown textarea + preview
     color: var(--text-dim);
 }
 
-/* утилита для внешних подписей/лейблов */
+/* Muted helper text */
 .md-editor .muted { font-size: 12px; color: var(--text-muted); }
 
 .md-editor .md-ref-strip {

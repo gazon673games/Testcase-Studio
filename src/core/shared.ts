@@ -7,7 +7,7 @@ export function materializeSharedSteps(steps: Step[], sharedLibrary: SharedStep[
         if (st.usesShared) {
             const lib = byId.get(st.usesShared)
             if (lib) {
-                // клонируем библиотечные шаги
+                // Clone shared-library steps before inserting them.
                 out.push(...lib.steps.map(x => ({ ...x })))
                 continue
             }

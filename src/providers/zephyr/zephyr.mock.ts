@@ -1,9 +1,7 @@
 import type { ITestProvider, ProviderTest, ProviderStep } from '../types'
 
 /**
- * Простая мока Zephyr. Понимает:
- *  - "PROD-T6079"
- *  - "6079" → нормализуется к "PROD-T6079"
+ * Simple Zephyr mock. Numeric ids are normalized to PROD-T keys.
  */
 export class ZephyrMockProvider implements ITestProvider {
     private normalizeKey(id: string): string {
@@ -49,7 +47,7 @@ export class ZephyrMockProvider implements ITestProvider {
                 },
             } as any
 
-            // Маппим Zephyr → ProviderTest (БЕЗ конвертации HTML)
+            // Keep Zephyr HTML unchanged when mapping to ProviderTest.
             const steps: ProviderStep[] = (zephyrRaw.testScript?.steps ?? [])
                 .filter((s: any) => s && (s.description || s.testData || s.expectedResult))
                 .sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0))
@@ -72,7 +70,7 @@ export class ZephyrMockProvider implements ITestProvider {
             return result
         }
 
-        // Значение «по умолчанию» для неизвестных ключей:
+        // Default response for unknown keys.
         return {
             id: key,
             name: `Unknown Zephyr test ${key}`,

@@ -34,8 +34,7 @@ export function useStepsPanelController({
     const [draggingIndex, setDraggingIndex] = React.useState<number | null>(null)
     const [hoverIndex, setHoverIndex] = React.useState<number | null>(null)
 
-    // Refs so that callbacks can always access the latest values without
-    // being recreated (deps []) — keeps StepRow memo effective.
+    // Keep callbacks stable while reading the latest values.
     const stepsRef = React.useRef(steps)
     stepsRef.current = steps
     const onChangeRef = React.useRef(onChange)

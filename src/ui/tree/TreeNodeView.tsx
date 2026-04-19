@@ -299,7 +299,7 @@ function TreeNodeViewInner(props: TreeNodeViewProps) {
 }
 
 function areTreeNodeViewPropsEqual(prev: TreeNodeViewProps, next: TreeNodeViewProps): boolean {
-    // Node data (Immer structural sharing — same ref = unchanged)
+    // Node data
     if (prev.node !== next.node) return false
     if (prev.parentKey !== next.parentKey) return false
     if (prev.depth !== next.depth) return false
@@ -307,7 +307,7 @@ function areTreeNodeViewPropsEqual(prev: TreeNodeViewProps, next: TreeNodeViewPr
     if (prev.t !== next.t) return false
     if (prev.folderTestCounts !== next.folderTestCounts) return false
 
-    // Stable callbacks from Tree.tsx (useCallback / setState refs)
+    // Stable callbacks
     if (prev.onFocusItem !== next.onFocusItem) return false
     if (prev.onTreeKeyDown !== next.onTreeKeyDown) return false
     if (prev.registerRowRef !== next.registerRowRef) return false
@@ -325,7 +325,7 @@ function areTreeNodeViewPropsEqual(prev: TreeNodeViewProps, next: TreeNodeViewPr
     if (prev.cancelRename !== next.cancelRename) return false
     if (prev.onOpenStep !== next.onOpenStep) return false
 
-    // Derived state for THIS node — compare effective booleans, not raw values
+    // Row state
     const nodeId = prev.node.id
     const nodeKey = makeNodeKey(nodeId)
     const prevIsOpen = prev.expanded.has(nodeId)
@@ -337,14 +337,12 @@ function areTreeNodeViewPropsEqual(prev: TreeNodeViewProps, next: TreeNodeViewPr
     if ((prev.editing?.id === nodeId) !== (next.editing?.id === nodeId)) return false
     if (prev.editing?.id === nodeId && prev.editing.value !== next.editing?.value) return false
 
-    // Per-node map entries
+    // Row map entries
     if (prev.syncStatusById.get(nodeId) !== next.syncStatusById.get(nodeId)) return false
     if (prev.testHeadlineById.get(nodeId) !== next.testHeadlineById.get(nodeId)) return false
     if (prev.nodeIconById.get(nodeId) !== next.nodeIconById.get(nodeId)) return false
 
-    // When this node is open, children need updated global state to re-render correctly.
-    // Folder children depend on selection/focus/expansion/editing of their own nodes;
-    // test children (steps) only need stepLabelByKey.
+    // Open rows pass relevant state to rendered children.
     if (prevIsOpen) {
         if (isFolder(prev.node)) {
             if (prev.selectedId !== next.selectedId) return false
